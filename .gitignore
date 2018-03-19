@@ -1,0 +1,34 @@
+# anything generated here
+Debug*/*
+Release*/*
+
+#	python compiled files
+*pyc
+
+.mypy_cache
+
+#	our test executable(w)
+
+XBRL_Extract
+
+#	log file
+
+*log*
+
+
+# skip test files for now
+
+test_files
+
+#	any stray library files
+
+*.a
+
+# tags
+
+.tags
+
+test.py
+
+
+.vscode
