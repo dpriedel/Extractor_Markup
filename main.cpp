@@ -77,7 +77,11 @@ int main(int argc, const char* argv[])
             hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseFilter(document, output_directory);});
         }
 
-        std::cout << "Found: " << DocumentCounter::document_counter << " document blocks.\n";
+        // let's see if we got a count...
+
+        auto document_counter = hana::index_if(the_filters, hana::is_a<std::unique_ptr<DocumentCounter>>);
+        if (document_counter != hana::nothing)
+            std::cout << "Found: " << DocumentCounter::document_counter << " document blocks.\n";
     }
     catch (std::exception& e)
     {
