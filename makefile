@@ -38,19 +38,19 @@ CFG_INC := -I./src \
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
-SDIR1 := ./src
-SRCS1 := $(SDIR1)/ExtractEDGAR_XBRL.cpp
+SDIR1 := .
+SRCS1 := $(SDIR1)/main.cpp
 
-# SDIR2 := ./src
-# SRCS2 := $(SDIR2)/ExtractEDGARApp.cpp $(SDIR2)/EDGAR_FilingFile.cpp $(SDIR2)/EDGAR_DB.cpp $(SDIR2)/SEC_Header.cpp
+SDIR2 := ./src
+SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Filters.cpp
 #
 # SDIR3h := ../app_framework/include
 # SDIR3 := ../app_framework/src
 # SRCS3 := $(SDIR3)/TException.cpp $(SDIR3)/ErrorHandler.cpp $(SDIR3)/CApplication.cpp
 
-SRCS := $(SRCS1) # $(SRCS2)
+SRCS := $(SRCS1) $(SRCS2)
 
-VPATH := $(SDIR1) #:$(SDIR2):$(SDIR3h)
+VPATH := $(SDIR1):$(SDIR2) #:$(SDIR3h)
 
 #
 # Configuration: DEBUG
@@ -65,9 +65,9 @@ CFG_LIB := -lpthread \
 		-lboost_regex-mt
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
-# OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
+OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 
-OBJS=$(OBJS1) #$(OBJS2)
+OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
 COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
@@ -89,9 +89,9 @@ CFG_LIB := -lpthread \
 		-lboost_regex-mt
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
-# OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
+OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 
-OBJS=$(OBJS1) #$(OBJS2)
+OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
 COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP

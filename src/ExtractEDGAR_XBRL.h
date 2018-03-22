@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  ExtractEDGAR_XBRL.cpp
+//       Filename:  ExtractEDGAR_XBRL.h
 //
 //    Description:  module which scans the set of collected EDGAR files and extracts
 //                  relevant data from the file.
@@ -34,33 +34,22 @@
 
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
-
-#include <fstream>
-
-#include "ExtractEDGAR_XBRL.h"
+#ifndef __EXTRACTEDGAR_XBRL__
+#define __EXTRACTEDGAR_XBRL__
 
 
-void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document)
-{
-    std::ofstream output_file(output_file_name);
-    if (not output_file)
-        throw(std::runtime_error("Can't open output file: " + output_file_name.string()));
+#include <experimental/filesystem>
+#include <experimental/string_view>
 
-    output_file.write(document.data(), document.length());
-    output_file.close();
-}
+#include <boost/regex.hpp>
 
-fs::path FindFileName(const fs::path& output_directory, const std::string_view& document, const boost::regex& regex_fname)
-{
-    boost::cmatch matches;
-    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
-    if (found_it)
-    {
-        const std::string_view file_name(matches[1].first, matches[1].length());
-        fs::path output_file_name{output_directory};
-        output_file_name /= file_name;
-        return output_file_name;
-    }
-    else
-        throw std::runtime_error("Can't find file name in document.\n");
-}
+#include "Filters.h"
+
+namespace fs = std::experimental::filesystem;
+
+void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document);
+
+fs::path FindFileName(const fs::path& output_directory, const std::string_view& document, const boost::regex& regex_fname);
+
+
+#endif /* end of include guard: __EXTRACTEDGAR_XBRL__*/

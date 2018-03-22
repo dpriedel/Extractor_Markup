@@ -9,7 +9,5 @@
 -I/extra/boost/boost-1.66_gcc-7/
 -I/extra/pstream/
 -I/usr/include/pqxx/
-#-I/home/dpriedel/projects/github/app_framework/include/
-#-I/home/dpriedel/projects/github/app_framework/src/
 -I/usr/local/include/
-#-I/home/dpriedel/projects/github/ExtractEDGARData/src/
+-I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/src/
