@@ -92,9 +92,18 @@ int main(int argc, const char* argv[])
         {
             if (dir_ent.status().type() == fs::file_type::regular)
             {
-                ++files_prcessed;
-                if (files_prcessed > MAX_FILES)
-                    throw std::runtime_error("Exceeded file limit.\n");
+                std::ifstream input_file{dir_ent.path()};
+
+                const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
+                input_file.close();
+                if (auto xbrl_loc = file_content.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
+                {
+                    ++files_prcessed;
+                    if (files_prcessed > MAX_FILES)
+                        throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
+
+                    std::cout << "got one" << '\n';
+                }
             }
         });
 
