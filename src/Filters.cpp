@@ -100,3 +100,55 @@ void DocumentCounter::UseFilter(std::string_view, const fs::path&)
 {
     ++DocumentCounter::document_counter;
 }
+
+
+void HTM_data::UseFilter(std::string_view document, const fs::path& output_directory)
+{
+    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    if (output_file_name.extension() == ".htm")
+    {
+        std::cout << "got htm" << '\n';
+
+        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+        auto x = document.find(R"***(<TEXT>)***");
+
+        // skip 1 more line.
+
+        x = document.find('\n', x + 1);
+
+        document.remove_prefix(x);
+
+        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        if (xbrl_end_loc != std::string_view::npos)
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        else
+            throw std::runtime_error("Can't find end of XBLR in document.\n");
+
+        WriteDataToFile(output_file_name, document);
+    }
+}
+
+void ALL_data::UseFilter(std::string_view document, const fs::path& output_directory)
+{
+    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    std::cout << "got another" << '\n';
+
+    // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+    auto x = document.find(R"***(<TEXT>)***");
+
+    // skip 1 more line.
+
+    x = document.find('\n', x + 1);
+
+    document.remove_prefix(x);
+
+    auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+    if (xbrl_end_loc != std::string_view::npos)
+        document.remove_suffix(document.length() - xbrl_end_loc);
+    else
+        throw std::runtime_error("Can't find end of XBLR in document.\n");
+
+    WriteDataToFile(output_file_name, document);
+}

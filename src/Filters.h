@@ -67,6 +67,20 @@ struct DocumentCounter
     void UseFilter(std::string_view, const fs::path&);
 };
 
+struct HTM_data
+{
+    inline static int document_counter = 0;
+
+    void UseFilter(std::string_view, const fs::path&);
+};
+
+// this filter will export all document sections.
+
+struct ALL_data
+{
+    void UseFilter(std::string_view, const fs::path&);
+};
+
 // someday, the user can sellect filters.  We'll pretend we do that here.
 
 // NOTE: this implementation uses code from a Stack Overflow example.
@@ -82,7 +96,8 @@ inline auto SelectFilters(int argc, const char* argv[])
 {
     // we imagine the user has somehow told us to use these three filter types.
 
-    auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>());
+    // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
+    auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
     return L;
 }
 
