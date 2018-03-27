@@ -1,6 +1,8 @@
 # anything generated here
-Debug*/*
-Release*/*
+ExtractDebug*/*
+ProcessDebug*/*
+ExtractRelease*/*
+ProcessRelease*/*
 
 #	python compiled files
 *pyc
@@ -10,6 +12,7 @@ Release*/*
 #	our test executable(w)
 
 XBRL_Extract
+ProcessXBRL_Extract
 
 #	log file
 

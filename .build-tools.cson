@@ -6,8 +6,8 @@ providers: [
         {
           project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
           source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
-          name: "debug-clean"
-          command: "make -f makefile clean"
+          name: "x_debug-clean"
+          command: "make -f makefile_extract clean"
           wd: "."
           env: {}
           modifier:
@@ -35,8 +35,8 @@ providers: [
         {
           project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
           source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
-          name: "debug-make"
-          command: "make -f makefile -j4"
+          name: "x_debug-make"
+          command: "make -f makefile_extract -j4"
           wd: "."
           env: {}
           modifier:
@@ -73,8 +73,8 @@ providers: [
         {
           project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
           source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
-          name: "release-make"
-          command: "make -f makefile CFG=Release -j4"
+          name: "x_release-make"
+          command: "make -f makefile_extract CFG=Release -j4"
           wd: "."
           env: {}
           modifier:
@@ -114,8 +114,154 @@ providers: [
         {
           project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
           source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
-          name: "release-clean"
-          command: "make -f makefile CFG=Release clean"
+          name: "x_release-clean"
+          command: "make -f makefile_extract CFG=Release clean"
+          wd: "."
+          env: {}
+          modifier:
+            shell:
+              command: "bash -c"
+          environment:
+            name: "child_process"
+            config:
+              stdoe: "both"
+          stdout:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          stderr:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          output:
+            console:
+              close_success: true
+              queue_in_buffer: true
+              colors: false
+              stdin: false
+          version: 2
+        }
+        {
+          project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
+          source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
+          name: "p_debug-clean"
+          command: "make -f makefile_process clean"
+          wd: "."
+          env: {}
+          modifier:
+            shell:
+              command: "bash -c"
+          environment:
+            name: "child_process"
+            config:
+              stdoe: "both"
+          stdout:
+            pipeline: []
+          stderr:
+            pipeline: []
+          output:
+            console:
+              close_success: true
+              queue_in_buffer: true
+              colors: false
+              stdin: false
+            linter:
+              no_trace: false
+              immediate: false
+          version: 2
+        }
+        {
+          project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
+          source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
+          name: "p_debug-make"
+          command: "make -f makefile_process -j4"
+          wd: "."
+          env: {}
+          modifier:
+            shell:
+              command: "bash -c"
+          environment:
+            name: "child_process"
+            config:
+              stdoe: "both"
+          stdout:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          stderr:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          output:
+            console:
+              close_success: true
+              queue_in_buffer: true
+              colors: false
+              stdin: false
+          version: 2
+        }
+        {
+          project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
+          source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
+          name: "p_release-make"
+          command: "make -f makefile_process CFG=Release -j4"
+          wd: "."
+          env: {}
+          modifier:
+            shell:
+              command: "bash -c"
+          environment:
+            name: "child_process"
+            config:
+              stdoe: "both"
+          stdout:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          stderr:
+            pipeline: [
+              {
+                name: "profile"
+                config:
+                  profile: "gcc_clang"
+              }
+            ]
+          output:
+            console:
+              close_success: true
+              queue_in_buffer: true
+              colors: false
+              stdin: false
+            linter:
+              no_trace: false
+              immediate: false
+          version: 2
+        }
+        {
+          project: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL"
+          source: "/home/dpriedel/projects/github/ExtractEDGAR_XBRL/.build-tools.cson"
+          name: "p_release-clean"
+          command: "make -f makefile_process CFG=Release clean"
           wd: "."
           env: {}
           modifier:

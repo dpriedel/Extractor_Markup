@@ -30,34 +30,35 @@ endif
 
 #	common definitions
 
-OUTFILE := XBRL_Extract
+OUTFILE := ProcessXBRL_Extract
 
 CFG_INC := -I./src \
+		-I../ExtractEDGARData/src \
 		-I/extra/pstream \
 		-I$(BOOSTDIR)
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
 SDIR1 := .
-SRCS1 := $(SDIR1)/main.cpp
+SRCS1 := $(SDIR1)/process_main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Filters.cpp
+SRCS2 := # $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Filters.cpp
 #
-# SDIR3h := ../app_framework/include
-# SDIR3 := ../app_framework/src
-# SRCS3 := $(SDIR3)/TException.cpp $(SDIR3)/ErrorHandler.cpp $(SDIR3)/CApplication.cpp
+SDIR3h := ../ExtractEDGARData/src
+SDIR3 := ../ExtractEDGARData/src
+SRCS3 := # $(SDIR3)/TException.cpp $(SDIR3)/ErrorHandler.cpp $(SDIR3)/CApplication.cpp
 
-SRCS := $(SRCS1) $(SRCS2)
+SRCS := $(SRCS1) $(SRCS2) $(SRCS3)
 
-VPATH := $(SDIR1):$(SDIR2) #:$(SDIR3h)
+VPATH := $(SDIR1):$(SDIR2):$(SDIR3h)
 
 #
 # Configuration: DEBUG
 #
 ifeq "$(CFG)" "Debug"
 
-OUTDIR=ExtractDebug
+OUTDIR=ProcessDebug
 
 CFG_LIB := -lpthread \
 		-lstdc++fs \
@@ -66,8 +67,9 @@ CFG_LIB := -lpthread \
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
+OBJS3=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS3)))))
 
-OBJS=$(OBJS1) $(OBJS2)
+OBJS=$(OBJS1) $(OBJS2) $(OBJS3)
 DEPS=$(OBJS:.o=.d)
 
 COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
