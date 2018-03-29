@@ -35,15 +35,47 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <atomic>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <parallel/algorithm>
+#include <experimental/filesystem>
+#include <experimental/string_view>
 
-#include "ExtractEDGAR_XBRL.h"
+namespace fs = std::experimental::filesystem;
+
+// #include "ExtractEDGAR_XBRL.h"
+
+#include <boost/regex.hpp>
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
-int MAX_FILES = -1;
+int MAX_FILES{-1};
+
+// let's try the Poco XML parser.
+// since we already have the document in memory, we'll just
+// pass that to the parser.
+
+#include "Poco/DOM/DOMParser.h"
+#include "Poco/DOM/Document.h"
+#include "Poco/DOM/NodeIterator.h"
+#include "Poco/DOM/NodeFilter.h"
+#include "Poco/DOM/AutoPtr.h"
+// #include "Poco/SAX/InputSource.h"
+
+void ParseTheXMl(const std::string_view& document)
+{
+    Poco::XML::DOMParser parser;
+    Poco::AutoPtr<Poco::XML::Document> pDoc = parser.parseMemory(document.data(), document.size());
+    Poco::XML::NodeIterator it(pDoc, Poco::XML::NodeFilter::SHOW_ELEMENT);
+    Poco::XML::Node* pNode = it.nextNode();
+    while (pNode)
+    {
+        std::cout<<pNode->nodeName()<<":"<< pNode->nodeValue()<<std::endl;
+        pNode = it.nextNode();
+    }
+}
 
 int main(int argc, const char* argv[])
 {
@@ -78,36 +110,44 @@ int main(int argc, const char* argv[])
                 throw std::runtime_error("Must provide a number for max files.\n");
         }
 
-        // std::map<std::string, fs::file_time_type> results;
-        //
-        // auto save_mod_time([&results] (const auto& dir_ent)
-        // {
-        //     if (dir_ent.status().type() == fs::file_type::regular)
-        //         results[dir_ent.path().filename().string()] = fs::last_write_time(dir_ent.path());
-        // });
+        std::atomic<int> files_prcessed{0};
 
-        int files_prcessed{0};
-
-        auto scan_file([&files_prcessed](const auto& dir_ent)
+        std::vector<fs::path> files_to_scan;
+        auto make_file_list([&files_to_scan](const auto& dir_ent)
         {
             if (dir_ent.status().type() == fs::file_type::regular)
+                files_to_scan.push_back(dir_ent.path());
+        });
+
+        std::for_each(fs::recursive_directory_iterator(input_directory), fs::recursive_directory_iterator(), make_file_list);
+
+        std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
+
+        auto scan_file([&files_prcessed](const auto& file_path)
+        {
+            std::ifstream input_file{file_path};
+
+            const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
+            input_file.close();
+            if (auto xbrl_loc = file_content.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
             {
-                std::ifstream input_file{dir_ent.path()};
+                auto x = files_prcessed.fetch_add(1);
+                if (x > MAX_FILES)
+                    throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
 
-                const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
-                input_file.close();
-                if (auto xbrl_loc = file_content.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
+                std::cout << "got one" << '\n';
+                for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
+                    doc != boost::cregex_token_iterator{}; ++doc)
                 {
-                    ++files_prcessed;
-                    if (files_prcessed > MAX_FILES)
-                        throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
+                    std::string_view document(doc->first, doc->length());
 
-                    std::cout << "got one" << '\n';
+                    ParseTheXMl(document);
+                    // hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseFilter(document, output_directory);});
                 }
             }
         });
 
-        std::for_each(fs::recursive_directory_iterator(input_directory), fs::recursive_directory_iterator(), scan_file);
+        __gnu_parallel::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
 
     }
