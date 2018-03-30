@@ -62,7 +62,9 @@ OUTDIR=ExtractDebug
 CFG_LIB := -lpthread \
 		-lstdc++fs \
 		-L$(BOOSTDIR)/lib \
-		-lboost_regex-mt
+		-lboost_regex-mt \
+		-L/usr/local/lib \
+		-lPocoXMLd -lPocoFoundationd
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

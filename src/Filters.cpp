@@ -63,7 +63,8 @@ void XBRL_data::UseFilter(std::string_view document, const fs::path& output_dire
         else
             throw std::runtime_error("Can't find end of XBLR in document.\n");
 
-        WriteDataToFile(output_file_name, document);
+        ParseTheXMl(document);
+        // WriteDataToFile(output_file_name, document);
     }
 }
 

@@ -41,11 +41,13 @@
 #include <experimental/filesystem>
 #include <experimental/string_view>
 
-#include <boost/regex.hpp>
+#include <boost/regex_fwd.hpp>
 
-#include "Filters.h"
+// #include "Filters.h"
 
 namespace fs = std::experimental::filesystem;
+
+void ParseTheXMl(const std::string_view& document);
 
 void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document);
 

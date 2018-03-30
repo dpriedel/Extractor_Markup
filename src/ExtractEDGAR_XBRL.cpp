@@ -36,8 +36,51 @@
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <fstream>
+#include <iostream>
+
+#include <boost/regex.hpp>
 
 #include "ExtractEDGAR_XBRL.h"
+
+// let's try the Poco XML parser.
+// since we already have the document in memory, we'll just
+// pass that to the parser.
+
+#include "Poco/DOM/DOMParser.h"
+#include "Poco/DOM/Document.h"
+#include "Poco/DOM/NodeIterator.h"
+#include "Poco/DOM/NodeFilter.h"
+#include "Poco/DOM/AutoPtr.h"
+#include "Poco/DOM/TreeWalker.h"
+
+// #include "Poco/SAX/InputSource.h"
+
+void ParseTheXMl(const std::string_view& document)
+{
+    std::ofstream logfile{"/tmp/file.txt"};
+    logfile << document;
+    logfile.close();
+    Poco::XML::DOMParser parser;
+    Poco::AutoPtr<Poco::XML::Document> pDoc = parser.parseMemory(document.data(), document.size());
+    // Poco::XML::NodeIterator it(pDoc, Poco::XML::NodeFilter::SHOW_ELEMENT);
+    // Poco::XML::Node* pNode = it.nextNode();
+
+    auto aNode = pDoc->firstChild();
+
+    std::cout << "\n ****** \n";
+
+    while (aNode)
+    {
+            std::cout<<aNode->nodeName()<<":"<< aNode->nodeValue()<<":"<< aNode->innerText()<<std::endl;
+            aNode = aNode->nextSibling();
+    }
+    // while (pNode)
+    // {
+    //     std::cout<<pNode->nodeName()<<":"<< pNode->nodeValue()<<":"<< pNode->innerText()<<std::endl;
+    //     pNode = it.nextNode();
+    // }
+    std::cout << "\n ****** \n";
+}
 
 
 void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document)

@@ -38,7 +38,10 @@
 #include <fstream>
 #include <iostream>
 
-#include "ExtractEDGAR_XBRL.h"
+#include <boost/regex.hpp>
+
+// #include "ExtractEDGAR_XBRL.h"
+#include "Filters.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
