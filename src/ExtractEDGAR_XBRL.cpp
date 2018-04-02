@@ -48,7 +48,6 @@
 
 #include <pugixml.hpp>
 
-// #include "Poco/SAX/InputSource.h"
 
 void ParseTheXMl(const std::string_view& document)
 {
@@ -67,15 +66,14 @@ void ParseTheXMl(const std::string_view& document)
     {
         std::cout << "Name:  " << tool.name() << "=" << tool.child_value();
         std::cout << std::endl;
-        std::cout << "Attr:   ";
+        std::cout << "    Attr:";
 
         for (pugi::xml_attribute attr = tool.first_attribute(); attr; attr = attr.next_attribute())
         {
-            std::cout << "    " << attr.name() << "=" << attr.value();
+            std::cout << "        " << attr.name() << "=" << attr.value();
             std::cout << std::endl;
         }
     }
-
 
     std::cout << "\n ****** \n";
 }
@@ -104,4 +102,17 @@ fs::path FindFileName(const fs::path& output_directory, const std::string_view& 
     }
     else
         throw std::runtime_error("Can't find file name in document.\n");
+}
+
+const std::string_view FindFileType(const std::string_view& document, const boost::regex& regex_ftype)
+{
+    boost::cmatch matches;
+    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
+    if (found_it)
+    {
+        const std::string_view file_type(matches[1].first, matches[1].length());
+        return file_type;
+    }
+    else
+        throw std::runtime_error("Can't find file type in document.\n");
 }

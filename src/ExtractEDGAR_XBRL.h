@@ -53,5 +53,7 @@ void WriteDataToFile(const fs::path& output_file_name, const std::string_view& d
 
 fs::path FindFileName(const fs::path& output_directory, const std::string_view& document, const boost::regex& regex_fname);
 
+const std::string_view FindFileType(const std::string_view& document, const boost::regex& regex_ftype);
+
 
 #endif /* end of include guard: __EXTRACTEDGAR_XBRL__*/

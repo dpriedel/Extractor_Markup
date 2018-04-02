@@ -40,30 +40,37 @@
 
 #include "Filters.h"
 #include "ExtractEDGAR_XBRL.h"
+#include <boost/algorithm/string/predicate.hpp>
 
 const auto XBLR_TAG_LEN{7};
 
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
+const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
 void XBRL_data::UseFilter(std::string_view document, const fs::path& output_directory)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
-        std::cout << "got one" << '\n';
-
         auto output_file_name = FindFileName(output_directory, document, regex_fname);
+        auto file_type = FindFileType(document, regex_ftype);
 
-        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+        if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
+        {
 
-        document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+            std::cout << "got one" << '\n';
 
-        auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-        if (xbrl_end_loc != std::string_view::npos)
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        else
-            throw std::runtime_error("Can't find end of XBLR in document.\n");
+            // now, we just need to drop the extraneous XMLS surrounding the data we need.
 
-        ParseTheXMl(document);
+            document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+
+            auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+            if (xbrl_end_loc != std::string_view::npos)
+                document.remove_suffix(document.length() - xbrl_end_loc);
+            else
+                throw std::runtime_error("Can't find end of XBLR in document.\n");
+
+            ParseTheXMl(document);
+        }
         // WriteDataToFile(output_file_name, document);
     }
 }
