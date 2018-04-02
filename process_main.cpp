@@ -43,8 +43,6 @@
 #include <experimental/filesystem>
 #include <experimental/string_view>
 
-#include "Poco/Exception.h"
-
 namespace fs = std::experimental::filesystem;
 
 #include "ExtractEDGAR_XBRL.h"
@@ -131,11 +129,6 @@ int main(int argc, const char* argv[])
         __gnu_parallel::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
 
-    }
-    catch (Poco::Exception& e)
-    {
-        std::cout << e.displayText();
-        result = 1;
     }
     catch (std::exception& e)
     {

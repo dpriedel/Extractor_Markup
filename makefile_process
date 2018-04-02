@@ -66,8 +66,8 @@ CFG_LIB := -lpthread \
 		-lgomp \
 		-L$(BOOSTDIR)/lib \
 		-lboost_regex-mt \
-		-L/usr/local/lib \
-		-lPocoXMLd -lPocoFoundationd
+		-L/usr/lib \
+		-lpugixml
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

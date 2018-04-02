@@ -42,16 +42,11 @@
 
 #include "ExtractEDGAR_XBRL.h"
 
-// let's try the Poco XML parser.
+// let's try the pugi XML parser.
 // since we already have the document in memory, we'll just
 // pass that to the parser.
 
-#include "Poco/DOM/DOMParser.h"
-#include "Poco/DOM/Document.h"
-#include "Poco/DOM/NodeIterator.h"
-#include "Poco/DOM/NodeFilter.h"
-#include "Poco/DOM/AutoPtr.h"
-#include "Poco/DOM/TreeWalker.h"
+#include <pugixml.hpp>
 
 // #include "Poco/SAX/InputSource.h"
 
@@ -60,25 +55,28 @@ void ParseTheXMl(const std::string_view& document)
     std::ofstream logfile{"/tmp/file.txt"};
     logfile << document;
     logfile.close();
-    Poco::XML::DOMParser parser;
-    Poco::AutoPtr<Poco::XML::Document> pDoc = parser.parseMemory(document.data(), document.size());
-    // Poco::XML::NodeIterator it(pDoc, Poco::XML::NodeFilter::SHOW_ELEMENT);
-    // Poco::XML::Node* pNode = it.nextNode();
 
-    auto aNode = pDoc->firstChild();
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_buffer(document.data(), document.size());
+    std::cout << "Load result: " << result.description() << '\n';
 
     std::cout << "\n ****** \n";
+    auto tool = doc.first_child();
 
-    while (aNode)
+    for (tool = tool.first_child(); tool; tool = tool.next_sibling())
     {
-            std::cout<<aNode->nodeName()<<":"<< aNode->nodeValue()<<":"<< aNode->innerText()<<std::endl;
-            aNode = aNode->nextSibling();
+        std::cout << "Name:  " << tool.name() << "=" << tool.child_value();
+        std::cout << std::endl;
+        std::cout << "Attr:   ";
+
+        for (pugi::xml_attribute attr = tool.first_attribute(); attr; attr = attr.next_attribute())
+        {
+            std::cout << "    " << attr.name() << "=" << attr.value();
+            std::cout << std::endl;
+        }
     }
-    // while (pNode)
-    // {
-    //     std::cout<<pNode->nodeName()<<":"<< pNode->nodeValue()<<":"<< pNode->innerText()<<std::endl;
-    //     pNode = it.nextNode();
-    // }
+
+
     std::cout << "\n ****** \n";
 }
 
