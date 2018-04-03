@@ -35,3 +35,6 @@ test.py
 
 
 .vscode
+
+# for now...
+src/uudecode*
