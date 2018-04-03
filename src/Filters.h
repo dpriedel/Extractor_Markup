@@ -51,12 +51,12 @@ namespace hana = boost::hana;
 
 struct XBRL_data
 {
-    void UseFilter(std::string_view document, const fs::path& output_directory);
+    void UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type);
 };
 
 struct SS_data
 {
-    void UseFilter(std::string_view document, const fs::path& output_directory);
+    void UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type);
 };
 
 
@@ -64,21 +64,21 @@ struct DocumentCounter
 {
     inline static int document_counter = 0;
 
-    void UseFilter(std::string_view, const fs::path&);
+    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
 };
 
 struct HTM_data
 {
     inline static int document_counter = 0;
 
-    void UseFilter(std::string_view, const fs::path&);
+    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseFilter(std::string_view, const fs::path&);
+    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.

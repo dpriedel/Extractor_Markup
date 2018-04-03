@@ -45,10 +45,11 @@
 
 namespace fs = std::experimental::filesystem;
 
+#include <boost/regex.hpp>
+
 #include "ExtractEDGAR_XBRL.h"
 #include "Filters.h"
-
-#include <boost/regex.hpp>
+#include "SEC_Header.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -102,17 +103,21 @@ int main(int argc, const char* argv[])
 
         std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
 
-        auto scan_file([&the_filters, &files_processed, &output_directory](const auto& file_path)
+        auto scan_file([&the_filters, &files_processed, &output_directory, &form_type](const auto& file_path)
         {
             std::ifstream input_file{file_path};
 
             const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
             input_file.close();
 
+            SEC_Header file_header;
+            file_header.UseData(file_content);
+            auto header_fields = file_header.GetFields();
+
             if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
             {
                 auto x = files_processed.fetch_add(1);
-                if (x > MAX_FILES)
+                if (MAX_FILES > 0 && x > MAX_FILES)
                     throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
 
                 std::cout << "got one" << '\n';
@@ -121,7 +126,7 @@ int main(int argc, const char* argv[])
                 {
                     std::string_view document(doc->first, doc->length());
 
-                    hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseFilter(document, output_directory);});
+                    hana::for_each(the_filters, [document, &output_directory, &form_type](const auto &x){x->UseFilter(document, output_directory, form_type);});
                 }
             }
         });

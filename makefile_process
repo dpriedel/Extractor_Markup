@@ -48,7 +48,7 @@ SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Filters.cpp
 #
 SDIR3h := ../ExtractEDGARData/src
 SDIR3 := ../ExtractEDGARData/src
-SRCS3 := # $(SDIR3)/TException.cpp $(SDIR3)/ErrorHandler.cpp $(SDIR3)/CApplication.cpp
+SRCS3 := $(SDIR3)/SEC_Header.cpp
 
 SRCS := $(SRCS1) $(SRCS2) $(SRCS3)
 
@@ -65,7 +65,11 @@ CFG_LIB := -lpthread \
 		-lstdc++fs \
 		-lgomp \
 		-L$(BOOSTDIR)/lib \
+		-lboost_date_time-mt \
 		-lboost_regex-mt \
+		-L/usr/local/lib \
+		-lPocoFoundationd \
+		-lPocoUtild \
 		-L/usr/lib \
 		-lpugixml
 
@@ -111,7 +115,7 @@ all: $(OUTFILE)
 $(OUTDIR)/%.o : %.cpp
 	$(COMPILE)
 
-$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2)
+$(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) $(OBJS3)
 	$(LINK)
 
 -include $(DEPS)
