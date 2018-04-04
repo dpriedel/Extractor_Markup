@@ -35,13 +35,14 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <atomic>
 #include <fstream>
 #include <iostream>
 
 #include <boost/regex.hpp>
 
-// #include "ExtractEDGAR_XBRL.h"
-#include "Filters.h"
+#include "ExtractEDGAR_XBRL.h"
+#include "Extractors.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -71,13 +72,18 @@ int main(int argc, const char* argv[])
         const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
         input_file.close();
 
-        auto the_filters = SelectFilters(argc, argv);
+        std::atomic<int> files_processed{0};
+
+        if (! FilterFiles(file_content, "10-Q", 1, files_processed))
+            throw std::runtime_error("Bad input file.\n");
+
+        auto the_filters = SelectExtractors(argc, argv);
 
         for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
             doc != boost::cregex_token_iterator{}; ++doc)
         {
             std::string_view document(doc->first, doc->length());
-            hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseFilter(document, output_directory);});
+            hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseExtractor(document, output_directory);});
         }
 
         // let's see if we got a count...

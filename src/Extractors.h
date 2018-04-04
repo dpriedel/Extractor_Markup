@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  Filters.h
+//       Filename:  Extractors.h
 //
 //    Description:  module which scans the set of collected EDGAR files and extracts
 //                  relevant data from the file.
@@ -34,8 +34,8 @@
 
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
-#ifndef __XBRL_Filters__
-#define __XBRL_Filters__
+#ifndef __XBRL_Extractors__
+#define __XBRL_Extractors__
 
 #include <experimental/string_view>
 #include <experimental/filesystem>
@@ -51,12 +51,12 @@ namespace hana = boost::hana;
 
 struct XBRL_data
 {
-    void UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type);
+    void UseExtractor(std::string_view document, const fs::path& output_directory);
 };
 
 struct SS_data
 {
-    void UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type);
+    void UseExtractor(std::string_view document, const fs::path& output_directory);
 };
 
 
@@ -64,21 +64,21 @@ struct DocumentCounter
 {
     inline static int document_counter = 0;
 
-    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
+    void UseExtractor(std::string_view, const fs::path&);
 };
 
 struct HTM_data
 {
     inline static int document_counter = 0;
 
-    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
+    void UseExtractor(std::string_view, const fs::path&);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseFilter(std::string_view, const fs::path&, const std::string_view&);
+    void UseExtractor(std::string_view, const fs::path&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.
@@ -92,7 +92,7 @@ struct ALL_data
 // and leave the rest of the code as generic.
 // I use the Hana library since it makes the subsequent iteration over the generic list MUCH simpler...
 
-inline auto SelectFilters(int argc, const char* argv[])
+inline auto SelectExtractors(int argc, const char* argv[])
 {
     // we imagine the user has somehow told us to use these three filter types.
 
@@ -103,4 +103,4 @@ inline auto SelectFilters(int argc, const char* argv[])
 }
 
 
-#endif /* end of include guard:  __XBRL_Filters__*/
+    #endif /* end of include guard:  __XBRL_Extractors__*/

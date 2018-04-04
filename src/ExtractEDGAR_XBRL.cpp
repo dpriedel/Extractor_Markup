@@ -40,7 +40,9 @@
 
 #include <boost/regex.hpp>
 
+#include "Poco/Logger.h"
 #include "ExtractEDGAR_XBRL.h"
+#include "SEC_Header.h"
 
 // let's try the pugi XML parser.
 // since we already have the document in memory, we'll just
@@ -48,6 +50,7 @@
 
 #include <pugixml.hpp>
 
+const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+</SEC-HEADER>)***"};
 
 void ParseTheXMl(const std::string_view& document)
 {
@@ -78,6 +81,39 @@ void ParseTheXMl(const std::string_view& document)
     std::cout << "\n ****** \n";
 }
 
+bool FilterFiles(const std::string& file_content, std::string_view form_type, const int MAX_FILES, std::atomic<int>& files_processed)
+{
+    if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
+    {
+        // we know the file has XBRL content, so let's check to see if it
+        // has the form type(s) we are looking for.
+        // And while we are at it, let's collect our identifying data.
+
+    	boost::cmatch results;
+    	bool found_it = boost::regex_search(file_content.data(), file_content.data() + file_content.size(), results, regex_SEC_header);
+
+    	poco_assert_msg(found_it, "Can't find SEC Header");
+
+    	const std::string_view SEC_header_content(results[0].first, results[0].length());
+        SEC_Header file_header;
+        file_header.UseData(SEC_header_content);
+        file_header.ExtractHeaderFields();
+        auto header_fields = file_header.GetFields();
+
+        if (header_fields["form_type"] != form_type)
+            return false;
+
+        auto x = files_processed.fetch_add(1);
+        if (MAX_FILES > 0 && x > MAX_FILES)
+            throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
+
+        std::cout << "got one" << '\n';
+
+        return true;
+    }
+    else
+        return false;
+}
 
 void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document)
 {

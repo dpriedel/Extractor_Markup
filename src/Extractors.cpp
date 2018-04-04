@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  Filters.cpp
+//       Filename:  Extractors.cpp
 //
 //    Description:  module which scans the set of collected EDGAR files and extracts
 //                  relevant data from the file.
@@ -39,7 +39,7 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include "Filters.h"
+#include "Extractors.h"
 #include "ExtractEDGAR_XBRL.h"
 
 const auto XBLR_TAG_LEN{7};
@@ -47,7 +47,7 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
-void XBRL_data::UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type)
+void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_directory)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
@@ -75,7 +75,7 @@ void XBRL_data::UseFilter(std::string_view document, const fs::path& output_dire
     }
 }
 
-void SS_data::UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type)
+void SS_data::UseExtractor(std::string_view document, const fs::path& output_directory)
 {
     if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != std::string_view::npos)
     {
@@ -104,13 +104,13 @@ void SS_data::UseFilter(std::string_view document, const fs::path& output_direct
 }
 
 
-void DocumentCounter::UseFilter(std::string_view, const fs::path&, const std::string_view& form_type)
+void DocumentCounter::UseExtractor(std::string_view, const fs::path&)
 {
     ++DocumentCounter::document_counter;
 }
 
 
-void HTM_data::UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type)
+void HTM_data::UseExtractor(std::string_view document, const fs::path& output_directory)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     if (output_file_name.extension() == ".htm")
@@ -137,7 +137,7 @@ void HTM_data::UseFilter(std::string_view document, const fs::path& output_direc
     }
 }
 
-void ALL_data::UseFilter(std::string_view document, const fs::path& output_directory, const std::string_view& form_type)
+void ALL_data::UseExtractor(std::string_view document, const fs::path& output_directory)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     std::cout << "got another" << '\n';

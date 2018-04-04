@@ -48,8 +48,7 @@ namespace fs = std::experimental::filesystem;
 #include <boost/regex.hpp>
 
 #include "ExtractEDGAR_XBRL.h"
-#include "Filters.h"
-#include "SEC_Header.h"
+#include "Extractors.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -88,7 +87,7 @@ int main(int argc, const char* argv[])
                 throw std::runtime_error("Must provide a number for max files.\n");
         }
 
-        auto the_filters = SelectFilters(argc, argv);
+        auto the_filters = SelectExtractors(argc, argv);
 
         std::atomic<int> files_processed{0};
 
@@ -110,23 +109,14 @@ int main(int argc, const char* argv[])
             const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
             input_file.close();
 
-            SEC_Header file_header;
-            file_header.UseData(file_content);
-            auto header_fields = file_header.GetFields();
-
-            if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
+            if (FilterFiles(file_content, form_type, MAX_FILES, files_processed))
             {
-                auto x = files_processed.fetch_add(1);
-                if (MAX_FILES > 0 && x > MAX_FILES)
-                    throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
-
-                std::cout << "got one" << '\n';
                 for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
                     doc != boost::cregex_token_iterator{}; ++doc)
                 {
                     std::string_view document(doc->first, doc->length());
 
-                    hana::for_each(the_filters, [document, &output_directory, &form_type](const auto &x){x->UseFilter(document, output_directory, form_type);});
+                    hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseExtractor(document, output_directory);});
                 }
             }
         });

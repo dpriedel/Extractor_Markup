@@ -44,7 +44,7 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/process_main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Filters.cpp
+SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Extractors.cpp
 #
 SDIR3h := ../ExtractEDGARData/src
 SDIR3 := ../ExtractEDGARData/src

@@ -37,15 +37,18 @@
 #ifndef __EXTRACTEDGAR_XBRL__
 #define __EXTRACTEDGAR_XBRL__
 
+#include <atomic>
 
 #include <experimental/filesystem>
 #include <experimental/string_view>
 
 #include <boost/regex_fwd.hpp>
 
-// #include "Filters.h"
-
 namespace fs = std::experimental::filesystem;
+
+// determine whether or not we want to process this file
+
+bool FilterFiles(const std::string& file_content, std::string_view form_type, const int MAX_FILES, std::atomic<int>& files_processed);
 
 void ParseTheXMl(const std::string_view& document);
 
