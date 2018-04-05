@@ -3,6 +3,8 @@
 
 %cpp -std=c++17
 
+-pthread
+
 -I/extra/gcc/gcc-7/include/c++/7.3.0/
 -I/extra/gcc/gcc-7/lib/gcc/x86_64-pc-linux-gnu/7.3.0/include/
 -I/extra/boost/boost-1.66_gcc-7/
@@ -11,4 +13,3 @@
 -I/usr/local/include/
 -I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/
 -I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/src/
--I/home/dpriedel/projects/github/ExtractEDGARData/src/
