@@ -34,7 +34,9 @@ test_files
 test.py
 
 
-.vscode
+.vscode*/*
 
-# for now...
-src/uudecode*
+
+# things here we are not using now and may never use
+
+maybe_later*/*
