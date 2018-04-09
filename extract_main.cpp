@@ -52,8 +52,8 @@ int main(int argc, const char* argv[])
 
     try
     {
-        if (argc < 3)
-            throw std::runtime_error("Missing arguments: 'input file', 'output directory' required.\n");
+        if (argc < 4)
+            throw std::runtime_error("Missing arguments: 'input file', 'output directory', 'form type' required.\n");
 
         const fs::path output_directory{argv[2]};
         if (fs::exists(output_directory))
@@ -74,7 +74,9 @@ int main(int argc, const char* argv[])
 
         std::atomic<int> files_processed{0};
 
-        if (! FilterFiles(file_content, "10-Q", 1, files_processed))
+        const std::string_view form_type{argv[3]};
+
+        if (! FilterFiles(file_content, form_type, 1, files_processed))
             throw std::runtime_error("Bad input file.\n");
 
         auto the_filters = SelectExtractors(argc, argv);

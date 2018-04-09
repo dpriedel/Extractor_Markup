@@ -54,24 +54,24 @@ void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_d
         auto output_file_name = FindFileName(output_directory, document, regex_fname);
         auto file_type = FindFileType(document, regex_ftype);
 
+        // now, we need to drop the extraneous XML surrounding the data we need.
+
+        document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+
+        auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+        if (xbrl_end_loc != std::string_view::npos)
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        else
+            throw std::runtime_error("Can't find end of XBLR in document.\n");
+
         if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
         {
 
             std::cout << "got one" << '\n';
 
-            // now, we just need to drop the extraneous XMLS surrounding the data we need.
-
-            document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
-
-            auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-            if (xbrl_end_loc != std::string_view::npos)
-                document.remove_suffix(document.length() - xbrl_end_loc);
-            else
-                throw std::runtime_error("Can't find end of XBLR in document.\n");
-
             ParseTheXMl(document);
         }
-        // WriteDataToFile(output_file_name, document);
+        WriteDataToFile(output_file_name, document);
     }
 }
 

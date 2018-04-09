@@ -90,7 +90,7 @@
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
         "file": "process_main.cpp"
-    }
+    },
     {
         "arguments": [
             "c++",
