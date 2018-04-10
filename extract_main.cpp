@@ -76,7 +76,8 @@ int main(int argc, const char* argv[])
 
         const std::string_view form_type{argv[3]};
 
-        if (! FilterFiles(file_content, form_type, 1, files_processed))
+        auto use_file = FilterFiles(file_content, form_type, 1, files_processed);
+        if (! use_file)
             throw std::runtime_error("Bad input file.\n");
 
         auto the_filters = SelectExtractors(argc, argv);
@@ -85,7 +86,7 @@ int main(int argc, const char* argv[])
             doc != boost::cregex_token_iterator{}; ++doc)
         {
             std::string_view document(doc->first, doc->length());
-            hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseExtractor(document, output_directory);});
+            hana::for_each(the_filters, [document, &output_directory, use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
         }
 
         // let's see if we got a count...

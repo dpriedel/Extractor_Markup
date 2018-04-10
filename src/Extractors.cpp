@@ -47,7 +47,7 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
-void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_directory)
+void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
@@ -75,7 +75,35 @@ void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_d
     }
 }
 
-void SS_data::UseExtractor(std::string_view document, const fs::path& output_directory)
+void XBRL_Lable_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+{
+    if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
+    {
+        auto output_file_name = FindFileName(output_directory, document, regex_fname);
+        auto file_type = FindFileType(document, regex_ftype);
+
+        // now, we need to drop the extraneous XML surrounding the data we need.
+
+        document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+
+        auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+        if (xbrl_end_loc != std::string_view::npos)
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        else
+            throw std::runtime_error("Can't find end of XBLR in document.\n");
+
+        if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
+        {
+
+            std::cout << "got one" << '\n';
+
+            ParseTheXMl_Labels(document);
+        }
+        WriteDataToFile(output_file_name, document);
+    }
+}
+
+void SS_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
 {
     if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != std::string_view::npos)
     {
@@ -104,13 +132,13 @@ void SS_data::UseExtractor(std::string_view document, const fs::path& output_dir
 }
 
 
-void DocumentCounter::UseExtractor(std::string_view, const fs::path&)
+void DocumentCounter::UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields& fields)
 {
     ++DocumentCounter::document_counter;
 }
 
 
-void HTM_data::UseExtractor(std::string_view document, const fs::path& output_directory)
+void HTM_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     if (output_file_name.extension() == ".htm")
@@ -137,7 +165,7 @@ void HTM_data::UseExtractor(std::string_view document, const fs::path& output_di
     }
 }
 
-void ALL_data::UseExtractor(std::string_view document, const fs::path& output_directory)
+void ALL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     std::cout << "got another" << '\n';

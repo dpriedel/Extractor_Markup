@@ -59,19 +59,23 @@ void ParseTheXMl(const std::string_view& document)
     logfile.close();
 
     pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_buffer(document.data(), document.size());
-    std::cout << "Load result: " << result.description() << '\n';
+    auto result = doc.load_buffer(document.data(), document.size());
+    if (! result)
+    {
+        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+    }
 
     std::cout << "\n ****** \n";
-    auto tool = doc.first_child();
 
-    for (tool = tool.first_child(); tool; tool = tool.next_sibling())
+    auto top_level_node = doc.first_child();           //  should be <xbrl> node.
+
+    for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
-        std::cout << "Name:  " << tool.name() << "=" << tool.child_value();
+        std::cout << "Name:  " << second_level_nodes.name() << "=" << second_level_nodes.child_value();
         std::cout << std::endl;
         std::cout << "    Attr:";
 
-        for (pugi::xml_attribute attr = tool.first_attribute(); attr; attr = attr.next_attribute())
+        for (pugi::xml_attribute attr = second_level_nodes.first_attribute(); attr; attr = attr.next_attribute())
         {
             std::cout << "        " << attr.name() << "=" << attr.value();
             std::cout << std::endl;
@@ -81,7 +85,49 @@ void ParseTheXMl(const std::string_view& document)
     std::cout << "\n ****** \n";
 }
 
-bool FilterFiles(const std::string& file_content, std::string_view form_type, const int MAX_FILES, std::atomic<int>& files_processed)
+void ParseTheXMl_Labels(const std::string_view& document)
+{
+    std::ofstream logfile{"/tmp/file_l.txt"};
+    logfile << document;
+    logfile.close();
+
+    pugi::xml_document doc;
+    auto result = doc.load_buffer(document.data(), document.size());
+    if (! result)
+    {
+        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+    }
+
+    std::cout << "\n ****** \n";
+
+    //  find root node.
+
+    auto second_level_nodes = doc.first_child();
+
+    //  find list of label nodes.
+
+    auto links = second_level_nodes.child("link:labelLink");
+
+    for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
+    {
+        // auto link_type = links.attribute("xlink:type").value();
+        // std::cout << link_type << '\n';
+        // if (link_type != "resource")
+            std::cout << "Name:  " << links.name() << "=" << links.child_value();
+        std::cout << std::endl;
+        std::cout << "    Attr:";
+
+        for (pugi::xml_attribute attr = links.first_attribute(); attr; attr = attr.next_attribute())
+        {
+            std::cout << "        " << attr.name() << "=" << attr.value();
+            std::cout << std::endl;
+        }
+    }
+
+    std::cout << "\n ****** \n";
+}
+std::optional<ExtractEDGAR::Header_fields> FilterFiles(const std::string& file_content, std::string_view form_type,
+    const int MAX_FILES, std::atomic<int>& files_processed)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
     {
@@ -101,7 +147,7 @@ bool FilterFiles(const std::string& file_content, std::string_view form_type, co
         auto header_fields = file_header.GetFields();
 
         if (header_fields["form_type"] != form_type)
-            return false;
+            return std::nullopt;
 
         auto x = files_processed.fetch_add(1);
         if (MAX_FILES > 0 && x > MAX_FILES)
@@ -109,10 +155,10 @@ bool FilterFiles(const std::string& file_content, std::string_view form_type, co
 
         std::cout << "got one" << '\n';
 
-        return true;
+        return std::optional{header_fields};
     }
     else
-        return false;
+        return std::nullopt;
 }
 
 void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document)

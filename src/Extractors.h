@@ -42,6 +42,8 @@
 
 #include <boost/hana.hpp>
 
+#include "ExtractEDGAR.h"
+
 namespace fs = std::experimental::filesystem;
 namespace hana = boost::hana;
 
@@ -51,12 +53,17 @@ namespace hana = boost::hana;
 
 struct XBRL_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory);
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
+};
+
+struct XBRL_Lable_data
+{
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory);
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
 };
 
 
@@ -64,21 +71,21 @@ struct DocumentCounter
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&);
+    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
 };
 
 struct HTM_data
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&);
+    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(std::string_view, const fs::path&);
+    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.
@@ -96,7 +103,7 @@ inline auto SelectExtractors(int argc, const char* argv[])
 {
     // we imagine the user has somehow told us to use these three filter types.
 
-    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<DocumentCounter>());
+    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Lable_data>(),  std::make_unique<DocumentCounter>());
     // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
     // auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
     return L;
