@@ -38,7 +38,10 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/format.hpp>
 #include <boost/regex.hpp>
+
+#include <pqxx/pqxx>
 
 #include "Poco/Logger.h"
 #include "ExtractEDGAR_XBRL.h"
@@ -67,6 +70,26 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
 
     std::cout << "\n ****** \n";
 
+    // start stuffing the database.
+
+    pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::work trxn{c};
+
+    auto stmt{"DELETE FROM xbrl_extracts.edgar_company_id WHERE cik = " + trxn.quote(fields.at("cik"))};
+
+    trxn.exec(stmt);
+
+	auto add_header_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_company_id (cik, file_name, company_name)"
+			" VALUES ('%1%', '%2%', '%3%')")
+			% trxn.esc(fields.at("cik"))
+			% trxn.esc(fields.at("file_name"))
+			% trxn.esc(fields.at("company_name"))
+			;
+	//std::cout << add_header_cmd.str() << '\n';
+	pqxx::result res{trxn.exec(add_header_cmd.str())};
+
+    trxn.commit();
+    
     auto top_level_node = doc.first_child();           //  should be <xbrl> node.
 
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
