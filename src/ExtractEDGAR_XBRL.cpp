@@ -52,7 +52,7 @@
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+</SEC-HEADER>)***"};
 
-void ParseTheXMl(const std::string_view& document)
+void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file.txt"};
     logfile << document;
@@ -75,7 +75,7 @@ void ParseTheXMl(const std::string_view& document)
         std::cout << std::endl;
         std::cout << "    Attr:";
 
-        for (pugi::xml_attribute attr = second_level_nodes.first_attribute(); attr; attr = attr.next_attribute())
+        for (auto attr = second_level_nodes.first_attribute(); attr; attr = attr.next_attribute())
         {
             std::cout << "        " << attr.name() << "=" << attr.value();
             std::cout << std::endl;
@@ -85,7 +85,7 @@ void ParseTheXMl(const std::string_view& document)
     std::cout << "\n ****** \n";
 }
 
-void ParseTheXMl_Labels(const std::string_view& document)
+void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file_l.txt"};
     logfile << document;
@@ -117,7 +117,7 @@ void ParseTheXMl_Labels(const std::string_view& document)
         std::cout << std::endl;
         std::cout << "    Attr:";
 
-        for (pugi::xml_attribute attr = links.first_attribute(); attr; attr = attr.next_attribute())
+        for (auto attr = links.first_attribute(); attr; attr = attr.next_attribute())
         {
             std::cout << "        " << attr.name() << "=" << attr.value();
             std::cout << std::endl;

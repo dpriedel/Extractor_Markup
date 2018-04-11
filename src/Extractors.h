@@ -56,7 +56,7 @@ struct XBRL_data
     void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
 };
 
-struct XBRL_Lable_data
+struct XBRL_Label_data
 {
     void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
 };
@@ -103,7 +103,7 @@ inline auto SelectExtractors(int argc, const char* argv[])
 {
     // we imagine the user has somehow told us to use these three filter types.
 
-    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Lable_data>(),  std::make_unique<DocumentCounter>());
+    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Label_data>(),  std::make_unique<DocumentCounter>());
     // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
     // auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
     return L;

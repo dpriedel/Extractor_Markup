@@ -69,13 +69,13 @@ void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_d
 
             std::cout << "got one" << '\n';
 
-            ParseTheXMl(document);
+            ParseTheXMl(document, fields);
         }
         WriteDataToFile(output_file_name, document);
     }
 }
 
-void XBRL_Lable_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void XBRL_Label_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
@@ -97,7 +97,7 @@ void XBRL_Lable_data::UseExtractor(std::string_view document, const fs::path& ou
 
             std::cout << "got one" << '\n';
 
-            ParseTheXMl_Labels(document);
+            ParseTheXMl_Labels(document, fields);
         }
         WriteDataToFile(output_file_name, document);
     }
