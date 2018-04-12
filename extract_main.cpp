@@ -86,7 +86,7 @@ int main(int argc, const char* argv[])
             doc != boost::cregex_token_iterator{}; ++doc)
         {
             std::string_view document(doc->first, doc->length());
-            hana::for_each(the_filters, [document, &output_directory, use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
+            hana::for_each(the_filters, [document, &output_directory, &use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
         }
 
         // let's see if we got a count...

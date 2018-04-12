@@ -109,14 +109,15 @@ int main(int argc, const char* argv[])
             const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
             input_file.close();
 
-            if (FilterFiles(file_content, form_type, MAX_FILES, files_processed))
+            auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
+            if (use_file)
             {
                 for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
                     doc != boost::cregex_token_iterator{}; ++doc)
                 {
                     std::string_view document(doc->first, doc->length());
 
-                    hana::for_each(the_filters, [document, &output_directory](const auto &x){x->UseExtractor(document, output_directory);});
+                    hana::for_each(the_filters, [document, &output_directory, &use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
                 }
             }
         });

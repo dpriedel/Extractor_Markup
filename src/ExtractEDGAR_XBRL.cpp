@@ -57,6 +57,8 @@ const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+</SEC-HEADER>)***"};
 
 void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
 {
+    // TODO: add error handling all over the place here.
+
     std::ofstream logfile{"/tmp/file.txt"};
     logfile << document;
     logfile.close();
@@ -70,27 +72,44 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
 
     std::cout << "\n ****** \n";
 
+    auto top_level_node = doc.first_child();           //  should be <xbrl> node.
+
+    // next, some filing specific data from the XBRL portion of our document.
+
+    auto trading_symbol = top_level_node.child("dei:TradingSymbol").child_value();
+    auto shares_outstanding = top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value();
+    auto period_end_date = top_level_node.child("dei:DocumentPeriodEndDate").child_value();
+
     // start stuffing the database.
+    // this data comes from the SEC Header portion of the file and from the XBRL.
 
     pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
     pqxx::work trxn{c};
 
-    auto stmt{"DELETE FROM xbrl_extracts.edgar_company_id WHERE cik = " + trxn.quote(fields.at("cik"))};
+    // for now, let's assume we are going to to a full replace of the data for each filing.
 
-    trxn.exec(stmt);
-
-	auto add_header_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_company_id (cik, file_name, company_name)"
-			" VALUES ('%1%', '%2%', '%3%')")
+	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
+        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
 			% trxn.esc(fields.at("cik"))
-			% trxn.esc(fields.at("file_name"))
-			% trxn.esc(fields.at("company_name"))
+			% trxn.esc(fields.at("form_type"))
+			% trxn.esc(period_end_date)
 			;
-	//std::cout << add_header_cmd.str() << '\n';
-	pqxx::result res{trxn.exec(add_header_cmd.str())};
+    trxn.exec(filing_ID_cmd.str());
 
+	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
+			" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
+			% trxn.esc(fields.at("cik"))
+			% trxn.esc(fields.at("company_name"))
+			% trxn.esc(fields.at("file_name"))
+            % trxn.esc(trading_symbol)
+			% trxn.esc(fields.at("sic"))
+			% trxn.esc(fields.at("form_type"))
+			% trxn.esc(fields.at("date_filed"))
+			% trxn.esc(period_end_date)
+			% trxn.esc(shares_outstanding)
+			;
+    auto res = trxn.exec(filing_ID_cmd.str());
     trxn.commit();
-    
-    auto top_level_node = doc.first_child();           //  should be <xbrl> node.
 
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
