@@ -62,5 +62,7 @@ fs::path FindFileName(const fs::path& output_directory, const std::string_view& 
 
 const std::string_view FindFileType(const std::string_view& document, const boost::regex& regex_ftype);
 
+std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
+
 
 #endif /* end of include guard: __EXTRACTEDGAR_XBRL__*/

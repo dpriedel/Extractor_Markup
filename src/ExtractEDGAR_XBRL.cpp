@@ -40,6 +40,9 @@
 
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
+
+namespace bg = boost::gregorian;
 
 #include <pqxx/pqxx>
 
@@ -111,20 +114,39 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
     auto res = trxn.exec(filing_ID_cmd.str());
     trxn.commit();
 
+    auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
+
+    // now, the goal of all this...find all the financial values for the given time period.
+
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
+        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
+            continue;
+        if (second_level_nodes.attribute("contextRef").value() != context_ID)
+            continue;
+        std::cout << "here...\n";
         std::cout << "Name:  " << second_level_nodes.name() << "=" << second_level_nodes.child_value();
         std::cout << std::endl;
-        std::cout << "    Attr:";
-
-        for (auto attr = second_level_nodes.first_attribute(); attr; attr = attr.next_attribute())
-        {
-            std::cout << "        " << attr.name() << "=" << attr.value();
-            std::cout << std::endl;
-        }
     }
 
     std::cout << "\n ****** \n";
+}
+
+std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date)
+
+{
+    //  our given date is yyyy-mm-dd.
+
+    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
+    std::string result{"cx_"};
+    result += period_end_date.substr(8, 2);
+    result +=  '_';
+    result += month_names[std::stoi(std::string{period_end_date.substr(5, 2)})];
+    result += '_';
+    result += period_end_date.substr(0, 4);
+
+    return result;
 }
 
 void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
@@ -152,18 +174,13 @@ void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::He
 
     for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
     {
-        // auto link_type = links.attribute("xlink:type").value();
-        // std::cout << link_type << '\n';
-        // if (link_type != "resource")
-            std::cout << "Name:  " << links.name() << "=" << links.child_value();
+        std::cout << "Name:  " << links.name() << "=" << links.child_value();
         std::cout << std::endl;
         std::cout << "    Attr:";
 
-        for (auto attr = links.first_attribute(); attr; attr = attr.next_attribute())
-        {
-            std::cout << "        " << attr.name() << "=" << attr.value();
-            std::cout << std::endl;
-        }
+        auto link_label = links.attribute("xlink:label");
+        std::cout << "        " << link_label.name() << "=" << link_label.value();
+        std::cout << std::endl;
     }
 
     std::cout << "\n ****** \n";
