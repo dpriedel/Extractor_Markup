@@ -32,11 +32,10 @@ CREATE TABLE xbrl_extracts.edgar_filing_data
 (
 	filing_data_ID SERIAL UNIQUE,
 	filing_ID integer REFERENCES xbrl_extracts.edgar_filing_id (filing_ID) ON DELETE CASCADE,
-	symbol TEXT ,
-    sic TEXT NOT NULL,
-	date_filed DATE NOT NULL,
-    shares_outstanding BIGINT DEFAULT 0,
-	PRIMARY KEY(filing_ID)
+	xbrl_label TEXT NOT NULL,
+	user_label TEXT,
+    xbrl_value TEXT NOT NULL,
+	PRIMARY KEY(filing_data_ID)
 );
 
 ALTER TABLE xbrl_extracts.edgar_filing_data OWNER TO edgar_pg;

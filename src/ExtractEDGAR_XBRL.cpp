@@ -99,25 +99,31 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
 			;
     trxn.exec(filing_ID_cmd.str());
 
-	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
-			" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
-			% trxn.esc(fields.at("cik"))
-			% trxn.esc(fields.at("company_name"))
-			% trxn.esc(fields.at("file_name"))
-            % trxn.esc(trading_symbol)
-			% trxn.esc(fields.at("sic"))
-			% trxn.esc(fields.at("form_type"))
-			% trxn.esc(fields.at("date_filed"))
-			% trxn.esc(period_end_date)
-			% trxn.esc(shares_outstanding)
-			;
+	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id"
+        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
+		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%') RETURNING filing_ID")
+		% trxn.esc(fields.at("cik"))
+		% trxn.esc(fields.at("company_name"))
+		% trxn.esc(fields.at("file_name"))
+        % trxn.esc(trading_symbol)
+		% trxn.esc(fields.at("sic"))
+		% trxn.esc(fields.at("form_type"))
+		% trxn.esc(fields.at("date_filed"))
+		% trxn.esc(period_end_date)
+		% trxn.esc(shares_outstanding)
+		;
     auto res = trxn.exec(filing_ID_cmd.str());
     trxn.commit();
+
+	std::string filing_ID;
+	res[0]["filing_ID"].to(filing_ID);
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
     // now, the goal of all this...find all the financial values for the given time period.
 
+    pqxx::work details{c};
+    int counter = 0;
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
         if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
@@ -127,9 +133,18 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
         std::cout << "here...\n";
         std::cout << "Name:  " << second_level_nodes.name() << "=" << second_level_nodes.child_value();
         std::cout << std::endl;
+        ++counter;
+    	auto detail_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_data"
+            " (filing_ID, xbrl_label, xbrl_value) VALUES ('%1%', '%2%', '%3%')")
+    			% trxn.esc(filing_ID)
+    			% trxn.esc(second_level_nodes.name())
+    			% trxn.esc(second_level_nodes.child_value())
+    			;
+        details.exec(detail_cmd.str());
     }
 
-    std::cout << "\n ****** \n";
+    details.commit();
+    std::cout << "Found: " << counter << "\n ****** \n";
 }
 
 std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date)
