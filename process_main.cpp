@@ -106,6 +106,8 @@ int main(int argc, const char* argv[])
         {
             std::ifstream input_file{file_path};
 
+            std::cout << "processing file: " << file_path << '\n';
+
             const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
             input_file.close();
 

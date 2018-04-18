@@ -297,4 +297,10 @@ providers: [
         }
       ]
   }
+  {
+    key: "bte"
+    config:
+      file: "../ExtractEDGAR_XBRL_Test/.build-tools.cson"
+      overwrite: false
+  }
 ]

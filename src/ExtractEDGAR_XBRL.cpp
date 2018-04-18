@@ -128,10 +128,11 @@ void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fi
     {
         if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
             continue;
-        if (second_level_nodes.attribute("contextRef").value() != context_ID)
-            continue;
-        std::cout << "here...\n";
-        std::cout << "Name:  " << second_level_nodes.name() << "=" << second_level_nodes.child_value();
+        // if (second_level_nodes.attribute("contextRef").value() != context_ID)
+        //     continue;
+        // std::cout << "here...\n";
+        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
+            << second_level_nodes.attribute("contextRef").value() ;
         std::cout << std::endl;
         ++counter;
     	auto detail_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_data"

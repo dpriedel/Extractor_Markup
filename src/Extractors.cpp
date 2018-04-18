@@ -114,10 +114,10 @@ void SS_data::UseExtractor(std::string_view document, const fs::path& output_dir
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
         auto x = document.find(R"***(<TEXT>)***", ss_loc + 1);
-        // skip 2 more lines.
+        // skip 1 more lines.
 
         x = document.find('\n', x + 1);
-        x = document.find('\n', x + 1);
+        // x = document.find('\n', x + 1);
 
         document.remove_prefix(x);
 
