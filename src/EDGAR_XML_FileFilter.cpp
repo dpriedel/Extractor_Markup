@@ -1,11 +1,11 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_XML_FileFilter.h
+//       Filename:  EDGAR_XML_FileFilter.cpp
 //
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
 //        Version:  1.0
-//        Created:  04/18/2018 09:37:16 AM
+//        Created:  04/18/2018 16:12:16 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -36,11 +36,15 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#ifndef  _EDGAR_XML_FILTER_
-#define  _EDGAR_XML_FILTER_
+#include "EDGAR_XML_FileFilter.h"
 
-#include <experimental/string_view>
 
-bool UseEDGAR_File(std::string_view file_content);
-
-#endif
+bool UseEDGAR_File(std::string_view file_content)
+{
+    if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
+    {
+        return true;
+    }
+    else
+    return false;
+}
