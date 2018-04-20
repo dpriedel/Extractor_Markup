@@ -44,12 +44,16 @@
 
 bool UseEDGAR_File(std::string_view file_content);
 
-std::string_view LocateInstanceDocument(std::string_view file_content);
+std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
+
+std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections);
 
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
 
 std::string_view FindFileName(std::string_view document);
 
 std::string_view FindFileType(std::string_view document);
+
+std::string_view TrimExcessXML(std::string_view document);
 
 #endif

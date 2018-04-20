@@ -45,6 +45,8 @@ const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
+const auto XBLR_TAG_LEN{7};
+
 bool UseEDGAR_File(std::string_view file_content)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
@@ -55,15 +57,26 @@ bool UseEDGAR_File(std::string_view file_content)
         return false;
 }
 
-std::string_view LocateInstanceDocument(std::string_view file_content)
+std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections)
 {
-    auto document_sections = LocateDocumentSections(file_content);
     for (auto document : document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
         if (boost::algorithm::ends_with(file_type, ".INS") && boost::algorithm::ends_with(file_name, ".xml"))
-            return document;
+            return TrimExcessXML(document);
+    }
+    return {};
+}
+
+std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections)
+{
+    for (auto document : document_sections)
+    {
+        auto file_name = FindFileName(document);
+        auto file_type = FindFileType(document);
+        if (boost::algorithm::ends_with(file_type, ".LAB") && boost::algorithm::ends_with(file_name, ".xml"))
+            return TrimExcessXML(document);
     }
     return {};
 }
@@ -105,4 +118,18 @@ std::string_view FindFileType(std::string_view document)
     }
     else
         throw std::runtime_error("Can't find file type in document.\n");
+}
+
+std::string_view TrimExcessXML(std::string_view document)
+{
+    auto xbrl_loc = document.find(R"***(<XBRL>)***");
+    document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+
+    auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+    if (xbrl_end_loc != std::string_view::npos)
+        document.remove_suffix(document.length() - xbrl_end_loc);
+    else
+        throw std::runtime_error("Can't find end of XBLR in document.\n");
+
+    return document;
 }
