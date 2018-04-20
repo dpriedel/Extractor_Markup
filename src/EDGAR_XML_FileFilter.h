@@ -40,7 +40,16 @@
 #define  _EDGAR_XML_FILTER_
 
 #include <experimental/string_view>
+#include <vector>
 
 bool UseEDGAR_File(std::string_view file_content);
+
+std::string_view LocateInstanceDocument(std::string_view file_content);
+
+std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
+
+std::string_view FindFileName(std::string_view document);
+
+std::string_view FindFileType(std::string_view document);
 
 #endif

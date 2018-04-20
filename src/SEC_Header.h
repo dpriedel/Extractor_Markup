@@ -57,7 +57,7 @@ class SEC_Header
 
 		// ====================  MUTATORS      =======================================
 
-		void UseData(std::string_view header_data);
+		void UseData(std::string_view file_content);
 		void ExtractHeaderFields(void);
 
 		// ====================  OPERATORS     =======================================

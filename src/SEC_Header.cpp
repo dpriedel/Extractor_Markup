@@ -40,6 +40,8 @@ namespace bg = boost::gregorian;
 
 #include "SEC_Header.h"
 
+const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+</SEC-HEADER>$)***"};
+
 //--------------------------------------------------------------------------------------
 //       Class:  SEC_Header
 //      Method:  SEC_Header
@@ -50,10 +52,13 @@ SEC_Header::SEC_Header ()
 {
 }  // -----  end of method SEC_Header::SEC_Header  (constructor)  -----
 
-void SEC_Header::UseData (std::string_view header_data)
+void SEC_Header::UseData (std::string_view file_content)
 {
-	header_data_ = header_data;
-	return ;
+	boost::cmatch results;
+	bool found_it = boost::regex_search(file_content.data(), file_content.data() + file_content.size(), results, regex_SEC_header);
+	poco_assert_msg(found_it, "Can't find SEC Header");
+
+    header_data_ = results[0].first, results[0].length();
 }		// -----  end of method SEC_Header::UseData  -----
 
 void SEC_Header::ExtractHeaderFields (void)

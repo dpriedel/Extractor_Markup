@@ -36,8 +36,14 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include <boost/regex.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "EDGAR_XML_FileFilter.h"
 
+const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
+const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
 bool UseEDGAR_File(std::string_view file_content)
 {
@@ -46,5 +52,57 @@ bool UseEDGAR_File(std::string_view file_content)
         return true;
     }
     else
-    return false;
+        return false;
+}
+
+std::string_view LocateInstanceDocument(std::string_view file_content)
+{
+    auto document_sections = LocateDocumentSections(file_content);
+    for (auto document : document_sections)
+    {
+        auto file_name = FindFileName(document);
+        auto file_type = FindFileType(document);
+        if (boost::algorithm::ends_with(file_type, ".INS") && boost::algorithm::ends_with(file_name, ".xml"))
+            return document;
+    }
+    return {};
+}
+
+std::vector<std::string_view> LocateDocumentSections(std::string_view file_content)
+{
+    std::vector<std::string_view> result;
+
+    for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
+        doc != boost::cregex_token_iterator{}; ++doc)
+    {
+		result.emplace_back(std::string_view(doc->first, doc->length()));
+    }
+
+    return result;
+}
+
+std::string_view FindFileName(std::string_view document)
+{
+    boost::cmatch matches;
+    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
+    if (found_it)
+    {
+        const std::string_view file_name(matches[1].first, matches[1].length());
+        return file_name;
+    }
+    else
+        throw std::runtime_error("Can't find file name in document.\n");
+}
+
+std::string_view FindFileType(std::string_view document)
+{
+    boost::cmatch matches;
+    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
+    if (found_it)
+    {
+        const std::string_view file_type(matches[1].first, matches[1].length());
+        return file_type;
+    }
+    else
+        throw std::runtime_error("Can't find file type in document.\n");
 }
