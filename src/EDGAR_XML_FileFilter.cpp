@@ -133,3 +133,15 @@ std::string_view TrimExcessXML(std::string_view document)
 
     return document;
 }
+
+pugi::xml_document ParseXMLContent(std::string_view document)
+{
+    pugi::xml_document doc;
+    auto result = doc.load_buffer(document.data(), document.size());
+    if (! result)
+    {
+        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+    }
+
+    return doc;
+}
