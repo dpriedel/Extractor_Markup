@@ -62,6 +62,29 @@
             "-I/extra/boost/boost-1.66_gcc-7",
             "-march=native",
             "-o",
+            "ExtractDebug/ExtractEDGAR_XBRL.o",
+            "src/ExtractEDGAR_XBRL.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
+        "file": "src/EDGAR_XML_FileFilter.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++17",
+            "-D_DEBUG",
+            "-fPIC",
+            "-I./src",
+            "-I../ExtractEDGARData/src",
+            "-I/extra/pstream",
+            "-I/extra/boost/boost-1.66_gcc-7",
+            "-march=native",
+            "-o",
             "ExtractDebug/extract_main.o",
             "extract_main.cpp"
         ],

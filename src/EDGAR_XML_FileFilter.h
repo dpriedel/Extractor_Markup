@@ -41,6 +41,7 @@
 
 #include <experimental/string_view>
 #include <vector>
+#include <map>
 
 #include <pugixml.hpp>
 
@@ -51,6 +52,12 @@ std::string_view LocateInstanceDocument(const std::vector<std::string_view>& doc
 std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections);
 
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
+
+std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_document& instance_xml);
+
+std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_document& label_xml);
+
+// std::vector<std::string_view> LocateDocumentSections2(std::string_view file_content);
 
 std::string_view FindFileName(std::string_view document);
 

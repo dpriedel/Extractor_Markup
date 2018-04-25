@@ -36,6 +36,8 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include <iostream>
+
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -79,6 +81,82 @@ std::string_view LocateLabelDocument(const std::vector<std::string_view>& docume
             return TrimExcessXML(document);
     }
     return {};
+}
+
+// function to split a string on a delimiter and return a vector of string-views
+
+// std::vector<std::string_view> LocateDocumentSections2(std::string_view file_content)
+// {
+//     // we look for <DOCUMENT>...</DOCUMENT> pairs.
+//     // BIG ASSUMPTION: no nested occurances.
+//
+//     constexpr std::string_view section_start{"<DOCUMENT>\n"};
+//     constexpr std::string_view section_end{"</DOCUMENT>\n"};
+//     constexpr auto start_len{section_start.size()};
+//     constexpr auto end_len{section_end.size()};
+//
+//     std::vector<std::string_view> result;
+//
+// 	for (auto it = 0; it < file_content.size();)
+// 	{
+// 		auto pos_start = file_content.find(section_start, it);
+//         if (pos_start != file_content.npos)
+//         {
+//             auto pos_end = file_content.find(section_end, pos_start + start_len);
+//             if (pos_end == file_content.npos)
+//                 throw std::runtime_error("Can't find document end at: " + std::to_string(pos_start));
+//
+//     		result.emplace_back(file_content.substr(pos_start, pos_end - pos_start + end_len));
+//
+//             it = pos_end + end_len;
+//         }
+//         else
+//             break;
+// 	}
+//     return result;
+// }
+
+std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_document& instance_xml)
+{
+    std::multimap<std::string, std::string> result;
+
+    auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
+
+    for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
+    {
+        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
+            continue;
+
+        // need to filter out table type content.
+
+        if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos || sv.find("<div") != std::string_view::npos)
+            continue;
+
+        result.emplace(second_level_nodes.name(), second_level_nodes.child_value());
+    }
+
+    return result;
+}
+
+std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_document& label_xml)
+{
+    std::multimap<std::string, std::string> result;
+
+    //  find root node.
+
+    auto second_level_nodes = label_xml.first_child();
+
+    //  find list of label nodes.
+
+    auto links = second_level_nodes.child("link:labelLink");
+
+    for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
+    {
+        auto link_label = links.attribute("xlink:label");
+        result.emplace(link_label.value(), links.child_value());
+    }
+
+    return result;
 }
 
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content)
