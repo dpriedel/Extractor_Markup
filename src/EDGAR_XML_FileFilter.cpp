@@ -159,6 +159,30 @@ std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_docum
     return result;
 }
 
+std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_document& instance_xml)
+{
+    std::vector<EE::ContextPeriod> result;
+
+    auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
+
+    // we need to look for possible namespace here.
+
+    std::string node_name;
+    std::string n_name{top_level_node.name()};
+    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
+        node_name = n_name.substr(0, pos) + ":context";
+    else
+        node_name = "context";
+
+    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); second_level_nodes; second_level_nodes =
+        second_level_nodes.next_sibling(node_name.c_str()))
+    {
+        result.emplace_back(EE::ContextPeriod{second_level_nodes.attribute("id").value(), "", ""});
+    }
+
+    return result;
+}
+
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content)
 {
     std::vector<std::string_view> result;

@@ -31,6 +31,10 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#ifndef EXTRACT_EDGAR_H_
+#define EXTRACT_EDGAR_H_
+
+
 #include <map>
 #include <string>
 
@@ -38,6 +42,17 @@ namespace ExtractEDGAR
 {
 		using Header_fields = std::map<std::string, std::string>;
 		using ParsedValues = std::map<std::string, std::string>;
+
+		struct ContextPeriod
+		{
+			std::string name;
+			std::string begin;
+			std::string end;
+		};
 };
 
 namespace EE = ExtractEDGAR;
+
+
+
+#endif /* end of include guard: EXTRACT_EDGAR_H_ */
