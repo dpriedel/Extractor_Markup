@@ -124,6 +124,8 @@ std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_docume
 
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
+        // us-gaap is a namespace but pugixml doesn't directly support namespaces.
+
         if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
             continue;
 
@@ -167,17 +169,44 @@ std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_documen
 
     // we need to look for possible namespace here.
 
-    std::string node_name;
+    std::string namespace_prefix;
     std::string n_name{top_level_node.name()};
-    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
-        node_name = n_name.substr(0, pos) + ":context";
-    else
-        node_name = "context";
 
-    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); second_level_nodes; second_level_nodes =
-        second_level_nodes.next_sibling(node_name.c_str()))
+    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
+        namespace_prefix = n_name.substr(0, pos + 1);
+
+    std::string node_name{namespace_prefix + "context"};
+    std::string entity_label{namespace_prefix + "entity"};
+    std::string period_label{namespace_prefix + "period"};
+    std::string start_label{namespace_prefix + "startDate"};
+    std::string end_label{namespace_prefix + "endDate"};
+    std::string instant_label{namespace_prefix + "instant"};
+
+    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); second_level_nodes;
+        second_level_nodes = second_level_nodes.next_sibling(node_name.c_str()))
     {
-        result.emplace_back(EE::ContextPeriod{second_level_nodes.attribute("id").value(), "", ""});
+        // need to pull out begin/end values.
+
+        const char* start_ptr = nullptr;
+        const char* end_ptr = nullptr;
+
+        auto id = second_level_nodes.attribute("id").value();
+        auto period = second_level_nodes.child(period_label.c_str());
+
+        if (auto instant = period.child(instant_label.c_str()); instant)
+        {
+            start_ptr = instant.child_value();
+            end_ptr = start_ptr;
+        }
+        else
+        {
+            auto begin = period.child(start_label.c_str());
+            auto end = period.child(end_label.c_str());
+
+            start_ptr = begin.child_value();
+            end_ptr = end.child_value();
+        }
+        result.emplace_back(EE::ContextPeriod{second_level_nodes.attribute("id").value(), start_ptr, end_ptr});
     }
 
     return result;
