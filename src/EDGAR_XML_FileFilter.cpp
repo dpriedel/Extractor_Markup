@@ -116,9 +116,9 @@ std::string_view LocateLabelDocument(const std::vector<std::string_view>& docume
 //     return result;
 // }
 
-std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_document& instance_xml)
+std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml)
 {
-    std::multimap<std::string, std::string> result;
+    std::vector<EE::GAAP_Data> result;
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
@@ -134,15 +134,22 @@ std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_docume
         if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos || sv.find("<div") != std::string_view::npos)
             continue;
 
-        result.emplace(second_level_nodes.name(), second_level_nodes.child_value());
+        // we need to construct or field name label so we can match up with its 'user version' later.
+
+        std::string label{"label_us-gaap_"};
+
+        EE::GAAP_Data fields{label + (second_level_nodes.name() + 8), second_level_nodes.attribute("contextRef").value(),
+            second_level_nodes.attribute("unitRef").value(), second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
+
+        result.push_back(std::move(fields));
     }
 
     return result;
 }
 
-std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_document& label_xml)
+std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label_xml)
 {
-    std::multimap<std::string, std::string> result;
+    std::vector<EE::EDGAR_Labels> result;
 
     //  find root node.
 
@@ -155,7 +162,7 @@ std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_docum
     for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
     {
         auto link_label = links.attribute("xlink:label");
-        result.emplace(link_label.value(), links.child_value());
+        result.emplace_back(EE::EDGAR_Labels{link_label.value(), links.child_value()});
     }
 
     return result;
@@ -169,9 +176,9 @@ std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_documen
 
     // we need to look for possible namespace here.
 
-    std::string namespace_prefix;
     std::string n_name{top_level_node.name()};
 
+    std::string namespace_prefix;
     if (auto pos = n_name.find(':'); pos != std::string_view::npos)
         namespace_prefix = n_name.substr(0, pos + 1);
 

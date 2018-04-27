@@ -40,15 +40,30 @@
 
 namespace ExtractEDGAR
 {
-		using Header_fields = std::map<std::string, std::string>;
-		using ParsedValues = std::map<std::string, std::string>;
+	using SEC_Header_fields = std::map<std::string, std::string>;
+	using SEC_ParsedValues = std::map<std::string, std::string>;
 
-		struct ContextPeriod
-		{
-			std::string name;
-			std::string begin;
-			std::string end;
-		};
+	struct ContextPeriod
+	{
+		std::string name;
+		std::string begin;
+		std::string end;
+	};
+
+    struct GAAP_Data
+    {
+        std::string label;
+        std::string context_ID;
+        std::string units;
+        std::string decimals;
+        std::string value;
+    };
+
+	struct EDGAR_Labels
+	{
+		std::string system_label;
+		std::string user_label;
+	};
 };
 
 namespace EE = ExtractEDGAR;

@@ -55,9 +55,9 @@ std::string_view LocateLabelDocument(const std::vector<std::string_view>& docume
 
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
 
-std::multimap<std::string, std::string> ExtractGAAPFields(const pugi::xml_document& instance_xml);
+std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
-std::multimap<std::string, std::string> ExtractFieldLabels(const pugi::xml_document& label_xml);
+std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label_xml);
 
 std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
