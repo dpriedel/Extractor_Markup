@@ -20,20 +20,20 @@
 //
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of EEData. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* EEData is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* EEData is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with EEData.  If not, see <http://www.gnu.org/licenses/>. */
 #include <iostream>
 
 #include <boost/regex.hpp>
@@ -47,7 +47,7 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
-void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
@@ -75,7 +75,7 @@ void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_d
     }
 }
 
-void XBRL_Label_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void XBRL_Label_data::UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != std::string_view::npos)
     {
@@ -103,7 +103,7 @@ void XBRL_Label_data::UseExtractor(std::string_view document, const fs::path& ou
     }
 }
 
-void SS_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void SS_data::UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != std::string_view::npos)
     {
@@ -132,13 +132,13 @@ void SS_data::UseExtractor(std::string_view document, const fs::path& output_dir
 }
 
 
-void DocumentCounter::UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields& fields)
+void DocumentCounter::UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields& fields)
 {
     ++DocumentCounter::document_counter;
 }
 
 
-void HTM_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void HTM_data::UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     if (output_file_name.extension() == ".htm")
@@ -165,7 +165,7 @@ void HTM_data::UseExtractor(std::string_view document, const fs::path& output_di
     }
 }
 
-void ALL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields)
+void ALL_data::UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     std::cout << "got another" << '\n';

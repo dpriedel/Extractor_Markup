@@ -58,7 +58,7 @@ namespace bg = boost::gregorian;
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+</SEC-HEADER>)***"};
 
-void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
+void ParseTheXMl(const std::string_view& document, const EE::SEC_Header_fields& fields)
 {
     // TODO: add error handling all over the place here.
 
@@ -153,7 +153,8 @@ std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end
 {
     //  our given date is yyyy-mm-dd.
 
-    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
+        "October", "November", "December"};
 
     std::string result{"cx_"};
     result += period_end_date.substr(8, 2);
@@ -165,7 +166,7 @@ std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end
     return result;
 }
 
-void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::Header_fields& fields)
+void ParseTheXMl_Labels(const std::string_view& document, const EE::SEC_Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file_l.txt"};
     logfile << document;
@@ -201,7 +202,7 @@ void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::He
 
     std::cout << "\n ****** \n";
 }
-std::optional<ExtractEDGAR::Header_fields> FilterFiles(const std::string& file_content, std::string_view form_type,
+std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content, std::string_view form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)

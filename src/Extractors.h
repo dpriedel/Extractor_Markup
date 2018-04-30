@@ -53,17 +53,17 @@ namespace hana = boost::hana;
 
 struct XBRL_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct XBRL_Label_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const ExtractEDGAR::Header_fields& fields);
+    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 
@@ -71,21 +71,21 @@ struct DocumentCounter
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
+    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct HTM_data
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
+    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(std::string_view, const fs::path&, const ExtractEDGAR::Header_fields&);
+    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.
@@ -110,4 +110,4 @@ inline auto SelectExtractors(int argc, const char* argv[])
 }
 
 
-    #endif /* end of include guard:  __XBRL_Extractors__*/
+#endif /* end of include guard:  __XBRL_Extractors__*/

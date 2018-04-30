@@ -51,10 +51,10 @@ namespace fs = std::experimental::filesystem;
 
 // determine whether or not we want to process this file
 
-std::optional<ExtractEDGAR::Header_fields> FilterFiles(const std::string& file_content, std::string_view form_type, const int MAX_FILES, std::atomic<int>& files_processed);
+std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content, std::string_view form_type, const int MAX_FILES, std::atomic<int>& files_processed);
 
-void ParseTheXMl(const std::string_view& document, const ExtractEDGAR::Header_fields& fields);
-void ParseTheXMl_Labels(const std::string_view& document, const ExtractEDGAR::Header_fields& fields);
+void ParseTheXMl(const std::string_view& document, const EE::SEC_Header_fields& fields);
+void ParseTheXMl_Labels(const std::string_view& document, const EE::SEC_Header_fields& fields);
 
 void WriteDataToFile(const fs::path& output_file_name, const std::string_view& document);
 
