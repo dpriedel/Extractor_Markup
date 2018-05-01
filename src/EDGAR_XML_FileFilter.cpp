@@ -136,7 +136,7 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // we need to construct or field name label so we can match up with its 'user version' later.
 
-        std::string label{"label_us-gaap_"};
+        std::string label{"us-gaap_"};
 
         EE::GAAP_Data fields{label + (second_level_nodes.name() + 8), second_level_nodes.attribute("contextRef").value(),
             second_level_nodes.attribute("unitRef").value(), second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
@@ -159,10 +159,35 @@ std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label
 
     auto links = second_level_nodes.child("link:labelLink");
 
+    // sequence of nodes can vary between documents.
+    // ASSUMPTION: sequence does not vary within a given document.
+
+    std::string first_child_name{links.first_child().name()};
+
+    bool label_is_first;
+    if (first_child_name == "link:label")
+        label_is_first = true;
+    else
+    {
+        if (first_child_name == "link:loc")
+            label_is_first = false;
+        else
+            throw std::runtime_error("Unexpected link sequence: " + first_child_name);
+    }
+
     for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
     {
-        auto link_label = links.attribute("xlink:label");
-        result.emplace_back(EE::EDGAR_Labels{link_label.value(), links.child_value()});
+        pugi::xml_node loc_label;
+        if (label_is_first)
+            loc_label = links.next_sibling("link:loc");
+        else
+            loc_label = links.previous_sibling("link:loc");
+
+        std::string_view href{loc_label.attribute("xlink:href").value()};
+        auto pos = href.find('#');
+        if (pos == std::string_view::npos)
+            throw std::runtime_error("Can't find label start.");
+        result.emplace_back(EE::EDGAR_Labels{href.data() + pos + 1, links.child_value()});
     }
 
     return result;
