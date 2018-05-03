@@ -57,7 +57,7 @@ std::vector<std::string_view> LocateDocumentSections(std::string_view file_conte
 
 std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
-std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label_xml);
+EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml);
 
 std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 

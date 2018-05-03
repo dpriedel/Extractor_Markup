@@ -49,6 +49,8 @@ const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
 const auto XBLR_TAG_LEN{7};
 
+using namespace std::string_literals;
+
 bool UseEDGAR_File(std::string_view file_content)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
@@ -134,7 +136,7 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
         if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos || sv.find("<div") != std::string_view::npos)
             continue;
 
-        // we need to construct or field name label so we can match up with its 'user version' later.
+        // we need to construct our field name label so we can match up with its 'user version' later.
 
         std::string label{"us-gaap_"};
 
@@ -147,20 +149,17 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
     return result;
 }
 
-std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label_xml)
+EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
 {
-    std::vector<EE::EDGAR_Labels> result;
+    EE::EDGAR_Labels result;
 
-    //  find root node.
+    auto top_level_node = label_xml.first_child();
 
-    auto second_level_nodes = label_xml.first_child();
-
-    //  find list of label nodes.
-
-    auto links = second_level_nodes.child("link:labelLink");
+    auto links = top_level_node.child("link:labelLink");
 
     // sequence of nodes can vary between documents.
     // ASSUMPTION: sequence does not vary within a given document.
+    // HOWEVER, it does appear that not every link:label element has a link:loc element
 
     std::string first_child_name{links.first_child().name()};
 
@@ -175,19 +174,47 @@ std::vector<EE::EDGAR_Labels> ExtractFieldLabels(const pugi::xml_document& label
             throw std::runtime_error("Unexpected link sequence: " + first_child_name);
     }
 
-    for (links = links.child("link:label"); links; links = links.next_sibling("link:label"))
+    for (auto label_links = links.child("link:label"); label_links; label_links = label_links.next_sibling("link:label"))
     {
-        pugi::xml_node loc_label;
-        if (label_is_first)
-            loc_label = links.next_sibling("link:loc");
-        else
-            loc_label = links.previous_sibling("link:loc");
+        // this routine is based upon physical order of items in the file.
+
+        pugi::xml_node loc_label{label_is_first ? label_links.next_sibling() : label_links.previous_sibling()};
+        if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != "link:loc")
+        {
+            // we may have a stand-alone link element,
+
+            if (std::string_view role{label_links.attribute("xlink:role").value()}; ! (boost::algorithm::ends_with(role, "role/label")))
+                continue;
+
+            std::string_view link_name{label_links.attribute("xlink:label").value()};
+            if (auto pos = link_name.find("us-gaap_"); pos  != std::string_view::npos)
+            {
+                link_name.remove_prefix(pos);
+                if (link_name.find('_', 8) != std::string_view::npos)
+                    continue;
+
+            if (auto [it, success] = result.try_emplace(link_name.data(), label_links.child_value()); ! success)
+                std::cout << "Can't insert value for label: " << link_name << "\n\t\tvalue: " << label_links.child_value() << '\n';
+
+            continue;
+            }
+        }
+
+        if (std::string_view role{label_links.attribute("xlink:role").value()}; ! (boost::algorithm::ends_with(role, "role/label")))
+            continue;
 
         std::string_view href{loc_label.attribute("xlink:href").value()};
+        if (href.find("us-gaap") == std::string_view::npos)
+            continue;
+
         auto pos = href.find('#');
         if (pos == std::string_view::npos)
             throw std::runtime_error("Can't find label start.");
-        result.emplace_back(EE::EDGAR_Labels{href.data() + pos + 1, links.child_value()});
+
+        if (auto [it, success] = result.try_emplace(href.data() + pos + 1, label_links.child_value()); ! success)
+            std::cout << "Can't insert value for label: " << href << "\n\t\tvalue: " << label_links.child_value() << '\n';
+        // if (auto [it, success] = result.emplace(href.data() + pos + 1, links.child_value()); ! success)
+        //     throw std::runtime_error("Unable to insert value for key: "s + href.substr(pos + 1).data());
     }
 
     return result;
@@ -303,7 +330,7 @@ pugi::xml_document ParseXMLContent(std::string_view document)
     auto result = doc.load_buffer(document.data(), document.size());
     if (! result)
     {
-        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+        throw std::runtime_error{"Error description: "s + result.description() + "\nError offset: "s + std::to_string(result.offset) +"\n" };
     }
 
     return doc;

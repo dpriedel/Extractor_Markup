@@ -59,11 +59,12 @@ namespace ExtractEDGAR
         std::string value;
     };
 
-	struct EDGAR_Labels
-	{
-		std::string system_label;
-		std::string user_label;
-	};
+	// struct EDGAR_Labels
+	// {
+	// 	std::string system_label;
+	// 	std::string user_label;
+	// };
+	using EDGAR_Labels = std::map<std::string, std::string>;
 };
 
 namespace EE = ExtractEDGAR;
