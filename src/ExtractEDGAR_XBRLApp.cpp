@@ -37,7 +37,8 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-#include <random>		//	just for initial development.  used in Quarterly form retrievals
+#include <fstream>
+// #include <streambuf>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -50,7 +51,8 @@
 #include "Poco/Util/AbstractConfiguration.h"
 
 #include "ExtractEDGAR_XBRLApp.h"
-
+#include "EDGAR_XML_FileFilter.h"
+#include "SEC_Header.h"
 
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
 	: Poco::Util::Application(argc, argv)
@@ -193,53 +195,25 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_end_date)));
 
 	options.addOption(
-		Poco::Util::Option("index-dir", "", "directory index files are downloaded to.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_index_dir)));
-
-	options.addOption(
-		Poco::Util::Option("form-dir", "", "directory form files are downloaded to.")
+		Poco::Util::Option("form-dir", "", "directory of form files to be processed.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_form_dir)));
 
 	options.addOption(
-		Poco::Util::Option("host", "", "Server address to use for EDGAR.")
+		Poco::Util::Option("file", "f", "single file to be processed.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_HTTPS_host)));
-
-	// options.addOption(
-	// 	Poco::Util::Option("login", "", "email address to use for anonymous login to EDGAR.")
-	// 		.required(true)
-	// 		.repeatable(false)
-	// 		.argument("value")
-	// 		.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_login_ID)));
+			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
 
 	options.addOption(
-		Poco::Util::Option("mode", "", "'daily' or 'quarterly' for index files, 'ticker-only'. Default is 'daily'.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_mode)));
-
-	options.addOption(
-		Poco::Util::Option("form", "", "name of form type[s] we are downloading. Default is '10-Q'.")
+		Poco::Util::Option("form", "", "name of form type[s] we are processing. Default is '10-Q'.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_form)));
-
-	options.addOption(
-		Poco::Util::Option("ticker", "", "ticker[s] to lookup and filter form downloads.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_ticker)));
 
 	options.addOption(
 		Poco::Util::Option("log-path", "", "path name for log file.")
@@ -247,41 +221,6 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.repeatable(false)
 			.argument("value")
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_log_path)));
-
-	options.addOption(
-		Poco::Util::Option("ticker-cache", "", "path name for ticker-to-CIK cache file.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_ticker_cache)));
-
-	options.addOption(
-		Poco::Util::Option("ticker-file", "", "path name for file with list of ticker symbols to convert to CIKs.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_ticker_file)));
-
-	options.addOption(
-		Poco::Util::Option("replace-index-files", "", "over write local index files if specified. Default is 'false'")
-			.required(false)
-			.repeatable(false)
-			.noArgument()
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_replace_index_files)));
-
-	options.addOption(
-		Poco::Util::Option("replace-form-files", "", "over write local form files if specified. Default is 'false'")
-			.required(false)
-			.repeatable(false)
-			.noArgument()
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_replace_form_files)));
-
-	options.addOption(
-		Poco::Util::Option("index-only", "", "do not download form files.. Default is 'false'")
-			.required(false)
-			.repeatable(false)
-			.noArgument()
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_index_only)));
 
 	options.addOption(
 		Poco::Util::Option("pause", "", "how many seconds to wait between downloads. Default: 1 second.")
@@ -311,26 +250,6 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.argument("value")
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_concurrency_limit)));
 
-	/* options.addOption( */
-	/* 	Option("define", "D", "define a configuration property") */
-	/* 		.required(false) */
-	/* 		.repeatable(true) */
-	/* 		.argument("name=value") */
-	/* 		.callback(OptionCallback<EDGAR_UnitTest>(this, &EDGAR_UnitTest::handleDefine))); */
-
-	/* options.addOption( */
-	/* 	Option("config-file", "f", "load configuration data from a file") */
-	/* 		.required(false) */
-	/* 		.repeatable(true) */
-	/* 		.argument("file") */
-	/* 		.callback(OptionCallback<EDGAR_UnitTest>(this, &EDGAR_UnitTest::handleConfig))); */
-
-	/* options.addOption( */
-	/* 	Option("bind", "b", "bind option value to test.property") */
-	/* 		.required(false) */
-	/* 		.repeatable(false) */
-	/* 		.argument("value") */
-	/* 		.binding("test.property")); */
 }
 
 void  ExtractEDGAR_XBRLApp::handleHelp(const std::string& name, const std::string& value)
@@ -420,27 +339,10 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
 	//	the user may specify multiple stock tickers in a comma delimited list. We need to parse the entries out
 	//	of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
 
-	if (! ticker_.empty())
-	{
-		comma_list_parser x(ticker_list_, ",");
-		x.parse_string(ticker_);
-	}
-
-	if (! ticker_list_file_name_.empty())
-    {
-		poco_assert_msg(! ticker_cache_file_name_.empty(), "You must use a cache file when using a file of ticker symbols.");
-    }
-
-	if (mode_ == "ticker-only")
-		return;
-
 	poco_assert_msg(begin_date_ != bg::date(), "Must specify 'begin-date' for index and/or form downloads.");
 
 	if (end_date_ == bg::date())
 		end_date_ = begin_date_;
-
-	poco_assert_msg(! local_index_file_directory_.empty(), "Must specify 'index-dir' when downloading index and/or forms.");
-	poco_assert_msg(index_only_ || ! local_form_file_directory_.empty(), "Must specify 'form-dir' when not using 'index-only' option.");
 
 	//	the user may specify multiple form types in a comma delimited list. We need to parse the entries out
 	//	of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
@@ -455,23 +357,37 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
 
 void ExtractEDGAR_XBRLApp::Do_Run (void)
 {
-	// if (! ticker_cache_file_name_.empty())
-	// 	ticker_converter_.UseCacheFile(ticker_cache_file_name_);
-    //
-	// if (! ticker_list_file_name_.empty())
-	// 	Do_Run_TickerFileLookup();
-    //
-	// if (mode_ == "ticker-only")
-	// 	Do_Run_TickerLookup();
-	// else if (mode_ == "daily")
-	// 	Do_Run_DailyIndexFiles();
-	// else
-	// 	Do_Run_QuarterlyIndexFiles();
-    //
-	// if (! ticker_cache_file_name_.empty())
-	// 	ticker_converter_.SaveCIKDataToFile();
+	// for now, I know this is all we are doing.
+
+	this->LoadSingleFileToDB(single_file_to_process_);
 
 }		// -----  end of method ExtractEDGAR_XBRLApp::Do_Run  -----
+
+void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
+{
+    std::ifstream input_file{input_file_name};
+    const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
+
+	auto document_sections{LocateDocumentSections(file_content)};
+
+	auto labels_document = LocateLabelDocument(document_sections);
+	auto labels_xml = ParseXMLContent(labels_document);
+
+	auto instance_document = LocateInstanceDocument(document_sections);
+	auto instance_xml = ParseXMLContent(instance_document);
+
+	auto filing_data = ExtractFilingData(instance_xml);
+    auto gaap_data = ExtractGAAPFields(instance_xml);
+    auto context_data = ExtractContextDefinitions(instance_xml);
+    auto label_data = ExtractFieldLabels(labels_xml);
+
+	SEC_Header SEC_data;
+	SEC_data.UseData(file_content);
+	SEC_data.ExtractHeaderFields();
+	auto SEC_fields = SEC_data.GetFields();
+
+	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data);
+}
 
 void ExtractEDGAR_XBRLApp::Do_Quit (void)
 {

@@ -40,7 +40,6 @@
 #define EXTRACTEDGAR_XBRLAPP_H_
 
 // #include <fstream>
-#include <map>
 #include <experimental/filesystem>
 
 // #include <boost/filesystem.hpp>
@@ -98,12 +97,7 @@ protected:
 	void	Do_Run (void);
 	void	Do_Quit (void);
 
-	void Do_Run_DailyIndexFiles(void);
-	void Do_Run_QuarterlyIndexFiles(void);
-	void Do_Run_TickerLookup(void);
-	void Do_Run_TickerFileLookup(void);
-
-	void Do_TickerMap_Setup(void);
+	void LoadSingleFileToDB(const fs::path& input_file_name);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -132,23 +126,16 @@ private:
 
     void inline store_begin_date(const std::string& name, const std::string& value) { begin_date_ = bg::from_string(value); }
     void inline store_end_date(const std::string& name, const std::string& value) { end_date_ = bg::from_string(value); }
-    void inline store_index_dir(const std::string& name, const std::string& value) { local_index_file_directory_ = value; }
     void inline store_form_dir(const std::string& name, const std::string& value) { local_form_file_directory_ = value; }
-    void inline store_HTTPS_host(const std::string& name, const std::string& value) { HTTPS_host_ = value; }
+    void inline store_single_file_to_process(const std::string& name, const std::string& value) { single_file_to_process_ = value; }
     // void inline store_login_ID(const std::string& name, const std::string& value) { login_ID_ = value; }
 
     void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
     void inline store_mode(const std::string& name, const std::string& value) { mode_ = value; }
     void inline store_form(const std::string& name, const std::string& value) { form_ = value; }
-    void inline store_ticker(const std::string& name, const std::string& value) { ticker_ = value; }
     void inline store_log_path(const std::string& name, const std::string& value) { log_file_path_name_ = value; }
-    void inline store_ticker_cache(const std::string& name, const std::string& value) { ticker_cache_file_name_ = value; }
-    void inline store_ticker_file(const std::string& name, const std::string& value) { ticker_list_file_name_ = value; }
-    void inline store_replace_index_files(const std::string& name, const std::string& value) { replace_index_files_ = true; }
-    void inline store_replace_form_files(const std::string& name, const std::string& value) { replace_form_files_ = true; }
-    void inline store_index_only(const std::string& name, const std::string& value) { index_only_ = true; }
     void inline store_pause(const std::string& name, const std::string& value) { pause_ = std::stoi(value); }
-    void inline store_max(const std::string& name, const std::string& value) { max_forms_to_download_ = std::stoi(value); }
+    void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process = std::stoi(value); }
     void inline store_concurrency_limit(const std::string& name, const std::string& value) { max_at_a_time_ = std::stoi(value); }
 
 		// ====================  DATA MEMBERS  =======================================
@@ -161,29 +148,18 @@ private:
 
 	std::string mode_{"daily"};
 	std::string form_{"10-Q"};
-	std::string ticker_;
-	// std::string login_ID_;
-    std::string HTTPS_host_{"https://www.sec.gov"};
     std::string logging_level_{"information"};
 
 	std::vector<std::string> form_list_;
-	std::vector<std::string> ticker_list_;
-
-	std::map<std::string, std::string> ticker_map_;
 
 	fs::path log_file_path_name_;
-	fs::path local_index_file_directory_;
 	fs::path local_form_file_directory_;
-	fs::path ticker_cache_file_name_;
-	fs::path ticker_list_file_name_;
+	fs::path single_file_to_process_;
 
 	int pause_{0};
-    int max_forms_to_download_{-1};     // mainly for testing
+    int max_forms_to_process{-1};     // mainly for testing
     int max_at_a_time_{10};             // how many concurrent downloads allowed
 
-	bool replace_index_files_{false};
-	bool replace_form_files_{false};
-	bool index_only_{false};			//	do no download any form files
 	bool help_requested_{false};
 
 }; // -----  end of class ExtractEDGAR_XBRLApp  -----
