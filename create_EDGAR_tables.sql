@@ -15,7 +15,8 @@ CREATE TABLE xbrl_extracts.edgar_filing_id
 	form_type TEXT NOT NULL,
 	date_filed DATE NOT NULL,
 	period_ending DATE NOT NULL,
-    shares_outstanding BIGINT DEFAULT 0,
+	period_context_ID TEXT NOT NULL,
+    shares_outstanding NUMERIC DEFAULT 0,
 	UNIQUE(cik, form_type, period_ending),
     PRIMARY KEY(cik, form_type, period_ending)
 );
@@ -35,7 +36,19 @@ CREATE TABLE xbrl_extracts.edgar_filing_data
 	xbrl_label TEXT NOT NULL,
 	user_label TEXT,
     xbrl_value TEXT NOT NULL,
+	tsv TSVECTOR,
 	PRIMARY KEY(filing_data_ID)
 );
 
 ALTER TABLE xbrl_extracts.edgar_filing_data OWNER TO edgar_pg;
+
+DROP TRIGGER IF EXISTS tsv_update ON xbrl_extracts.edgar_filing_data ;
+
+CREATE TRIGGER tsv_update
+	BEFORE INSERT OR UPDATE ON xbrl_extracts.edgar_filing_data FOR EACH ROW
+	EXECUTE PROCEDURE
+		tsvector_update_trigger(tsv, 'pg_catalog.english', user_label);
+
+DROP INDEX IF EXISTS idx_field_label ;
+
+CREATE INDEX idx_field_label ON xbrl_extracts.edgar_filing_data USING GIN (tsv);
