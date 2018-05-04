@@ -49,6 +49,9 @@ const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
 const auto XBLR_TAG_LEN{7};
 
+constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December"};
+
 using namespace std::string_literals;
 
 bool UseEDGAR_File(std::string_view file_content)
@@ -83,6 +86,36 @@ std::string_view LocateLabelDocument(const std::vector<std::string_view>& docume
             return TrimExcessXML(document);
     }
     return {};
+}
+
+EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
+{
+    auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
+
+    // next, some filing specific data from the XBRL portion of our document.
+
+    auto trading_symbol = top_level_node.child("dei:TradingSymbol").child_value();
+    auto shares_outstanding = top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value();
+    auto period_end_date = top_level_node.child("dei:DocumentPeriodEndDate").child_value();
+
+    auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
+
+    return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding};
+}
+
+std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date)
+
+{
+    //  our given date is yyyy-mm-dd.
+
+    std::string result{"cx_"};
+    result += period_end_date.substr(8, 2);
+    result +=  '_';
+    result += MONTH_NAMES[std::stoi(std::string{period_end_date.substr(5, 2)})];
+    result += '_';
+    result += period_end_date.substr(0, 4);
+
+    return result;
 }
 
 // function to split a string on a delimiter and return a vector of string-views

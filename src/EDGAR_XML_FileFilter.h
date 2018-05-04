@@ -55,6 +55,8 @@ std::string_view LocateLabelDocument(const std::vector<std::string_view>& docume
 
 std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
 
+EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
+
 std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
 EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml);
@@ -70,5 +72,7 @@ std::string_view FindFileType(std::string_view document);
 std::string_view TrimExcessXML(std::string_view document);
 
 pugi::xml_document ParseXMLContent(std::string_view document);
+
+std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
 
 #endif

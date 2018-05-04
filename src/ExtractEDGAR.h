@@ -41,7 +41,14 @@
 namespace ExtractEDGAR
 {
 	using SEC_Header_fields = std::map<std::string, std::string>;
-	using SEC_ParsedValues = std::map<std::string, std::string>;
+
+	struct FilingData
+	{
+		std::string trading_symbol;
+		std::string period_end_date;
+		std::string period_context_ID;
+		std::string shares_outstanding;
+	};
 
 	struct ContextPeriod
 	{
