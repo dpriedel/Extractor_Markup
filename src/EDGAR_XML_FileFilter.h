@@ -75,4 +75,7 @@ pugi::xml_document ParseXMLContent(std::string_view document);
 
 std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
 
+void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
+    const EE::EDGAR_Labels& label_fields, const std::vector<EE::ContextPeriod>& context_fields);
+
 #endif
