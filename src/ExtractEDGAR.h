@@ -45,7 +45,7 @@ namespace ExtractEDGAR
 
 	struct ContextPeriod
 	{
-		std::string name;
+		std::string context_ID;
 		std::string begin;
 		std::string end;
 	};
