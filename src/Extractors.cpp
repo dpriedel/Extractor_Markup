@@ -69,7 +69,7 @@ void XBRL_data::UseExtractor(std::string_view document, const fs::path& output_d
 
             std::cout << "got one" << '\n';
 
-            ParseTheXMl(document, fields);
+            // ParseTheXMl(document, fields);
         }
         WriteDataToFile(output_file_name, document);
     }
