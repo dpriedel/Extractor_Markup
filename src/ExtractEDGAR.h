@@ -50,12 +50,13 @@ namespace ExtractEDGAR
 		std::string shares_outstanding;
 	};
 
-	struct ContextPeriod
+	struct EDGAR_TimePeriod
 	{
-		std::string context_ID;
 		std::string begin;
 		std::string end;
 	};
+
+	using ContextPeriod = std::map<std::string, EDGAR_TimePeriod>;
 
     struct GAAP_Data
     {

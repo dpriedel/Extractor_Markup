@@ -367,6 +367,7 @@ void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
     std::ifstream input_file{input_file_name};
     const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
+	input_file.close();
 
 	auto document_sections{LocateDocumentSections(file_content)};
 

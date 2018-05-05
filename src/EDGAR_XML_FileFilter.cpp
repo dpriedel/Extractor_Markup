@@ -38,6 +38,7 @@
 
 #include <iostream>
 
+#include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -255,9 +256,9 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
     return result;
 }
 
-std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_document& instance_xml)
+EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)
 {
-    std::vector<EE::ContextPeriod> result;
+    EE::ContextPeriod result;
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
@@ -300,7 +301,8 @@ std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_documen
             start_ptr = begin.child_value();
             end_ptr = end.child_value();
         }
-        result.emplace_back(EE::ContextPeriod{second_level_nodes.attribute("id").value(), start_ptr, end_ptr});
+        if (auto [it, success] = result.try_emplace(second_level_nodes.attribute("id").value(), EE::EDGAR_TimePeriod{start_ptr, end_ptr}); ! success)
+            std::cout << "Can't insert value for label: " << second_level_nodes.attribute("id").value()  << '\n';
     }
 
     return result;
@@ -373,68 +375,69 @@ pugi::xml_document ParseXMLContent(std::string_view document)
 
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
-    const EE::EDGAR_Labels& label_fields, const std::vector<EE::ContextPeriod>& context_fields)
+    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields)
 {
     // start stuffing the database.
-    // this data comes from the SEC Header portion of the file and from the XBRL.
 
     pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
     pqxx::work trxn{c};
 
     // for now, let's assume we are going to to a full replace of the data for each filing.
+    // the DB will do a cascade delete so all related stuff will be taken care of
 
 	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
         " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
-			% trxn.esc(fields.at("cik"))
-			% trxn.esc(fields.at("form_type"))
-			% trxn.esc(period_end_date)
+			% trxn.esc(SEC_fields.at("cik"))
+			% trxn.esc(SEC_fields.at("form_type"))
+			% trxn.esc(filing_fields.period_end_date)
 			;
     trxn.exec(filing_ID_cmd.str());
 
 	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id"
-        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
-		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%') RETURNING filing_ID")
-		% trxn.esc(fields.at("cik"))
-		% trxn.esc(fields.at("company_name"))
-		% trxn.esc(fields.at("file_name"))
-        % trxn.esc(trading_symbol)
-		% trxn.esc(fields.at("sic"))
-		% trxn.esc(fields.at("form_type"))
-		% trxn.esc(fields.at("date_filed"))
-		% trxn.esc(period_end_date)
-		% trxn.esc(shares_outstanding)
+        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID, shares_outstanding)"
+		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%', %10%) RETURNING filing_ID")
+		% trxn.esc(SEC_fields.at("cik"))
+		% trxn.esc(SEC_fields.at("company_name"))
+		% trxn.esc(SEC_fields.at("file_name"))
+        % trxn.esc(filing_fields.trading_symbol)
+		% trxn.esc(SEC_fields.at("sic"))
+		% trxn.esc(SEC_fields.at("form_type"))
+		% trxn.esc(SEC_fields.at("date_filed"))
+		% trxn.esc(filing_fields.period_end_date)
+		% trxn.esc(filing_fields.period_context_ID)
+		% trxn.esc(filing_fields.shares_outstanding)
 		;
+    // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd.str());
     trxn.commit();
 
 	std::string filing_ID;
 	res[0]["filing_ID"].to(filing_ID);
 
-    auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
-
-    // now, the goal of all this...find all the financial values for the given time period.
+    // now, the goal of all this...save all the financial values for the given time period.
 
     pqxx::work details{c};
     int counter = 0;
-    for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
+    for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
-        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
-            continue;
-        // if (second_level_nodes.attribute("contextRef").value() != context_ID)
-        //     continue;
-        // std::cout << "here...\n";
-        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
-            << second_level_nodes.attribute("contextRef").value() ;
-        std::cout << std::endl;
         ++counter;
     	auto detail_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_data"
-            " (filing_ID, xbrl_label, xbrl_value) VALUES ('%1%', '%2%', '%3%')")
+            " (filing_ID, xbrl_label, user_label, xbrl_value, context_ID, period_begin, period_end, units, decimals)"
+            " VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
     			% trxn.esc(filing_ID)
-    			% trxn.esc(second_level_nodes.name())
-    			% trxn.esc(second_level_nodes.child_value())
+    			% trxn.esc(label)
+    			% trxn.esc(label_fields.at(label))
+    			% trxn.esc(value)
+    			% trxn.esc(context_ID)
+                % trxn.esc(context_fields.at(context_ID).begin)
+                % trxn.esc(context_fields.at(context_ID).end)
+    			% trxn.esc(units)
+    			% trxn.esc(decimals)
     			;
+        // std::cout << detail_cmd << '\n';
         details.exec(detail_cmd.str());
     }
 
     details.commit();
+    c.disconnect();
 }

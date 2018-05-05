@@ -61,7 +61,7 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
 EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml);
 
-std::vector<EE::ContextPeriod> ExtractContextDefinitions(const pugi::xml_document& instance_xml);
+EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
 // std::vector<std::string_view> LocateDocumentSections2(std::string_view file_content);
 
@@ -76,6 +76,6 @@ pugi::xml_document ParseXMLContent(std::string_view document);
 std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
-    const EE::EDGAR_Labels& label_fields, const std::vector<EE::ContextPeriod>& context_fields);
+    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields);
 
 #endif
