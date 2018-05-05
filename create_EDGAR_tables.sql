@@ -36,6 +36,11 @@ CREATE TABLE xbrl_extracts.edgar_filing_data
 	xbrl_label TEXT NOT NULL,
 	user_label TEXT,
     xbrl_value TEXT NOT NULL,
+	context_ID TEXT NOT NULL,
+	period_begin DATE NOT NULL,
+	period_end DATE NOT NULL,
+	units TEXT NOT NULL,
+	decimals TEXT,
 	tsv TSVECTOR,
 	PRIMARY KEY(filing_data_ID)
 );
