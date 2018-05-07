@@ -34,7 +34,7 @@ CREATE TABLE xbrl_extracts.edgar_filing_data
 	filing_data_ID SERIAL UNIQUE,
 	filing_ID integer REFERENCES xbrl_extracts.edgar_filing_id (filing_ID) ON DELETE CASCADE,
 	xbrl_label TEXT NOT NULL,
-	user_label TEXT,
+	user_label TEXT NOT NULL,
     xbrl_value TEXT NOT NULL,
 	context_ID TEXT NOT NULL,
 	period_begin DATE NOT NULL,
