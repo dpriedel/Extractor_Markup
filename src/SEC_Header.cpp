@@ -40,7 +40,7 @@ namespace bg = boost::gregorian;
 
 #include "SEC_Header.h"
 
-const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+</SEC-HEADER>$)***"};
+const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 
 //--------------------------------------------------------------------------------------
 //       Class:  SEC_Header
@@ -75,7 +75,7 @@ void SEC_Header::ExtractHeaderFields (void)
 
 void SEC_Header::ExtractCIK (void)
 {
-	const boost::regex ex{R"***(CENTRAL INDEX KEY:\s+([0-9]+))***"};
+	const boost::regex ex{R"***(^\s+CENTRAL INDEX KEY:\s+([0-9]+?))***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -88,7 +88,7 @@ void SEC_Header::ExtractCIK (void)
 
 void SEC_Header::ExtractSIC (void)
 {
-	const boost::regex ex{R"***(STANDARD INDUSTRIAL CLASSIFICATION:.+?\[?([0-9]+)\]?)***"};
+	const boost::regex ex{R"***(^\s+STANDARD INDUSTRIAL CLASSIFICATION:.+?\[?([0-9]+)\]?)***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -101,7 +101,7 @@ void SEC_Header::ExtractSIC (void)
 
 void SEC_Header::ExtractFormType (void)
 {
-	const boost::regex ex{R"***(CONFORMED SUBMISSION TYPE:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
+	const boost::regex ex{R"***(^CONFORMED SUBMISSION TYPE:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -114,7 +114,7 @@ void SEC_Header::ExtractFormType (void)
 
 void SEC_Header::ExtractDateFiled (void)
 {
-	const boost::regex ex{R"***(FILED AS OF DATE:\s+([0-9]+))***"};
+	const boost::regex ex{R"***(^FILED AS OF DATE:\s+([0-9]+?)$)***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -128,7 +128,7 @@ void SEC_Header::ExtractDateFiled (void)
 
 void SEC_Header::ExtractQuarterEnding (void)
 {
-	const boost::regex ex{R"***(CONFORMED PERIOD OF REPORT:\s+([0-9]+))***"};
+	const boost::regex ex{R"***(^CONFORMED PERIOD OF REPORT:\s+([0-9]+?)$)***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -142,7 +142,7 @@ void SEC_Header::ExtractQuarterEnding (void)
 
 void SEC_Header::ExtractFileName (void)
 {
-	const boost::regex ex{R"***(ACCESSION NUMBER:\s+([0-9-]+))***"};
+	const boost::regex ex{R"***(^ACCESSION NUMBER:\s+([0-9-]+?)$)***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
@@ -155,7 +155,7 @@ void SEC_Header::ExtractFileName (void)
 
 void SEC_Header::ExtractCompanyName (void)
 {
-	const boost::regex ex{R"***(COMPANY CONFORMED NAME:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
+	const boost::regex ex{R"***(^\s+COMPANY CONFORMED NAME:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);

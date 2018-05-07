@@ -53,7 +53,7 @@ class SEC_Header
 
 		// ====================  ACCESSORS     =======================================
 
-		const EE::SEC_Header_fields& GetFields(void)		{ return parsed_header_data_; }
+		const EE::SEC_Header_fields& GetFields(void) const		{ return parsed_header_data_; }
 
 		// ====================  MUTATORS      =======================================
 
