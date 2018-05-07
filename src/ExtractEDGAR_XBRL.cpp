@@ -56,7 +56,7 @@ namespace bg = boost::gregorian;
 
 #include <pugixml.hpp>
 
-const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+</SEC-HEADER>)***"};
+const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+?</SEC-HEADER>)***"};
 
 void ParseTheXMl(const std::string_view& document, const EE::SEC_Header_fields& fields)
 {
