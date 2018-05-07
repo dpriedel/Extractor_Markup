@@ -45,6 +45,7 @@
 #include <pqxx/pqxx>
 
 #include "EDGAR_XML_FileFilter.h"
+#include "SEC_Header.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
@@ -63,6 +64,28 @@ bool UseEDGAR_File(std::string_view file_content)
     {
         return true;
     }
+    else
+        return false;
+}
+
+bool TestFileForXBRL(std::string_view file_content)
+{
+    if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
+    {
+        return true;
+    }
+    else
+        return false;
+}
+
+bool TestFileForFormType(std::string_view file_content, std::string_view form_type)
+{
+	SEC_Header SEC_data;
+	SEC_data.UseData(file_content);
+	SEC_data.ExtractHeaderFields();
+
+    if (SEC_data.GetFields().at("form_type") == form_type)
+        return true;
     else
         return false;
 }

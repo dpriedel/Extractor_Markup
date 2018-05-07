@@ -49,6 +49,9 @@
 
 bool UseEDGAR_File(std::string_view file_content);
 
+bool TestFileForXBRL(std::string_view file_content);
+bool TestFileForFormType(std::string_view file_content, std::string_view form_type);
+
 std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
 
 std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections);
