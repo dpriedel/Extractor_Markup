@@ -51,14 +51,43 @@ namespace bg = boost::gregorian;
 
 #include "ExtractEDGAR.h"
 
-bool UseEDGAR_File(std::string_view file_content);
+// let's use some function objects for our filters.
 
-bool TestFileForXBRL(std::string_view file_content);
-bool TestFileForFormType(std::string_view file_content, std::string_view form_type);
+struct FileHasXBRL
+{
+    bool ApplyFilter(std::string_view file_content);
+};
 
-// the routine below does an INCLUSIVE check
+struct FileHasFormType
+{
+    FileHasFormType(const EE::SEC_Header_fields& header_fields, std::string_view form_type)
+        : header_fields_{header_fields}, form_type_{form_type} {}
 
-bool TestFileForFormInDateRange(std::string_view file_content, const bg::date& begin_date, const bg::date& end_date);
+    bool ApplyFilter(std::string_view file_content);
+
+    const EE::SEC_Header_fields& header_fields_;
+    std::string form_type_;
+};
+
+struct FileIsWithinDateRange
+{
+    FileIsWithinDateRange(const EE::SEC_Header_fields& header_fields, const bg::date& begin_date, const bg::date& end_date)
+        : header_fields_{header_fields}, begin_date_{begin_date}, end_date_{end_date}   {}
+
+    bool ApplyFilter(std::string_view file_content);
+
+    const EE::SEC_Header_fields& header_fields_;
+    const bg::date& begin_date_;
+    const bg::date& end_date_;
+};
+
+// a little helper to run our filters.
+
+template<typename... Ts>
+auto ApplyFilters(std::string_view file_content, Ts ...ts)
+{
+	return ((ts.ApplyFilter(file_content)) && ...);
+}
 
 std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
 

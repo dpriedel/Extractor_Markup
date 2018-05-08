@@ -88,14 +88,18 @@ void SEC_Header::ExtractCIK (void)
 
 void SEC_Header::ExtractSIC (void)
 {
+	// this field is sometimes missing in my test files.  I can live without it.
+
 	const boost::regex ex{R"***(^\s+STANDARD INDUSTRIAL CLASSIFICATION:.+?\[?([0-9]+)\]?)***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find SIC in SEC Header");
+	if (found_it)
+		parsed_header_data_["sic"] = results.str(1);
+	else
+		parsed_header_data_["sic"] = "unknown";
 
-	parsed_header_data_["sic"] = results.str(1);
 	return ;
 }		// -----  end of method SEC_Header::ExtractSIC  -----
 

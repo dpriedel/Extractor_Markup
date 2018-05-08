@@ -58,7 +58,7 @@ constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April",
 
 using namespace std::string_literals;
 
-bool UseEDGAR_File(std::string_view file_content)
+bool FileHasXBRL::ApplyFilter(std::string_view file_content)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
     {
@@ -68,37 +68,19 @@ bool UseEDGAR_File(std::string_view file_content)
         return false;
 }
 
-bool TestFileForXBRL(std::string_view file_content)
+bool FileHasFormType::ApplyFilter(std::string_view file_content)
 {
-    if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
-    {
-        return true;
-    }
-    else
-        return false;
-}
-
-bool TestFileForFormType(std::string_view file_content, std::string_view form_type)
-{
-	SEC_Header SEC_data;
-	SEC_data.UseData(file_content);
-	SEC_data.ExtractHeaderFields();
-
-    if (SEC_data.GetFields().at("form_type") == form_type)
+    if (header_fields_.at("form_type") == form_type_)
         return true;
     else
         return false;
 }
 
-bool TestFileForFormInDateRange(std::string_view file_content, const bg::date& begin_date, const bg::date& end_date)
+bool FileIsWithinDateRange::ApplyFilter(std::string_view file_content)
 {
-	SEC_Header SEC_data;
-	SEC_data.UseData(file_content);
-	SEC_data.ExtractHeaderFields();
+    auto report_date = bg::from_simple_string(header_fields_.at("quarter_ending"));
 
-    auto report_date = bg::from_simple_string(SEC_data.GetFields().at("quarter_ending"));
-
-    if (begin_date <= report_date && report_date <= end_date)
+    if (begin_date_ <= report_date && report_date <= end_date_)
         return true;
     else
         return false;
