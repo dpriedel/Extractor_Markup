@@ -90,6 +90,20 @@ bool TestFileForFormType(std::string_view file_content, std::string_view form_ty
         return false;
 }
 
+bool TestFileForFormInDateRange(std::string_view file_content, const bg::date& begin_date, const bg::date& end_date)
+{
+	SEC_Header SEC_data;
+	SEC_data.UseData(file_content);
+	SEC_data.ExtractHeaderFields();
+
+    auto report_date = bg::from_simple_string(SEC_data.GetFields().at("quarter_ending"));
+
+    if (begin_date <= report_date && report_date <= end_date)
+        return true;
+    else
+        return false;
+}
+
 std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections)
 {
     for (auto document : document_sections)

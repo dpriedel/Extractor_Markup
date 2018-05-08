@@ -43,6 +43,10 @@
 #include <vector>
 #include <map>
 
+#include <boost/date_time/gregorian/gregorian.hpp>
+
+namespace bg = boost::gregorian;
+
 #include <pugixml.hpp>
 
 #include "ExtractEDGAR.h"
@@ -51,6 +55,10 @@ bool UseEDGAR_File(std::string_view file_content);
 
 bool TestFileForXBRL(std::string_view file_content);
 bool TestFileForFormType(std::string_view file_content, std::string_view form_type);
+
+// the routine below does an INCLUSIVE check
+
+bool TestFileForFormInDateRange(std::string_view file_content, const bg::date& begin_date, const bg::date& end_date);
 
 std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
 
