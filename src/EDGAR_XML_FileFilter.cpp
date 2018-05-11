@@ -42,10 +42,14 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <Poco/Logger.h>
+
 #include <pqxx/pqxx>
 
 #include "EDGAR_XML_FileFilter.h"
 #include "SEC_Header.h"
+
+using namespace std::string_literals;
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
@@ -53,12 +57,16 @@ const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
 const auto XBLR_TAG_LEN{7};
 
+const std::string US_GAAP_NS{"us-gaap:"};
+const auto GAAP_LEN{US_GAAP_NS.size()};
+
+const std::string US_GAAP_PFX{"us-gaap_"};
+const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
+
 constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
     "October", "November", "December"};
 
-using namespace std::string_literals;
-
-bool FileHasXBRL::ApplyFilter(std::string_view file_content)
+bool FileHasXBRL::operator()(const EE::SEC_Header_fields&, std::string_view file_content)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
     {
@@ -68,17 +76,17 @@ bool FileHasXBRL::ApplyFilter(std::string_view file_content)
         return false;
 }
 
-bool FileHasFormType::ApplyFilter(std::string_view file_content)
+bool FileHasFormType::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
 {
-    if (header_fields_.at("form_type") == form_type_)
+    if (header_fields.at("form_type") == form_type_)
         return true;
     else
         return false;
 }
 
-bool FileIsWithinDateRange::ApplyFilter(std::string_view file_content)
+bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
 {
-    auto report_date = bg::from_simple_string(header_fields_.at("quarter_ending"));
+    auto report_date = bg::from_simple_string(header_fields.at("quarter_ending"));
 
     if (begin_date_ <= report_date && report_date <= end_date_)
         return true;
@@ -183,19 +191,18 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
     {
         // us-gaap is a namespace but pugixml doesn't directly support namespaces.
 
-        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
+        if (US_GAAP_NS.compare(0, GAAP_LEN, second_level_nodes.name(), GAAP_LEN) != 0)
             continue;
 
         // need to filter out table type content.
 
-        if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos || sv.find("<div") != std::string_view::npos)
+        if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos
+            || sv.find("<div") != std::string_view::npos || sv.find("<p ") != std::string_view::npos)
             continue;
 
         // we need to construct our field name label so we can match up with its 'user version' later.
 
-        std::string label{"us-gaap_"};
-
-        EE::GAAP_Data fields{label + (second_level_nodes.name() + 8), second_level_nodes.attribute("contextRef").value(),
+        EE::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN), second_level_nodes.attribute("contextRef").value(),
             second_level_nodes.attribute("unitRef").value(), second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
 
         result.push_back(std::move(fields));
@@ -210,7 +217,18 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
 
     auto top_level_node = label_xml.first_child();
 
-    auto links = top_level_node.child("link:labelLink");
+    // we need to look for possible namespace here.
+
+    std::string n_name{top_level_node.name()};
+
+    std::string namespace_prefix;
+    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
+        namespace_prefix = n_name.substr(0, pos + 1);
+
+    std::string label_node_name{namespace_prefix + "label"};
+    std::string loc_node_name{namespace_prefix + "loc"};
+
+    auto links = top_level_node.child((namespace_prefix + "labelLink").c_str());
 
     // sequence of nodes can vary between documents.
     // ASSUMPTION: sequence does not vary within a given document.
@@ -219,44 +237,54 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
     std::string first_child_name{links.first_child().name()};
 
     bool label_is_first;
-    if (first_child_name == "link:label")
+    if (first_child_name == label_node_name)
         label_is_first = true;
     else
     {
-        if (first_child_name == "link:loc")
+        if (first_child_name == loc_node_name)
             label_is_first = false;
         else
             throw std::runtime_error("Unexpected link sequence: " + first_child_name);
     }
 
-    for (auto label_links = links.child("link:label"); label_links; label_links = label_links.next_sibling("link:label"))
+    for (auto label_links = links.child(label_node_name.c_str()); label_links; label_links = label_links.next_sibling(label_node_name.c_str()))
     {
         // this routine is based upon physical order of items in the file.
 
         pugi::xml_node loc_label{label_is_first ? label_links.next_sibling() : label_links.previous_sibling()};
-        if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != "link:loc")
+        if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
         {
             // we may have a stand-alone link element,
 
-            if (std::string_view role{label_links.attribute("xlink:role").value()}; ! (boost::algorithm::ends_with(role, "role/label")))
-                continue;
-
+            std::string_view role{label_links.attribute("xlink:role").value()};
             std::string_view link_name{label_links.attribute("xlink:label").value()};
-            if (auto pos = link_name.find("us-gaap_"); pos  != std::string_view::npos)
+            if (auto pos = link_name.find(US_GAAP_PFX); pos  != std::string_view::npos)
             {
                 link_name.remove_prefix(pos);
-                if (link_name.find('_', 8) != std::string_view::npos)
+                // if (link_name.find('_', 8) != std::string_view::npos)
+                if (link_name.find('_') != std::string_view::npos)
                     continue;
 
-            if (auto [it, success] = result.try_emplace(link_name.data(), label_links.child_value()); ! success)
-                std::cout << "Can't insert value for label: " << link_name << "\n\t\tvalue: " << label_links.child_value() << '\n';
+                // we may have multiple entries for each identifier. if so, we want to give preference to the plain 'label' value.
 
-            continue;
+                if (boost::algorithm::ends_with(role, "role/label"))
+                {
+                    // if we're here, it means we have a plain 'total' label, so we want this to succeed.
+
+                    result.insert_or_assign(link_name.data(), label_links.child_value());
+                }
+                else
+                {
+                    // if this fails, it's because we already have an entry so that's OK
+
+                    result.try_emplace(link_name.data(), label_links.child_value());
+                }
+                continue;
             }
+            continue;
         }
 
-        if (std::string_view role{label_links.attribute("xlink:role").value()}; ! (boost::algorithm::ends_with(role, "role/label")))
-            continue;
+        std::string_view role{label_links.attribute("xlink:role").value()};
 
         std::string_view href{loc_label.attribute("xlink:href").value()};
         if (href.find("us-gaap") == std::string_view::npos)
@@ -266,10 +294,19 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
         if (pos == std::string_view::npos)
             throw std::runtime_error("Can't find label start.");
 
-        if (auto [it, success] = result.try_emplace(href.data() + pos + 1, label_links.child_value()); ! success)
-            std::cout << "Can't insert value for label: " << href << "\n\t\tvalue: " << label_links.child_value() << '\n';
-        // if (auto [it, success] = result.emplace(href.data() + pos + 1, links.child_value()); ! success)
-        //     throw std::runtime_error("Unable to insert value for key: "s + href.substr(pos + 1).data());
+        if (boost::algorithm::ends_with(role, "role/label"))
+        {
+            // if we're here, it means we have a plain 'total' label, so we want this to succeed.
+
+            result.insert_or_assign(href.data() + pos + 1, label_links.child_value());
+        }
+        else
+        {
+            // if this fails, it's because we already have an entry so that's OK
+
+            result.try_emplace(href.data() + pos + 1, label_links.child_value());
+        }
+
     }
 
     return result;
@@ -394,15 +431,30 @@ pugi::xml_document ParseXMLContent(std::string_view document)
 
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
-    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields)
+    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger)
 {
     // start stuffing the database.
 
     pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
-    pqxx::work trxn{c};
+    pqxx::work query{c};
 
-    // for now, let's assume we are going to to a full replace of the data for each filing.
-    // the DB will do a cascade delete so all related stuff will be taken care of
+	auto check_for_existing_content_cmd = boost::format("SELECT count(*) FROM xbrl_extracts.edgar_filing_id WHERE"
+        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
+			% query.esc(SEC_fields.at("cik"))
+			% query.esc(SEC_fields.at("form_type"))
+			% query.esc(filing_fields.period_end_date)
+			;
+    auto row = query.exec1(check_for_existing_content_cmd.str());
+    query.commit();
+	int have_data = row[0].as<int>();
+    if (have_data && ! replace_content)
+    {
+        if (the_logger)
+            the_logger->debug("Skipping: Form data exists and Replace not specifed for file: " + SEC_fields.at("file_name"));
+        return;
+    }
+
+    pqxx::work trxn{c};
 
 	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
         " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")

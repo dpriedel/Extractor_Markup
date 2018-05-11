@@ -51,32 +51,35 @@ namespace bg = boost::gregorian;
 
 #include "ExtractEDGAR.h"
 
+namespace Poco
+{
+    class Logger;
+};
+
 // let's use some function objects for our filters.
 
 struct FileHasXBRL
 {
-    bool ApplyFilter(std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields&, std::string_view file_content);
 };
 
 struct FileHasFormType
 {
-    FileHasFormType(const EE::SEC_Header_fields& header_fields, std::string_view form_type)
-        : header_fields_{header_fields}, form_type_{form_type} {}
+    FileHasFormType(std::string_view form_type)
+        : form_type_{form_type} {}
 
-    bool ApplyFilter(std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
 
-    const EE::SEC_Header_fields& header_fields_;
     std::string form_type_;
 };
 
 struct FileIsWithinDateRange
 {
-    FileIsWithinDateRange(const EE::SEC_Header_fields& header_fields, const bg::date& begin_date, const bg::date& end_date)
-        : header_fields_{header_fields}, begin_date_{begin_date}, end_date_{end_date}   {}
+    FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
+        : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool ApplyFilter(std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
 
-    const EE::SEC_Header_fields& header_fields_;
     const bg::date& begin_date_;
     const bg::date& end_date_;
 };
@@ -84,9 +87,11 @@ struct FileIsWithinDateRange
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(std::string_view file_content, Ts ...ts)
+auto ApplyFilters(const EE::SEC_Header_fields& header_fields, std::string_view file_content, Ts ...ts)
 {
-	return ((ts.ApplyFilter(file_content)) && ...);
+    // unary left fold
+
+	return (... && (ts(header_fields, file_content)));
 }
 
 std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
@@ -116,6 +121,6 @@ pugi::xml_document ParseXMLContent(std::string_view document);
 std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
-    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields);
+    const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
 
 #endif
