@@ -54,6 +54,8 @@
 #include "EDGAR_XML_FileFilter.h"
 #include "SEC_Header.h"
 
+using namespace std::string_literals;
+
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
 	: Poco::Util::Application(argc, argv)
 {
@@ -195,6 +197,13 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_end_date)));
 
 	options.addOption(
+		Poco::Util::Option("replace-DB-content", "R", "replace all DB content for each file. Default is 'false'")
+			.required(false)
+			.repeatable(false)
+			.noArgument()
+			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_replace_DB_content)));
+
+	options.addOption(
 		Poco::Util::Option("form-dir", "", "directory of form files to be processed.")
 			.required(false)
 			.repeatable(false)
@@ -223,14 +232,7 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_log_path)));
 
 	options.addOption(
-		Poco::Util::Option("pause", "", "how many seconds to wait between downloads. Default: 1 second.")
-			.required(false)
-			.repeatable(false)
-			.argument("value")
-			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_pause)));
-
-	options.addOption(
-		Poco::Util::Option("max", "", "Maximun number of forms to download -- mainly for testing. Default of -1 means no limit.")
+		Poco::Util::Option("max", "", "Maximun number of forms to process -- mainly for testing. Default of -1 means no limit.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
@@ -244,7 +246,7 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_log_level)));
 
 	options.addOption(
-		Poco::Util::Option("concurrent", "k", "Maximun number of concurrent downloads. Default of 10.")
+		Poco::Util::Option("concurrent", "k", "Maximun number of concurrent processes. Default of -1 -- system defined.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
@@ -334,15 +336,14 @@ void ExtractEDGAR_XBRLApp::Do_StartUp (void)
 
 void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
 {
-	poco_assert_msg(mode_ == "daily" || mode_ == "quarterly" || mode_ == "ticker-only", ("Mode must be either 'daily','quarterly' or 'ticker-only' ==> " + mode_).c_str());
+	if (begin_date_ != bg::date())
+	{
+		if (end_date_ == bg::date())
+			end_date_ = begin_date_;
+	}
 
-	//	the user may specify multiple stock tickers in a comma delimited list. We need to parse the entries out
-	//	of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
-
-	poco_assert_msg(begin_date_ != bg::date(), "Must specify 'begin-date' for index and/or form downloads.");
-
-	if (end_date_ == bg::date())
-		end_date_ = begin_date_;
+	if (begin_date_ == bg::date() && end_date_ == begin_date_)
+		logger().information("Neither begin date nor end date specified. No date range filtering to be done.");
 
 	//	the user may specify multiple form types in a comma delimited list. We need to parse the entries out
 	//	of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
@@ -353,13 +354,47 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
 		x.parse_string(form_);
 	}
 
+	if (! single_file_to_process_.empty())
+	{
+		poco_assert_msg(fs::exists(single_file_to_process_), ("Can't find file: " + single_file_to_process_.string()).c_str());
+        poco_assert_msg(fs::is_regular_file(single_file_to_process_), ("Path :"s + single_file_to_process_.string() + " is not a regular file.").c_str());
+	}
+
+	if (! local_form_file_directory_.empty())
+	{
+		poco_assert_msg(fs::exists(local_form_file_directory_), ("Can't find EDGAR file directory: " + local_form_file_directory_.string()).c_str());
+        poco_assert_msg(fs::is_directory(local_form_file_directory_), ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
+	}
+
+	BuildFilterList();
 }		// -----  end of method ExtractEDGAR_XBRLApp::Do_CheckArgs  -----
+
+void ExtractEDGAR_XBRLApp::BuildFilterList(void)
+{
+	//	we always ned to do this first.
+
+	filters_.push_back(FileHasXBRL{});
+
+	if (! form_.empty())
+	{
+		filters_.emplace_back(FileHasFormType{form_});
+	}
+
+	if (begin_date_ != bg::date() || end_date_ != bg::date())
+	{
+		filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
+	}
+}
 
 void ExtractEDGAR_XBRLApp::Do_Run (void)
 {
 	// for now, I know this is all we are doing.
 
-	this->LoadSingleFileToDB(single_file_to_process_);
+	if (! single_file_to_process_.empty())
+		this->LoadSingleFileToDB(single_file_to_process_);
+
+	if (! local_form_file_directory_.empty())
+		this->ProcessDirectory();
 
 }		// -----  end of method ExtractEDGAR_XBRLApp::Do_Run  -----
 
@@ -386,9 +421,71 @@ void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 	SEC_Header SEC_data;
 	SEC_data.UseData(file_content);
 	SEC_data.ExtractHeaderFields();
-	auto SEC_fields = SEC_data.GetFields();
+	decltype(auto) SEC_fields = SEC_data.GetFields();
 
-	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data);
+	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
+}
+
+void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
+{
+
+	int files_with_form{0};
+
+    auto test_file([this, &files_with_form](const auto& dir_ent)
+    {
+        if (dir_ent.status().type() == fs::file_type::regular)
+        {
+			logger().debug("Scanning file: " + dir_ent.path().string());
+			std::string file_content(fs::file_size(dir_ent.path()), '\0');
+			std::ifstream input_file{dir_ent.path(), std::ios_base::in | std::ios_base::binary};
+			input_file.read(&file_content[0], file_content.size());
+			input_file.close();
+
+			SEC_Header SEC_data;
+			SEC_data.UseData(file_content);
+			SEC_data.ExtractHeaderFields();
+			decltype(auto) SEC_fields = SEC_data.GetFields();
+
+			bool use_file = this->ApplyFilters(SEC_fields, file_content);
+			if (use_file)
+				LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
+		}
+    });
+
+    std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
+}
+
+bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
+{
+	bool use_file{true};
+	for (const auto& filter : filters_)
+	{
+		use_file = use_file && filter(SEC_fields, file_content);
+		if (! use_file)
+			break;
+	}
+	return use_file;
+}
+
+void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const fs::path& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
+{
+
+	logger().debug("Loading contents from file: " + file_name.string());
+
+	auto document_sections{LocateDocumentSections(file_content)};
+
+	auto labels_document = LocateLabelDocument(document_sections);
+	auto labels_xml = ParseXMLContent(labels_document);
+
+	auto instance_document = LocateInstanceDocument(document_sections);
+	auto instance_xml = ParseXMLContent(instance_document);
+
+	auto filing_data = ExtractFilingData(instance_xml);
+    auto gaap_data = ExtractGAAPFields(instance_xml);
+    auto context_data = ExtractContextDefinitions(instance_xml);
+    auto label_data = ExtractFieldLabels(labels_xml);
+
+	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
 }
 
 void ExtractEDGAR_XBRLApp::Do_Quit (void)
