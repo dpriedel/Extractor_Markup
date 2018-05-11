@@ -75,7 +75,7 @@ void SEC_Header::ExtractHeaderFields (void)
 
 void SEC_Header::ExtractCIK (void)
 {
-	const boost::regex ex{R"***(^\s+CENTRAL INDEX KEY:\s+([0-9]+?))***"};
+	const boost::regex ex{R"***(^\s+CENTRAL INDEX KEY:\s+([0-9]+$))***"};
 
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
