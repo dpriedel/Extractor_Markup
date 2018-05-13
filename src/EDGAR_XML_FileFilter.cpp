@@ -266,18 +266,6 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
         scan_sequence = 3;
     else
         throw std::runtime_error("Unknown link node sequence: " + n1 + ":" + n2 + ":" + n3);
-    std::string first_child_name{links.first_child().name()};
-
-    bool label_is_first;
-    if (first_child_name == label_node_name)
-        label_is_first = true;
-    else
-    {
-        if (first_child_name == loc_node_name)
-            label_is_first = false;
-        else
-            throw std::runtime_error("Unexpected link sequence: " + first_child_name);
-    }
 
     auto handle_stand_alone_label([&result](auto label_links)
     {
