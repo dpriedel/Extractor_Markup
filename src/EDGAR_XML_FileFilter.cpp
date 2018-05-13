@@ -331,9 +331,7 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
 
             result.try_emplace(href.data() + pos + 1, label_links.child_value());
         }
-    }
-
-    );
+    });
 
     for (auto label_links = links.child(label_node_name.c_str()); label_links; label_links = label_links.next_sibling(label_node_name.c_str()))
     {
@@ -404,16 +402,6 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
         default:
             throw std::runtime_error("I don't know what I'm doing here.");
         }
-
-        // pugi::xml_node loc_label{label_is_first ? label_links.next_siblin
-        // if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-        // {
-        //     // we may have a stand-alone link element,
-        //
-        //     handle_stand_alone_label(label_links);
-        // }
-        // else
-        //     handle_label(label_links, loc_label);
     }
 
     return result;
