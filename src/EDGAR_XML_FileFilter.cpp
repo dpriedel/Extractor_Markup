@@ -211,11 +211,11 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
     return result;
 }
 
-EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
+EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
 {
     EE::EDGAR_Labels result;
 
-    auto top_level_node = label_xml.first_child();
+    auto top_level_node = labels_xml.first_child();
 
     // we need to look for possible namespace here.
 
@@ -228,8 +228,9 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
     std::string label_node_name{namespace_prefix + "label"};
     std::string loc_node_name{namespace_prefix + "loc"};
     std::string arc_node_name{namespace_prefix + "labelArc"};
+    std::string label_link_name{namespace_prefix + "labelLink"};
 
-    auto links = top_level_node.child((namespace_prefix + "labelLink").c_str());
+    auto tmp1 = top_level_node.child(label_link_name.c_str());
 
     // sequence of nodes DOES vary between documents.
     // ASSUMPTION: sequence DOES NOT vary within a given document.
@@ -239,7 +240,7 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
     // for a total of 6 sequence permutations.  We need to see what we've got so
     // we know how to scan through them.
 
-    auto a_child = links.first_child();
+    auto a_child = tmp1.first_child();
     std::string n1{a_child.name()};
     a_child = a_child.next_sibling();
     std::string n2{a_child.name()};
@@ -267,132 +268,135 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml)
     else
         throw std::runtime_error("Unknown link node sequence: " + n1 + ":" + n2 + ":" + n3);
 
-    auto handle_stand_alone_label([&result](auto label_links)
+    // some files have separate labelLink sections for each link element set !!
+
+    for (auto links = top_level_node.child(label_link_name.c_str()); links; links = links.next_sibling(label_link_name.c_str()))
     {
-        std::string_view role{label_links.attribute("xlink:role").value()};
-        std::string_view link_name{label_links.attribute("xlink:label").value()};
-        if (auto pos = link_name.find(US_GAAP_PFX); pos  != std::string_view::npos)
+        for (auto label_link = links.child(label_node_name.c_str()); label_link; label_link = label_link.next_sibling(label_node_name.c_str()))
         {
-            link_name.remove_prefix(pos);
-            // if (link_name.find('_', 8) != std::string_view::npos)
-            if (link_name.find('_') != std::string_view::npos)
-                return;
-
-            // we may have multiple entries for each identifier. if so, we want to give preference to the plain 'label' value.
-
-            if (boost::algorithm::ends_with(role, "role/label"))
+            // this routine is based upon physical order of items in the file using our scan sequence identified above.
+            switch(scan_sequence)
             {
-                // if we're here, it means we have a plain 'total' label, so we want this to succeed.
+            case 1:
+            case 5:
+                {
+                    auto loc_label{label_link.next_sibling()};
+                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    {
+                        // we may have a stand-alone link element,
 
-                result.insert_or_assign(link_name.data(), label_links.child_value());
-            }
-            else
-            {
-                // if this fails, it's because we already have an entry so that's OK
+                        HandleStandAloneLabel(result, label_link);
+                    }
+                    else
+                        HandleLabel(result, label_link, loc_label);
+                }
+                break;
 
-                result.try_emplace(link_name.data(), label_links.child_value());
+            case 2:
+                {
+                    auto tmp = label_link.next_sibling();
+                    auto loc_label{tmp.next_sibling()};
+                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    {
+                        // we may have a stand-alone link element,
+
+                        HandleStandAloneLabel(result, label_link);
+                    }
+                    else
+                        HandleLabel(result, label_link, loc_label);
+                }
+                break;
+
+            case 3:
+            case 6:
+                {
+                    auto loc_label{label_link.previous_sibling()};
+                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    {
+                        // we may have a stand-alone link element,
+
+                        HandleStandAloneLabel(result, label_link);
+                    }
+                    else
+                        HandleLabel(result, label_link, loc_label);
+                }
+                break;
+
+            case 4:
+                {
+                    auto tmp = label_link.previous_sibling();
+                    auto loc_label{tmp.previous_sibling()};
+                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    {
+                        // we may have a stand-alone link element,
+
+                        HandleStandAloneLabel(result, label_link);
+                    }
+                    else
+                        HandleLabel(result, label_link, loc_label);
+                }
+                break;
+
+            default:
+                throw std::runtime_error("I don't know what I'm doing here.");
             }
         }
-    });
+    }
+    return result;
+}
 
-    auto handle_label([&result](auto label_links, auto loc_label)
+void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link)
+{
+    std::string_view role{label_link.attribute("xlink:role").value()};
+    std::string_view link_name{label_link.attribute("xlink:label").value()};
+    if (auto pos = link_name.find(US_GAAP_PFX); pos  != std::string_view::npos)
     {
-        std::string_view role{label_links.attribute("xlink:role").value()};
-
-        std::string_view href{loc_label.attribute("xlink:href").value()};
-        if (href.find("us-gaap") == std::string_view::npos)
+        link_name.remove_prefix(pos);
+        // if (link_name.find('_', 8) != std::string_view::npos)
+        if (link_name.find('_') != std::string_view::npos)
             return;
 
-        auto pos = href.find('#');
-        if (pos == std::string_view::npos)
-            throw std::runtime_error("Can't find label start.");
+        // we may have multiple entries for each identifier. if so, we want to give preference to the plain 'label' value.
 
         if (boost::algorithm::ends_with(role, "role/label"))
         {
             // if we're here, it means we have a plain 'total' label, so we want this to succeed.
 
-            result.insert_or_assign(href.data() + pos + 1, label_links.child_value());
+            result.insert_or_assign(link_name.data(), label_link.child_value());
         }
         else
         {
             // if this fails, it's because we already have an entry so that's OK
 
-            result.try_emplace(href.data() + pos + 1, label_links.child_value());
-        }
-    });
-
-    for (auto label_links = links.child(label_node_name.c_str()); label_links; label_links = label_links.next_sibling(label_node_name.c_str()))
-    {
-        // this routine is based upon physical order of items in the file using our scan sequence identified above.
-
-        switch(scan_sequence)
-        {
-        case 1:
-        case 5:
-            {
-                auto loc_label{label_links.next_sibling()};
-                if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                {
-                    // we may have a stand-alone link element,
-
-                    handle_stand_alone_label(label_links);
-                }
-                else
-                    handle_label(label_links, loc_label);
-            }
-            break;
-
-        case 2:
-            {
-                auto tmp = label_links.next_sibling();
-                auto loc_label{tmp.next_sibling()};
-                if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                {
-                    // we may have a stand-alone link element,
-
-                    handle_stand_alone_label(label_links);
-                }
-                else
-                    handle_label(label_links, loc_label);
-            }
-            break;
-
-        case 3:
-        case 6:
-            {
-                auto loc_label{label_links.previous_sibling()};
-                if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                {
-                    // we may have a stand-alone link element,
-
-                    handle_stand_alone_label(label_links);
-                }
-                else
-                    handle_label(label_links, loc_label);
-            }
-            break;
-
-        case 4:
-            {
-                auto tmp = label_links.previous_sibling();
-                auto loc_label{tmp.previous_sibling()};
-                if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                {
-                    // we may have a stand-alone link element,
-
-                    handle_stand_alone_label(label_links);
-                }
-                else
-                    handle_label(label_links, loc_label);
-            }
-            break;
-
-        default:
-            throw std::runtime_error("I don't know what I'm doing here.");
+            result.try_emplace(link_name.data(), label_link.child_value());
         }
     }
+}
 
-    return result;
+void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label)
+{
+    std::string_view role{label_link.attribute("xlink:role").value()};
+
+    std::string_view href{loc_label.attribute("xlink:href").value()};
+    if (href.find("us-gaap") == std::string_view::npos)
+        return;
+
+    auto pos = href.find('#');
+    if (pos == std::string_view::npos)
+        throw std::runtime_error("Can't find label start.");
+
+    if (boost::algorithm::ends_with(role, "role/label"))
+    {
+        // if we're here, it means we have a plain 'total' label, so we want this to succeed.
+
+        result.insert_or_assign(href.data() + pos + 1, label_link.child_value());
+    }
+    else
+    {
+        // if this fails, it's because we already have an entry so that's OK
+
+        result.try_emplace(href.data() + pos + 1, label_link.child_value());
+    }
 }
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)

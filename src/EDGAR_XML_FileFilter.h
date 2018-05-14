@@ -104,7 +104,11 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
 std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
-EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& label_xml);
+EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
+
+void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link);
+
+void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label);
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
