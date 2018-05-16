@@ -33,7 +33,7 @@
 
 #include <iostream>
 
-#include "CollectEDGARApp.h"
+#include "ExtractEDGAR_XBRLApp.h"
 
 int main(int argc, char** argv)
 {
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 	int result = 0;
 	try
 	{
-		CollectEDGARApp myApp;
+		ExtractEDGAR_XBRLApp myApp;
 		myApp.init(argc, argv);
 		result = myApp.run();
 	}

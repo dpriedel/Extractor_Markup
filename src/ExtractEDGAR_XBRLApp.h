@@ -102,11 +102,14 @@ protected:
 	void	Do_Quit (void);
 
 	void BuildFilterList(void);
+	void BuildListOfFilesToProcess(void);
+
 	void LoadSingleFileToDB(const fs::path& input_file_name);
 
 	void ProcessDirectory(void);
+	void LoadFilesFromListToDB(void);
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
-	void LoadFileFromFolderToDB(const fs::path& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
+	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -138,6 +141,7 @@ private:
     void inline store_form_dir(const std::string& name, const std::string& value) { local_form_file_directory_ = value; }
     void inline store_single_file_to_process(const std::string& name, const std::string& value) { single_file_to_process_ = value; }
     void inline store_replace_DB_content(const std::string& name, const std::string& value) { replace_DB_content_ = true; }
+    void inline store_list_of_files_to_process_path(const std::string& name, const std::string& value) { list_of_files_to_process_path_ = value; }
     // void inline store_login_ID(const std::string& name, const std::string& value) { login_ID_ = value; }
 
     void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
@@ -167,6 +171,9 @@ private:
 	fs::path log_file_path_name_;
 	fs::path local_form_file_directory_;
 	fs::path single_file_to_process_;
+    fs::path list_of_files_to_process_path_;
+
+    std::vector<std::string> list_of_files_to_process_;
 
     int max_forms_to_process{-1};     // mainly for testing
     int max_at_a_time_{-1};             // how many concurrent downloads allowed

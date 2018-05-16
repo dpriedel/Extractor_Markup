@@ -37,7 +37,10 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
+#include <parallel/algorithm>
 #include <fstream>
+#include <experimental/iterator>
+#include <string>
 // #include <streambuf>
 
 #include <boost/algorithm/string/classification.hpp>
@@ -55,6 +58,31 @@
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
+
+// utility function
+
+template<typename ...Ts>
+auto NotAllEmpty(Ts ...ts)
+{
+	return ((! ts.empty()) || ...);
+}
+
+// This ctype facet does NOT classify spaces and tabs as whitespace
+// from cppreference example
+
+struct line_only_whitespace : std::ctype<char>
+{
+    static const mask* make_table()
+    {
+        // make a copy of the "C" locale table
+        static std::vector<mask> v(classic_table(), classic_table() + table_size);
+        v['\t'] &= ~space;		// tab will not be classified as whitespace
+        v[' '] &= ~space;		// space will not be classified as whitespace
+        return &v[0];
+    }
+    line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
+};
+
 
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
 	: Poco::Util::Application(argc, argv)
@@ -218,6 +246,13 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
 
 	options.addOption(
+		Poco::Util::Option("list", "l", "path to file with list of files to process.")
+			.required(false)
+			.repeatable(false)
+			.argument("value")
+			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_list_of_files_to_process_path)));
+
+	options.addOption(
 		Poco::Util::Option("form", "", "name of form type[s] we are processing. Default is '10-Q'.")
 			.required(false)
 			.repeatable(false)
@@ -366,8 +401,39 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
         poco_assert_msg(fs::is_directory(local_form_file_directory_), ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
 	}
 
+	if (! list_of_files_to_process_path_.empty())
+	{
+		poco_assert_msg(fs::exists(list_of_files_to_process_path_), ("Can't find file: " + list_of_files_to_process_path_.string()).c_str());
+        poco_assert_msg(fs::is_regular_file(list_of_files_to_process_path_), ("Path :"s + list_of_files_to_process_path_.string()
+			+ " is not a regular file.").c_str());
+		BuildListOfFilesToProcess();
+	}
+
+	poco_assert_msg(NotAllEmpty(single_file_to_process_, local_form_file_directory_, list_of_files_to_process_), "No files to process found.");
+
 	BuildFilterList();
 }		// -----  end of method ExtractEDGAR_XBRLApp::Do_CheckArgs  -----
+
+void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess(void)
+{
+
+	std::ifstream input_file{list_of_files_to_process_path_};
+
+    // Tell the stream to use our facet, so only '\n' is treated as a space.
+
+    input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
+
+	std::istream_iterator<std::string> itor{input_file};
+    std::istream_iterator<std::string> itor_end;
+	std::copy(
+    	itor,
+    	itor_end,
+		std::back_inserter(list_of_files_to_process_)
+	);
+	input_file.close();
+
+	logger().debug("Found: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
+}
 
 void ExtractEDGAR_XBRLApp::BuildFilterList(void)
 {
@@ -392,6 +458,9 @@ void ExtractEDGAR_XBRLApp::Do_Run (void)
 
 	if (! single_file_to_process_.empty())
 		this->LoadSingleFileToDB(single_file_to_process_);
+
+	if (! list_of_files_to_process_.empty())
+		this->LoadFilesFromListToDB();
 
 	if (! local_form_file_directory_.empty())
 		this->ProcessDirectory();
@@ -426,6 +495,33 @@ void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
 }
 
+void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
+{
+    auto process_file([this](const auto& file_name)
+    {
+        if (fs::is_regular_file(file_name))
+        {
+			logger().debug("Scanning file: " + file_name);
+			std::string file_content(fs::file_size(file_name), '\0');
+			std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+			input_file.read(&file_content[0], file_content.size());
+			input_file.close();
+
+			SEC_Header SEC_data;
+			SEC_data.UseData(file_content);
+			SEC_data.ExtractHeaderFields();
+			decltype(auto) SEC_fields = SEC_data.GetFields();
+
+			bool use_file = this->ApplyFilters(SEC_fields, file_content);
+			if (use_file)
+				LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+		}
+    });
+
+    __gnu_parallel::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
+
+}
+
 void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 {
 
@@ -448,7 +544,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 
 			bool use_file = this->ApplyFilters(SEC_fields, file_content);
 			if (use_file)
-				LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
+				LoadFileFromFolderToDB(dir_ent.path().string(), SEC_fields, file_content);
 		}
     });
 
@@ -467,10 +563,10 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
 	return use_file;
 }
 
-void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const fs::path& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
+void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
 {
 
-	logger().debug("Loading contents from file: " + file_name.string());
+	logger().debug("Loading contents from file: " + file_name);
 
 	auto document_sections{LocateDocumentSections(file_content)};
 
