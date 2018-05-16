@@ -3,6 +3,8 @@ ExtractDebug*/*
 ProcessDebug*/*
 ExtractRelease*/*
 ProcessRelease*/*
+Debug*/*
+Release*/*
 
 #	python compiled files
 *pyc
@@ -13,6 +15,7 @@ ProcessRelease*/*
 
 XBRL_Extract
 ProcessXBRL_Extract
+ExtractEDGAR_XBRL
 
 #	log file
 
@@ -22,6 +25,7 @@ ProcessXBRL_Extract
 # skip test files for now
 
 test_files
+test_directory_list.*
 
 #	any stray library files
 
