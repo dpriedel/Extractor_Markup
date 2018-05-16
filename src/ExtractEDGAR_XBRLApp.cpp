@@ -519,7 +519,6 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
     });
 
     __gnu_parallel::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
-
 }
 
 void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
@@ -544,7 +543,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 
 			bool use_file = this->ApplyFilters(SEC_fields, file_content);
 			if (use_file)
-				LoadFileFromFolderToDB(dir_ent.path().string(), SEC_fields, file_content);
+				LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
 		}
     });
 
@@ -566,7 +565,7 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
 void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
 {
 
-	logger().debug("Loading contents from file: " + file_name);
+	logger().debug("Loading contents from file: " + file_name.string());
 
 	auto document_sections{LocateDocumentSections(file_content)};
 
