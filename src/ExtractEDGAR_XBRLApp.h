@@ -108,7 +108,7 @@ protected:
 
 	void ProcessDirectory(void);
 	void LoadFilesFromListToDB(void);
-	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
+	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed);
 	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
 
 		// ====================  DATA MEMBERS  =======================================
@@ -147,7 +147,7 @@ private:
     void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
     void inline store_form(const std::string& name, const std::string& value) { form_ = value; }
     void inline store_log_path(const std::string& name, const std::string& value) { log_file_path_name_ = value; }
-    void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process = std::stoi(value); }
+    void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process_ = std::stoi(value); }
     void inline store_concurrency_limit(const std::string& name, const std::string& value) { max_at_a_time_ = std::stoi(value); }
 
 		// ====================  DATA MEMBERS  =======================================
@@ -175,7 +175,7 @@ private:
 
     std::vector<std::string> list_of_files_to_process_;
 
-    int max_forms_to_process{-1};     // mainly for testing
+    int max_forms_to_process_{-1};     // mainly for testing
     int max_at_a_time_{-1};             // how many concurrent downloads allowed
 
 	bool replace_DB_content_{false};

@@ -37,6 +37,7 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
+#include <atomic>
 #include <parallel/algorithm>
 #include <fstream>
 #include <experimental/iterator>
@@ -497,7 +498,9 @@ void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 
 void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
 {
-    auto process_file([this](const auto& file_name)
+    std::atomic<int> forms_processed{0};
+
+    auto process_file([this, &forms_processed](const auto& file_name)
     {
         if (fs::is_regular_file(file_name))
         {
@@ -512,7 +515,7 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
 			SEC_data.ExtractHeaderFields();
 			decltype(auto) SEC_fields = SEC_data.GetFields();
 
-			bool use_file = this->ApplyFilters(SEC_fields, file_content);
+			bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
 			if (use_file)
 				LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
 		}
@@ -523,10 +526,11 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
 
 void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 {
+    std::atomic<int> forms_processed{0};
 
 	int files_with_form{0};
 
-    auto test_file([this, &files_with_form](const auto& dir_ent)
+    auto test_file([this, &files_with_form, &forms_processed](const auto& dir_ent)
     {
         if (dir_ent.status().type() == fs::file_type::regular)
         {
@@ -541,7 +545,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 			SEC_data.ExtractHeaderFields();
 			decltype(auto) SEC_fields = SEC_data.GetFields();
 
-			bool use_file = this->ApplyFilters(SEC_fields, file_content);
+			bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
 			if (use_file)
 				LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
 		}
@@ -550,7 +554,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
     std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
 }
 
-bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
+bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed)
 {
 	bool use_file{true};
 	for (const auto& filter : filters_)
@@ -559,13 +563,19 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
 		if (! use_file)
 			break;
 	}
+	if (use_file)
+	{
+	    auto x = forms_processed.fetch_add(1);
+	    if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+	        throw std::range_error("Exceeded file limit: " + std::to_string(max_forms_to_process_) + '\n');
+	}
 	return use_file;
 }
 
 void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content)
 {
 
-	logger().debug("Loading contents from file: " + file_name.string());
+	logger().debug("Loading contents from file: " + file_name);
 
 	auto document_sections{LocateDocumentSections(file_content)};
 
