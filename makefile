@@ -55,7 +55,8 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=Debug
 
-CFG_LIB := -lpthread -lstdc++fs -L$(BOOSTDIR)/lib \
+CFG_LIB := -lpthread -lstdc++fs -lgomp \
+   		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-d -lboost_iostreams-mt-d -lboost_regex-mt-d \
 		-L/usr/local/lib -lPocoFoundationd -lPocoUtild \
 		-L/usr/lib \
@@ -68,7 +69,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -fopenmp -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -81,7 +82,8 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-CFG_LIB := -lpthread -lstdc++fs -L$(BOOSTDIR)/lib \
+CFG_LIB := -lpthread -lstdc++fs -lgomp \
+   		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt -lboost_iostreams-mt -lboost_regex-mt \
 		-L/usr/local/lib -lPocoFoundation -lPocoUtil \
 		-L/usr/lib \
@@ -97,7 +99,7 @@ DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fopenmp -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
