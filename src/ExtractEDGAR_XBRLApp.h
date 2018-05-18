@@ -111,7 +111,7 @@ protected:
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed);
 	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
 
-	void LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
+	bool LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
 
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
