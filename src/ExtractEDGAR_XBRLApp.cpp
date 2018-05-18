@@ -506,7 +506,11 @@ void ExtractEDGAR_XBRLApp::Do_Run (void)
 		if (max_at_a_time_ < 1)
 			this->LoadFilesFromListToDB();
 		else
-			auto[x, y, z] = this->LoadFilesFromListToDBConcurrently();
+		{
+			auto[succeesses, skips, errors] = this->LoadFilesFromListToDBConcurrently();
+			poco_information(logger(), "F: Loaded to DB: " + std::to_string(succeesses) +
+				". Skipped: " + std::to_string(skips) + ". Errors: " + std::to_string(errors));
+		}
 	}
 
 	if (! local_form_file_directory_.empty())
@@ -667,7 +671,7 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::Validate(const Poco::Util::Option&
         throw Poco::Util::OptionException("Log level must be: 'none|error|information|debug'");
 }
 
-void ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
 	logger().debug("Scanning file: " + file_name);
 	std::string file_content(fs::file_size(file_name), '\0');
@@ -683,6 +687,8 @@ void ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atom
 	bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
 	if (use_file)
 		LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+
+	return use_file;
 }
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently(void)
@@ -711,8 +717,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     std::exception_ptr ep = nullptr;
 
-    int success_counter = 0;
-    int error_counter = 0;
+    int success_counter{0};
+    int error_counter{0};
+	int skipped_counter{0};
 
     std::atomic<int> forms_processed{0};
 
@@ -720,20 +727,23 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
     {
         // keep track of our async processes here.
 
-        std::vector<std::future<void>> tasks;
+        std::vector<std::future<bool>> tasks;
         tasks.reserve(max_at_a_time_);
 
 		auto do_work([this, &forms_processed](int i)
-			{
-				this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
-			}
-		);
+		{
+			return this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
+		});
+
         for ( ; tasks.size() < max_at_a_time_ && i < list_of_files_to_process_.size(); ++i)
         {
             // queue up our tasks up to the limit.
 
+			// for some strange reason, this does not compile (but it should)
+			//tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
+
+			// so, use this instead.
             tasks.emplace_back(std::async(std::launch::async, do_work, i));
-            // std::cout << "i: " << i << " j: " << j << '\n';
         }
 
         // now, let's wait till they're all done
@@ -745,8 +755,11 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             // std::cout << "k: " << k << '\n';
             try
             {
-                tasks[k].get();
-                ++success_counter;
+                auto result = tasks[k].get();
+				if (result)
+                	++success_counter;
+				else
+					++skipped_counter;
             }
             catch (std::system_error& e)
             {
@@ -800,13 +813,14 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         std::rethrow_exception(ep);
 
     if (ExtractEDGAR_XBRLApp::had_signal_)
-        throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated.");
+        throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated after loading: "
+			+ std::to_string(success_counter) + " files.");
 
     // if we return successfully, let's just restore the default
 
     sigaction(SIGINT, &sa_old, 0);
 
-    return std::tuple(list_of_files_to_process_.size(), success_counter, error_counter);
+    return std::tuple(success_counter, skipped_counter, error_counter);
 
 }		// -----  end of method HTTPS_Downloader::DownloadFilesConcurrently  -----
 
