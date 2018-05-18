@@ -41,8 +41,8 @@
 
 // #include <fstream>
 #include <functional>
+#include <tuple>
 #include <vector>
-
 #include <experimental/filesystem>
 
 // #include <boost/filesystem.hpp>
@@ -111,9 +111,15 @@ protected:
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed);
 	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
 
+	void LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
+
+	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
+
 		// ====================  DATA MEMBERS  =======================================
 
 private:
+
+    static void HandleSignal(int signal);
 
 	struct comma_list_parser
 	{
@@ -180,6 +186,8 @@ private:
 
 	bool replace_DB_content_{false};
 	bool help_requested_{false};
+
+    static bool had_signal_;
 
 }; // -----  end of class ExtractEDGAR_XBRLApp  -----
 

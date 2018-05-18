@@ -37,8 +37,19 @@
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
+#include <cerrno>
+#include <csignal>
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <exception>
+
+#include <chrono>
+#include <future>
+#include <thread>
+#include <system_error>
 #include <atomic>
-#include <parallel/algorithm>
+// #include <parallel/algorithm>
 #include <fstream>
 #include <experimental/iterator>
 #include <string>
@@ -83,6 +94,36 @@ struct line_only_whitespace : std::ctype<char>
     }
     line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
 };
+
+bool ExtractEDGAR_XBRLApp::had_signal_ = false;
+
+// code from "The C++ Programming Language" 4th Edition. p. 1243.
+
+template<typename T>
+int wait_for_any(std::vector<std::future<T>>& vf, std::chrono::steady_clock::duration d)
+// return index of ready future
+// if no future is ready, wait for d before trying again
+{
+    while(true)
+    {
+        for (int i=0; i!=vf.size(); ++i)
+        {
+            if (!vf[i].valid()) continue;
+            switch (vf[i].wait_for(std::chrono::seconds{0}))
+            {
+            case std::future_status::ready:
+                    return i;
+
+            case std::future_status::timeout:
+                break;
+
+            case std::future_status::deferred:
+                throw std::runtime_error("wait_for_all(): deferred future");
+            }
+        }
+    std::this_thread::sleep_for(d);
+    }
+}
 
 
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
@@ -247,7 +288,7 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
 
 	options.addOption(
-		Poco::Util::Option("list", "l", "path to file with list of files to process.")
+		Poco::Util::Option("list", "", "path to file with list of files to process.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
@@ -461,7 +502,12 @@ void ExtractEDGAR_XBRLApp::Do_Run (void)
 		this->LoadSingleFileToDB(single_file_to_process_);
 
 	if (! list_of_files_to_process_.empty())
-		this->LoadFilesFromListToDB();
+	{
+		if (max_at_a_time_ < 1)
+			this->LoadFilesFromListToDB();
+		else
+			auto[x, y, z] = this->LoadFilesFromListToDBConcurrently();
+	}
 
 	if (! local_form_file_directory_.empty())
 		this->ProcessDirectory();
@@ -504,26 +550,36 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
     {
         if (fs::is_regular_file(file_name))
         {
-			logger().debug("Scanning file: " + file_name);
-			std::string file_content(fs::file_size(file_name), '\0');
-			std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
-			input_file.read(&file_content[0], file_content.size());
-			input_file.close();
+			try
+			{
+				logger().debug("Scanning file: " + file_name);
+				std::string file_content(fs::file_size(file_name), '\0');
+				std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+				input_file.read(&file_content[0], file_content.size());
+				input_file.close();
 
-			SEC_Header SEC_data;
-			SEC_data.UseData(file_content);
-			SEC_data.ExtractHeaderFields();
-			decltype(auto) SEC_fields = SEC_data.GetFields();
+				SEC_Header SEC_data;
+				SEC_data.UseData(file_content);
+				SEC_data.ExtractHeaderFields();
+				decltype(auto) SEC_fields = SEC_data.GetFields();
 
-			bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-			if (use_file)
-				LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+				bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+				if (use_file)
+					LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+			}
+			catch(std::range_error& e)
+			{
+				throw;
+			}
+			catch(std::exception& e)
+			{
+				std::cout << "Problem processing file: " << file_name << ". " << e.what() << '\n';
+			}
 		}
     });
 
-    __gnu_parallel::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
+    std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
 }
-
 void ExtractEDGAR_XBRLApp::ProcessDirectory(void)
 {
     std::atomic<int> forms_processed{0};
@@ -609,4 +665,159 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::Validate(const Poco::Util::Option&
 {
     if (value != "error" && value != "none" && value != "information" && value != "debug")
         throw Poco::Util::OptionException("Log level must be: 'none|error|information|debug'");
+}
+
+void ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+{
+	logger().debug("Scanning file: " + file_name);
+	std::string file_content(fs::file_size(file_name), '\0');
+	std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+	input_file.read(&file_content[0], file_content.size());
+	input_file.close();
+
+	SEC_Header SEC_data;
+	SEC_data.UseData(file_content);
+	SEC_data.ExtractHeaderFields();
+	decltype(auto) SEC_fields = SEC_data.GetFields();
+
+	bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+	if (use_file)
+		LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+}
+
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently(void)
+
+{
+    // since this code can potentially run for hours on end (depending on database throughput)
+    // it's a good idea to provide a way to break into this processing and shut it down cleanly.
+    // so, a little bit of C...(taken from "Advanced Unix Programming" by Warren W. Gay, p. 317)
+
+    struct sigaction sa_old;
+    struct sigaction sa_new;
+
+    sa_new.sa_handler = ExtractEDGAR_XBRLApp::HandleSignal;
+    sigemptyset(&sa_new.sa_mask);
+    sa_new.sa_flags = 0;
+    sigaction(SIGINT, &sa_new, &sa_old);
+
+    // make exception handling a little bit better (I think).
+    // If some kind of system error occurs, it may affect more than 1
+    // our our tasks so let's check each of them and log any exceptions
+    // which occur. We'll then rethrow our first exception.
+
+    // ok, get ready to handle keyboard interrupts, if any.
+
+    ExtractEDGAR_XBRLApp::had_signal_ = false;
+
+    std::exception_ptr ep = nullptr;
+
+    int success_counter = 0;
+    int error_counter = 0;
+
+    std::atomic<int> forms_processed{0};
+
+    for (int i = 0; i < list_of_files_to_process_.size(); )
+    {
+        // keep track of our async processes here.
+
+        std::vector<std::future<void>> tasks;
+        tasks.reserve(max_at_a_time_);
+
+		auto do_work([this, &forms_processed](int i)
+			{
+				this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
+			}
+		);
+        for ( ; tasks.size() < max_at_a_time_ && i < list_of_files_to_process_.size(); ++i)
+        {
+            // queue up our tasks up to the limit.
+
+            tasks.emplace_back(std::async(std::launch::async, do_work, i));
+            // std::cout << "i: " << i << " j: " << j << '\n';
+        }
+
+        // now, let's wait till they're all done
+        // and then we'll do the next bunch.
+
+        for (int count = tasks.size(); count; --count)
+        {
+            int k = wait_for_any(tasks, std::chrono::microseconds{100});
+            // std::cout << "k: " << k << '\n';
+            try
+            {
+                tasks[k].get();
+                ++success_counter;
+            }
+            catch (std::system_error& e)
+            {
+                // any system problems, we eventually abort, but only after finishing work in process.
+
+                poco_error(logger(), e.what());
+                auto ec = e.code();
+                poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
+                    + ec.message());
+                ++error_counter;
+
+                // OK, let's remember our first time here.
+
+                if (! ep)
+                    ep = std::current_exception();
+                continue;
+            }
+            catch (std::exception& e)
+            {
+                // any problems, we'll document them and continue.
+
+                poco_error(logger(), e.what());
+                ++error_counter;
+
+                // OK, let's remember our first time here.
+
+                if (! ep)
+                    ep = std::current_exception();
+                continue;
+            }
+            catch (...)
+            {
+                // any problems, we'll document them and continue.
+
+                poco_error(logger(), "Unknown problem with an async download process");
+                ++error_counter;
+
+                // OK, let's remember our first time here.
+
+                if (! ep)
+                    ep = std::current_exception();
+                continue;
+            }
+        }
+
+        if (ep || ExtractEDGAR_XBRLApp::had_signal_)
+            break;
+    }
+
+    if (ep)
+        std::rethrow_exception(ep);
+
+    if (ExtractEDGAR_XBRLApp::had_signal_)
+        throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated.");
+
+    // if we return successfully, let's just restore the default
+
+    sigaction(SIGINT, &sa_old, 0);
+
+    return std::tuple(list_of_files_to_process_.size(), success_counter, error_counter);
+
+}		// -----  end of method HTTPS_Downloader::DownloadFilesConcurrently  -----
+
+
+void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
+
+{
+    std::signal(SIGINT, ExtractEDGAR_XBRLApp::HandleSignal);
+
+    // only thing we need to do
+
+    ExtractEDGAR_XBRLApp::had_signal_ = true;
+
 }
