@@ -48,7 +48,6 @@
 #include <future>
 #include <thread>
 #include <system_error>
-#include <atomic>
 // #include <parallel/algorithm>
 #include <fstream>
 #include <experimental/iterator>
@@ -295,11 +294,25 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_list_of_files_to_process_path)));
 
 	options.addOption(
-		Poco::Util::Option("form", "", "name of form type[s] we are processing. Default is '10-Q'.")
+		Poco::Util::Option("form", "", "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
 			.required(false)
 			.repeatable(false)
 			.argument("value")
 			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_form)));
+
+	options.addOption(
+		Poco::Util::Option("CIK", "", "Zero-padded-on-left 10 digit CIK[s] we are processing. <CIK>,<CIK> for range of CIKS. Default is all.")
+			.required(false)
+			.repeatable(false)
+			.argument("value")
+			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_CIK)));
+
+	options.addOption(
+		Poco::Util::Option("SIC", "", "SIC we are processing. May be comma-delimited list. Default is all.")
+			.required(false)
+			.repeatable(false)
+			.argument("value")
+			.callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_SIC)));
 
 	options.addOption(
 		Poco::Util::Option("log-path", "", "path name for log file.")
@@ -427,8 +440,18 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs (void)
 
 	if (! form_.empty())
 	{
-		comma_list_parser x(form_list_, ",");
-		x.parse_string(form_);
+		form_list_ = split_string(form_, ',');
+	}
+
+	if (! CIK_.empty())
+	{
+		CIK_list_ = split_string(CIK_, ',');
+		poco_assert_msg(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }), "All CIKs must be 10 digits in length.");
+	}
+
+	if (! SIC_.empty())
+	{
+		SIC_list_ = split_string(SIC_, ',');
 	}
 
 	if (! single_file_to_process_.empty())
@@ -485,12 +508,22 @@ void ExtractEDGAR_XBRLApp::BuildFilterList(void)
 
 	if (! form_.empty())
 	{
-		filters_.emplace_back(FileHasFormType{form_});
+		filters_.emplace_back(FileHasFormType{form_list_});
 	}
 
 	if (begin_date_ != bg::date() || end_date_ != bg::date())
 	{
 		filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
+	}
+
+	if (! CIK_.empty())
+	{
+		filters_.emplace_back(FileHasCIK{CIK_list_});
+	}
+
+	if (! SIC_.empty())
+	{
+		filters_.emplace_back(FileHasSIC{SIC_list_});
 	}
 }
 
@@ -740,7 +773,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             // queue up our tasks up to the limit.
 
 			// for some strange reason, this does not compile (but it should)
-			//tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
+			// tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
 
 			// so, use this instead.
             tasks.emplace_back(std::async(std::launch::async, do_work, i));

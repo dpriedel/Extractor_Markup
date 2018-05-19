@@ -56,6 +56,26 @@ namespace Poco
     class Logger;
 };
 
+// function to split a string on a delimiter and return a vector of string-views
+
+inline std::vector<std::string_view> split_string(const std::string_view& string_data, char delim)
+{
+    std::vector<std::string_view> results;
+	for (auto it = 0; it != string_data.npos; ++it)
+	{
+		auto pos = string_data.find(delim, it);
+        if (pos != string_data.npos)
+    		results.emplace_back(string_data.substr(it, pos - it));
+        else
+        {
+    		results.emplace_back(string_data.substr(it));
+            break;
+        }
+		it = pos;
+	}
+    return results;
+}
+
 // let's use some function objects for our filters.
 
 struct FileHasXBRL
@@ -65,12 +85,32 @@ struct FileHasXBRL
 
 struct FileHasFormType
 {
-    FileHasFormType(std::string_view form_type)
-        : form_type_{form_type} {}
+    FileHasFormType(const std::vector<std::string_view>& form_list)
+        : form_list_{form_list} {}
 
     bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
 
-    std::string form_type_;
+    const std::vector<std::string_view>& form_list_;
+};
+
+struct FileHasCIK
+{
+    FileHasCIK(const std::vector<std::string_view>& CIK_list)
+        : CIK_list_{CIK_list} {}
+
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+
+    const std::vector<std::string_view>& CIK_list_;
+};
+
+struct FileHasSIC
+{
+    FileHasSIC(const std::vector<std::string_view>& SIC_list)
+        : SIC_list_{SIC_list} {}
+
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+
+    const std::vector<std::string_view>& SIC_list_;
 };
 
 struct FileIsWithinDateRange

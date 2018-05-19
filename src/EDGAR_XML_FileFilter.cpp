@@ -36,6 +36,7 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include <algorithm>
 #include <iostream>
 
 #include <boost/format.hpp>
@@ -78,7 +79,35 @@ bool FileHasXBRL::operator()(const EE::SEC_Header_fields&, std::string_view file
 
 bool FileHasFormType::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
 {
-    if (header_fields.at("form_type") == form_type_)
+    if (std::find(std::begin(form_list_), std::end(form_list_), header_fields.at("form_type")) != std::end(form_list_))
+        return true;
+    else
+        return false;
+}
+
+bool FileHasCIK::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+{
+    // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
+
+    if (CIK_list_.size() == 2)
+    {
+        if (CIK_list_[0] <= header_fields.at("cik") && header_fields.at("cik") <= CIK_list_[1])
+        return true;
+    else
+        return false;
+    }
+    else
+    {
+        if (std::find(std::begin(CIK_list_), std::end(CIK_list_), header_fields.at("cik")) != std::end(CIK_list_))
+            return true;
+        else
+            return false;
+    }
+}
+
+bool FileHasSIC::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+{
+    if (std::find(std::begin(SIC_list_), std::end(SIC_list_), header_fields.at("sic")) != std::end(SIC_list_))
         return true;
     else
         return false;

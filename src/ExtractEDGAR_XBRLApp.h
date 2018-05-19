@@ -40,6 +40,7 @@
 #define EXTRACTEDGAR_XBRLAPP_H_
 
 // #include <fstream>
+#include <atomic>
 #include <functional>
 #include <tuple>
 #include <vector>
@@ -110,10 +111,9 @@ protected:
 	void LoadFilesFromListToDB(void);
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed);
 	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
+	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
 	bool LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
-
-	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -152,6 +152,8 @@ private:
 
     void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
     void inline store_form(const std::string& name, const std::string& value) { form_ = value; }
+    void inline store_CIK(const std::string& name, const std::string& value) { CIK_ = value; }
+    void inline store_SIC(const std::string& name, const std::string& value) { SIC_ = value; }
     void inline store_log_path(const std::string& name, const std::string& value) { log_file_path_name_ = value; }
     void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process_ = std::stoi(value); }
     void inline store_concurrency_limit(const std::string& name, const std::string& value) { max_at_a_time_ = std::stoi(value); }
@@ -168,9 +170,13 @@ private:
 
 	std::string mode_{"daily"};
 	std::string form_{"10-Q"};
+	std::string CIK_;
+	std::string SIC_;
     std::string logging_level_{"information"};
 
-	std::vector<std::string> form_list_;
+	std::vector<std::string_view> form_list_;
+	std::vector<std::string_view> CIK_list_;
+	std::vector<std::string_view> SIC_list_;
 
 	FilterList filters_;
 
