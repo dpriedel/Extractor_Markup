@@ -388,13 +388,27 @@ int  ExtractEDGAR_XBRLApp::main(const ArgVec& args)
 {
 	if (!help_requested_)
 	{
+#ifdef _DEBUG
+		Do_Test();
+#else
         Do_Main();
+#endif
 	}
 	return Application::EXIT_OK;
 }
 
-void ExtractEDGAR_XBRLApp::Do_Main(void)
+void ExtractEDGAR_XBRLApp::Do_Test(void)
+{
+	// we let exceptions propagate out so testing framework
+	// can see them.
 
+	Do_StartUp();
+    Do_CheckArgs();
+    Do_Run();
+    Do_Quit();
+}
+
+void ExtractEDGAR_XBRLApp::Do_Main(void)
 {
 	Do_StartUp();
     try
@@ -808,6 +822,17 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
                 if (! ep)
                     ep = std::current_exception();
+                continue;
+            }
+            catch (ExtractException& e)
+            {
+                // any problems, we'll document them and continue.
+
+                poco_error(logger(), e.what());
+                ++error_counter;
+
+                // we ignore these...
+                
                 continue;
             }
             catch (std::exception& e)

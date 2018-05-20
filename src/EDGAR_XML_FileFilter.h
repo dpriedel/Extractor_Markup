@@ -39,6 +39,7 @@
 #ifndef  _EDGAR_XML_FILTER_
 #define  _EDGAR_XML_FILTER_
 
+#include <exception>
 #include <experimental/string_view>
 #include <vector>
 #include <map>
@@ -54,6 +55,17 @@ namespace bg = boost::gregorian;
 namespace Poco
 {
     class Logger;
+};
+
+// so we can recognize our errors if we want to do something special
+
+class ExtractException : public std::runtime_error
+{
+public:
+
+    explicit ExtractException(const char* what);
+
+    explicit ExtractException(const std::string& what);
 };
 
 // function to split a string on a delimiter and return a vector of string-views

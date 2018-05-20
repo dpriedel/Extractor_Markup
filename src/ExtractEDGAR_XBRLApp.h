@@ -97,6 +97,7 @@ protected:
 	void printProperties(const std::string& base);
 
 	void	Do_Main (void);
+    void    Do_Test (void);          //  same as Do_Main but let exceptsions pass thru.
 	void	Do_StartUp (void);
 	void	Do_CheckArgs (void);
 	void	Do_Run (void);

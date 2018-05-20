@@ -67,6 +67,20 @@ const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
     "October", "November", "December"};
 
+
+
+ExtractException::ExtractException(const char* text)
+    : std::runtime_error(text)
+{
+
+}
+
+ExtractException::ExtractException(const std::string& text)
+    : std::runtime_error(text)
+{
+
+}
+
 bool FileHasXBRL::operator()(const EE::SEC_Header_fields&, std::string_view file_content)
 {
     if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
@@ -198,7 +212,7 @@ std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end
 //         {
 //             auto pos_end = file_content.find(section_end, pos_start + start_len);
 //             if (pos_end == file_content.npos)
-//                 throw std::runtime_error("Can't find document end at: " + std::to_string(pos_start));
+//                 throw ExtractException("Can't find document end at: " + std::to_string(pos_start));
 //
 //     		result.emplace_back(file_content.substr(pos_start, pos_end - pos_start + end_len));
 //
@@ -295,7 +309,7 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
     else if (n2 == loc_node_name && n3 == label_node_name)
         scan_sequence = 3;
     else
-        throw std::runtime_error("Unknown link node sequence: " + n1 + ":" + n2 + ":" + n3);
+        throw ExtractException("Unknown link node sequence: " + n1 + ":" + n2 + ":" + n3);
 
     // some files have separate labelLink sections for each link element set !!
 
@@ -367,7 +381,7 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
                 break;
 
             default:
-                throw std::runtime_error("I don't know what I'm doing here.");
+                throw ExtractException("I don't know what I'm doing here.");
             }
         }
     }
@@ -412,7 +426,7 @@ void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_
 
     auto pos = href.find('#');
     if (pos == std::string_view::npos)
-        throw std::runtime_error("Can't find label start.");
+        throw ExtractException("Can't find label start.");
 
     if (boost::algorithm::ends_with(role, "role/label"))
     {
@@ -450,7 +464,7 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
         if (test_node)
             namespace_prefix = "xbrli:";
         else
-            throw std::runtime_error("Can't find 'context' section in file.");
+            throw ExtractException("Can't find 'context' section in file.");
     }
 
     std::string node_name{namespace_prefix + "context"};
@@ -514,7 +528,7 @@ std::string_view FindFileName(std::string_view document)
         return file_name;
     }
     else
-        throw std::runtime_error("Can't find file name in document.\n");
+        throw ExtractException("Can't find file name in document.\n");
 }
 
 std::string_view FindFileType(std::string_view document)
@@ -527,7 +541,7 @@ std::string_view FindFileType(std::string_view document)
         return file_type;
     }
     else
-        throw std::runtime_error("Can't find file type in document.\n");
+        throw ExtractException("Can't find file type in document.\n");
 }
 
 std::string_view TrimExcessXML(std::string_view document)
@@ -539,7 +553,7 @@ std::string_view TrimExcessXML(std::string_view document)
     if (xbrl_end_loc != std::string_view::npos)
         document.remove_suffix(document.length() - xbrl_end_loc);
     else
-        throw std::runtime_error("Can't find end of XBLR in document.\n");
+        throw ExtractException("Can't find end of XBLR in document.\n");
 
     return document;
 }
@@ -550,7 +564,7 @@ pugi::xml_document ParseXMLContent(std::string_view document)
     auto result = doc.load_buffer(document.data(), document.size());
     if (! result)
     {
-        throw std::runtime_error{"Error description: "s + result.description() + "\nError offset: "s + std::to_string(result.offset) +"\n" };
+        throw ExtractException{"Error description: "s + result.description() + "\nError offset: "s + std::to_string(result.offset) +"\n" };
     }
 
     return doc;
