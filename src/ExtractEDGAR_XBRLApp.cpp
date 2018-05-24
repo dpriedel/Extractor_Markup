@@ -99,13 +99,13 @@ bool ExtractEDGAR_XBRLApp::had_signal_ = false;
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
 
 template<typename T>
-int wait_for_any(std::vector<std::future<T>>& vf, std::chrono::steady_clock::duration d)
+int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono::steady_clock::duration d)
 // return index of ready future
 // if no future is ready, wait for d before trying again
 {
     while(true)
     {
-        for (int i=0; i!=vf.size(); ++i)
+        for (int i=continue_here; i!=vf.size(); ++i)
         {
             if (!vf[i].valid()) continue;
             switch (vf[i].wait_for(std::chrono::seconds{0}))
@@ -124,6 +124,19 @@ int wait_for_any(std::vector<std::future<T>>& vf, std::chrono::steady_clock::dur
     }
 }
 
+template<typename T>
+ std::vector<T> wait_for_all(std::vector<std::future<T>>& vf, int skip_this)
+ {
+	int i{0};
+	std::vector<T> res;
+	for (auto& fu : vf)
+	{
+		if (i != skip_this)
+			res.push_back(fu.get());
+		++i;
+	}
+	return res;
+ }
 
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
 	: Poco::Util::Application(argc, argv)
@@ -420,6 +433,15 @@ void ExtractEDGAR_XBRLApp::Do_Main(void)
 	{
 		std::cout << e.displayText() << '\n';
 	}
+    catch (std::system_error& e)
+    {
+        // any system problems, we eventually abort, but only after finishing work in process.
+
+        poco_error(logger(), e.what());
+        auto ec = e.code();
+        poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
+            + ec.message());
+	}
     catch (std::exception& e)
     {
         std::cout << "Problem collecting files: " << e.what() << '\n';
@@ -590,7 +612,7 @@ void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 	SEC_data.ExtractHeaderFields();
 	decltype(auto) SEC_fields = SEC_data.GetFields();
 
-	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
+	LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
 }
 
 void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB(void)
@@ -734,12 +756,14 @@ bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atom
 	bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
 	if (use_file)
 		LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+	else
+		logger().debug("Skipping file: " + file_name);
 
 	return use_file;
 }
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently(void)
 
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently(void)
 {
     // since this code can potentially run for hours on end (depending on database throughput)
     // it's a good idea to provide a way to break into this processing and shut it down cleanly.
@@ -760,9 +784,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    ExtractEDGAR_XBRLApp::had_signal_ = false;
+    ExtractEDGAR_XBRLApp::had_signal_= false;
 
-    std::exception_ptr ep = nullptr;
+    std::exception_ptr ep{nullptr};
 
     int success_counter{0};
     int error_counter{0};
@@ -770,102 +794,145 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     std::atomic<int> forms_processed{0};
 
-    for (int i = 0; i < list_of_files_to_process_.size(); )
+    // keep track of our async processes here.
+
+    std::vector<std::future<bool>> tasks;
+    tasks.reserve(max_at_a_time_);
+
+	auto do_work([this, &forms_processed](int i)
+	{
+		return this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
+	});
+
+	// prime the pump...
+
+	int current_file{0};
+    for ( ; tasks.size() < max_at_a_time_ && current_file < list_of_files_to_process_.size(); ++current_file)
     {
-        // keep track of our async processes here.
+        // queue up our tasks up to the limit.
 
-        std::vector<std::future<bool>> tasks;
-        tasks.reserve(max_at_a_time_);
+		// for some strange reason, this does not compile (but it should)
+		// tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
 
-		auto do_work([this, &forms_processed](int i)
-		{
-			return this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
-		});
+		// so, use this instead.
+        tasks.emplace_back(std::async(std::launch::async, do_work, current_file));
+    }
 
-        for ( ; tasks.size() < max_at_a_time_ && i < list_of_files_to_process_.size(); ++i)
+	int continue_here{0};
+	int ready_task{-1};
+
+    for ( ; current_file < list_of_files_to_process_.size(); ++current_file)
+    {
+        // we want to keep max_at_a_time_ tasks going so, as one finishes,
+		// we replace it with another
+        ready_task = wait_for_any(tasks, continue_here, std::chrono::microseconds{100});
+        // std::cout << "k: " << k << '\n';
+        try
         {
-            // queue up our tasks up to the limit.
-
-			// for some strange reason, this does not compile (but it should)
-			// tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
-
-			// so, use this instead.
-            tasks.emplace_back(std::async(std::launch::async, do_work, i));
+            auto result = tasks[ready_task].get();
+			if (result)
+            	++success_counter;
+			else
+				++skipped_counter;
         }
-
-        // now, let's wait till they're all done
-        // and then we'll do the next bunch.
-
-        for (int count = tasks.size(); count; --count)
+        catch (std::system_error& e)
         {
-            int k = wait_for_any(tasks, std::chrono::microseconds{100});
-            // std::cout << "k: " << k << '\n';
-            try
-            {
-                auto result = tasks[k].get();
-				if (result)
-                	++success_counter;
-				else
-					++skipped_counter;
-            }
-            catch (std::system_error& e)
-            {
-                // any system problems, we eventually abort, but only after finishing work in process.
+            // any system problems, we eventually abort, but only after finishing work in process.
 
-                poco_error(logger(), e.what());
-                auto ec = e.code();
-                poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
-                    + ec.message());
-                ++error_counter;
+            poco_error(logger(), e.what());
+            auto ec = e.code();
+            poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
+                + ec.message());
+            ++error_counter;
 
-                // OK, let's remember our first time here.
+            // OK, let's remember our first time here.
 
-                if (! ep)
-                    ep = std::current_exception();
-                continue;
-            }
-            catch (ExtractException& e)
-            {
-                // any problems, we'll document them and continue.
+            if (! ep)
+                ep = std::current_exception();
+            break;
+        }
+        catch (ExtractException& e)
+        {
+            // any problems, we'll document them and continue.
 
-                poco_error(logger(), e.what());
-                ++error_counter;
+            poco_error(logger(), e.what());
+            ++error_counter;
 
-                // we ignore these...
-                
-                continue;
-            }
-            catch (std::exception& e)
-            {
-                // any problems, we'll document them and continue.
+            // we ignore these...
 
-                poco_error(logger(), e.what());
-                ++error_counter;
+            continue;
+        }
+        catch (std::exception& e)
+        {
+            // any problems, we'll document them and continue.
 
-                // OK, let's remember our first time here.
+            poco_error(logger(), e.what());
+            ++error_counter;
 
-                if (! ep)
-                    ep = std::current_exception();
-                continue;
-            }
-            catch (...)
-            {
-                // any problems, we'll document them and continue.
+            // OK, let's remember our first time here.
 
-                poco_error(logger(), "Unknown problem with an async download process");
-                ++error_counter;
+            if (! ep)
+                ep = std::current_exception();
+            break;
+        }
+        catch (...)
+        {
+            // any problems, we'll document them and continue.
 
-                // OK, let's remember our first time here.
+            poco_error(logger(), "Unknown problem with async file processing");
+            ++error_counter;
 
-                if (! ep)
-                    ep = std::current_exception();
-                continue;
-            }
+            // OK, let's remember our first time here.
+
+            if (! ep)
+                ep = std::current_exception();
+            break;
         }
 
         if (ep || ExtractEDGAR_XBRLApp::had_signal_)
             break;
+
+		//	let's keep going
+
+		if (current_file < list_of_files_to_process_.size())
+		{
+        	tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
+			continue_here = (ready_task + 1) % max_at_a_time_;
+			ready_task = -1;
+		}
     }
+
+	// need to clean up the last set of tasks
+	for(int i = 0; i < max_at_a_time_; ++i)
+	{
+		try
+		{
+			if (ready_task > -1 && i == ready_task)
+				continue;
+            auto result = tasks[i].get();
+			if (result)
+            	++success_counter;
+			else
+				++skipped_counter;
+		}
+        catch (ExtractException& e)
+        {
+            // any problems, we'll document them and continue.
+
+            poco_error(logger(), e.what());
+            ++error_counter;
+
+            // we ignore these...
+
+            continue;
+        }
+		catch(std::exception& e)
+		{
+			++error_counter;
+            if (! ep)
+                ep = std::current_exception();
+		}
+	}
 
     if (ep)
         std::rethrow_exception(ep);
@@ -881,7 +948,6 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
     return std::tuple(success_counter, skipped_counter, error_counter);
 
 }		// -----  end of method HTTPS_Downloader::DownloadFilesConcurrently  -----
-
 
 void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
 

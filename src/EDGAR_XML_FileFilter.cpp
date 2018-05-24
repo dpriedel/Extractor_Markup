@@ -67,7 +67,22 @@ const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
     "October", "November", "December"};
 
+const std::string DEFAULT_LABEL{"Missing value"};
 
+// special case utility function to wrap map lookup for field names
+// returns a defualt value if not found.
+
+const std::string& AtOr(const EE::EDGAR_Labels& labels, const std::string& key)
+{
+    try
+    {
+        return labels.at(key);
+    }
+    catch(std::range_error& e)
+    {
+        return DEFAULT_LABEL;
+    }
+}
 
 ExtractException::ExtractException(const char* text)
     : std::runtime_error(text)
@@ -638,7 +653,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
             " VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
     			% trxn.esc(filing_ID)
     			% trxn.esc(label)
-    			% trxn.esc(label_fields.at(label))
+    			% trxn.esc(AtOr(label_fields, label))
     			% trxn.esc(value)
     			% trxn.esc(context_ID)
                 % trxn.esc(context_fields.at(context_ID).begin)
