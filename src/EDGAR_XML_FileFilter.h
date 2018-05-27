@@ -41,8 +41,8 @@
 
 #include <exception>
 #include <experimental/string_view>
-#include <vector>
 #include <map>
+#include <vector>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 
@@ -70,14 +70,16 @@ public:
 
 // function to split a string on a delimiter and return a vector of string-views
 
-inline std::vector<std::string_view> split_string(const std::string_view& string_data, char delim)
+inline std::vector<std::experimental::string_view> split_string(const std::experimental::string_view& string_data, char delim)
 {
-    std::vector<std::string_view> results;
-	for (auto it = 0; it != string_data.npos; ++it)
+    std::vector<std::experimental::string_view> results;
+	for (auto it = 0; it != std::experimental::string_view::npos; ++it)
 	{
 		auto pos = string_data.find(delim, it);
-        if (pos != string_data.npos)
+        if (pos != std::experimental::string_view::npos)
+        {
     		results.emplace_back(string_data.substr(it, pos - it));
+        }
         else
         {
     		results.emplace_back(string_data.substr(it));
@@ -92,37 +94,37 @@ inline std::vector<std::string_view> split_string(const std::string_view& string
 
 struct FileHasXBRL
 {
-    bool operator()(const EE::SEC_Header_fields&, std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields&, std::experimental::string_view file_content);
 };
 
 struct FileHasFormType
 {
-    FileHasFormType(const std::vector<std::string_view>& form_list)
+    FileHasFormType(const std::vector<std::experimental::string_view>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content);
 
-    const std::vector<std::string_view>& form_list_;
+    const std::vector<std::experimental::string_view>& form_list_;
 };
 
 struct FileHasCIK
 {
-    FileHasCIK(const std::vector<std::string_view>& CIK_list)
+    FileHasCIK(const std::vector<std::experimental::string_view>& CIK_list)
         : CIK_list_{CIK_list} {}
 
-    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content);
 
-    const std::vector<std::string_view>& CIK_list_;
+    const std::vector<std::experimental::string_view>& CIK_list_;
 };
 
 struct FileHasSIC
 {
-    FileHasSIC(const std::vector<std::string_view>& SIC_list)
+    FileHasSIC(const std::vector<std::experimental::string_view>& SIC_list)
         : SIC_list_{SIC_list} {}
 
-    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content);
 
-    const std::vector<std::string_view>& SIC_list_;
+    const std::vector<std::experimental::string_view>& SIC_list_;
 };
 
 struct FileIsWithinDateRange
@@ -130,7 +132,7 @@ struct FileIsWithinDateRange
     FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content);
+    bool operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content);
 
     const bg::date& begin_date_;
     const bg::date& end_date_;
@@ -139,18 +141,18 @@ struct FileIsWithinDateRange
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EE::SEC_Header_fields& header_fields, std::string_view file_content, Ts ...ts)
+auto ApplyFilters(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content, Ts ...ts)
 {
     // unary left fold
 
 	return (... && (ts(header_fields, file_content)));
 }
 
-std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections);
+std::experimental::string_view LocateInstanceDocument(const std::vector<std::experimental::string_view>& document_sections);
 
-std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections);
+std::experimental::string_view LocateLabelDocument(const std::vector<std::experimental::string_view>& document_sections);
 
-std::vector<std::string_view> LocateDocumentSections(std::string_view file_content);
+std::vector<std::experimental::string_view> LocateDocumentSections(std::experimental::string_view file_content);
 
 EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
@@ -164,17 +166,17 @@ void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
-// std::vector<std::string_view> LocateDocumentSections2(std::string_view file_content);
+// std::vector<std::experimental::string_view> LocateDocumentSections2(std::experimental::string_view file_content);
 
-std::string_view FindFileName(std::string_view document);
+std::experimental::string_view FindFileName(std::experimental::string_view document);
 
-std::string_view FindFileType(std::string_view document);
+std::experimental::string_view FindFileType(std::experimental::string_view document);
 
-std::string_view TrimExcessXML(std::string_view document);
+std::experimental::string_view TrimExcessXML(std::experimental::string_view document);
 
-pugi::xml_document ParseXMLContent(std::string_view document);
+pugi::xml_document ParseXMLContent(std::experimental::string_view document);
 
-std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date);
+std::string ConvertPeriodEndDateToContextName(const std::experimental::string_view& period_end_date);
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields, const std::vector<EE::GAAP_Data>& gaap_fields,
     const EE::EDGAR_Labels& label_fields, const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);

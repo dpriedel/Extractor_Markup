@@ -36,18 +36,19 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include "EDGAR_XML_FileFilter.h"
+
 #include <algorithm>
 #include <iostream>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 
 #include <Poco/Logger.h>
 
 #include <pqxx/pqxx>
 
-#include "EDGAR_XML_FileFilter.h"
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
@@ -67,20 +68,20 @@ const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
     "October", "November", "December"};
 
-const std::string DEFAULT_LABEL{"Missing value"};
 
 // special case utility function to wrap map lookup for field names
 // returns a defualt value if not found.
 
-const std::string& AtOr(const EE::EDGAR_Labels& labels, const std::string& key)
+const std::string& FindOrDefault(const EE::EDGAR_Labels& labels, const std::string& key, const std::string& default_result)
 {
     try
     {
-        return labels.at(key);
+        const auto& value = labels.at(key);
+        return value;
     }
-    catch(std::range_error& e)
+    catch(std::out_of_range& e)
     {
-        return DEFAULT_LABEL;
+        return default_result;
     }
 }
 
@@ -96,82 +97,64 @@ ExtractException::ExtractException(const std::string& text)
 
 }
 
-bool FileHasXBRL::operator()(const EE::SEC_Header_fields&, std::string_view file_content)
+bool FileHasXBRL::operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content)
 {
-    if (file_content.find(R"***(<XBRL>)***") != std::string_view::npos)
-    {
-        return true;
-    }
-    else
-        return false;
+    return (file_content.find(R"***(<XBRL>)***") != std::experimental::string_view::npos);
 }
 
-bool FileHasFormType::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+bool FileHasFormType::operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content)
 {
-    if (std::find(std::begin(form_list_), std::end(form_list_), header_fields.at("form_type")) != std::end(form_list_))
-        return true;
-    else
-        return false;
+    return (std::find(std::begin(form_list_), std::end(form_list_), header_fields.at("form_type")) != std::end(form_list_));
 }
 
-bool FileHasCIK::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+bool FileHasCIK::operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content)
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
     if (CIK_list_.size() == 2)
     {
-        if (CIK_list_[0] <= header_fields.at("cik") && header_fields.at("cik") <= CIK_list_[1])
-        return true;
-    else
-        return false;
+        return (CIK_list_[0] <= header_fields.at("cik") && header_fields.at("cik") <= CIK_list_[1]);
     }
-    else
-    {
-        if (std::find(std::begin(CIK_list_), std::end(CIK_list_), header_fields.at("cik")) != std::end(CIK_list_))
-            return true;
-        else
-            return false;
-    }
+    
+    return (std::find(std::begin(CIK_list_), std::end(CIK_list_), header_fields.at("cik")) != std::end(CIK_list_));
 }
 
-bool FileHasSIC::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+bool FileHasSIC::operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content)
 {
-    if (std::find(std::begin(SIC_list_), std::end(SIC_list_), header_fields.at("sic")) != std::end(SIC_list_))
-        return true;
-    else
-        return false;
+    return (std::find(std::begin(SIC_list_), std::end(SIC_list_), header_fields.at("sic")) != std::end(SIC_list_));
 }
 
-bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_fields, std::string_view file_content)
+bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_fields, std::experimental::string_view file_content)
 {
     auto report_date = bg::from_simple_string(header_fields.at("quarter_ending"));
 
-    if (begin_date_ <= report_date && report_date <= end_date_)
-        return true;
-    else
-        return false;
+    return (begin_date_ <= report_date && report_date <= end_date_);
 }
 
-std::string_view LocateInstanceDocument(const std::vector<std::string_view>& document_sections)
+std::experimental::string_view LocateInstanceDocument(const std::vector<std::experimental::string_view>& document_sections)
 {
     for (auto document : document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
         if (boost::algorithm::ends_with(file_type, ".INS") && boost::algorithm::ends_with(file_name, ".xml"))
+        {
             return TrimExcessXML(document);
+        }
     }
     return {};
 }
 
-std::string_view LocateLabelDocument(const std::vector<std::string_view>& document_sections)
+std::experimental::string_view LocateLabelDocument(const std::vector<std::experimental::string_view>& document_sections)
 {
     for (auto document : document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
         if (boost::algorithm::ends_with(file_type, ".LAB") && boost::algorithm::ends_with(file_name, ".xml"))
+        {
             return TrimExcessXML(document);
+        }
     }
     return {};
 }
@@ -191,34 +174,34 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
     return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding};
 }
 
-std::string ConvertPeriodEndDateToContextName(const std::string_view& period_end_date)
+std::string ConvertPeriodEndDateToContextName(const std::experimental::string_view& period_end_date)
 
 {
     //  our given date is yyyy-mm-dd.
 
     std::string result{"cx_"};
-    result += period_end_date.substr(8, 2);
+    result.append(period_end_date.data() + 8, 2);
     result +=  '_';
     result += MONTH_NAMES[std::stoi(std::string{period_end_date.substr(5, 2)})];
     result += '_';
-    result += period_end_date.substr(0, 4);
+    result.append(period_end_date.data(), 4);
 
     return result;
 }
 
 // function to split a string on a delimiter and return a vector of string-views
 
-// std::vector<std::string_view> LocateDocumentSections2(std::string_view file_content)
+// std::vector<std::experimental::string_view> LocateDocumentSections2(std::experimental::string_view file_content)
 // {
 //     // we look for <DOCUMENT>...</DOCUMENT> pairs.
 //     // BIG ASSUMPTION: no nested occurances.
 //
-//     constexpr std::string_view section_start{"<DOCUMENT>\n"};
-//     constexpr std::string_view section_end{"</DOCUMENT>\n"};
+//     constexpr std::experimental::string_view section_start{"<DOCUMENT>\n"};
+//     constexpr std::experimental::string_view section_end{"</DOCUMENT>\n"};
 //     constexpr auto start_len{section_start.size()};
 //     constexpr auto end_len{section_end.size()};
 //
-//     std::vector<std::string_view> result;
+//     std::vector<std::experimental::string_view> result;
 //
 // 	for (auto it = 0; it < file_content.size();)
 // 	{
@@ -245,18 +228,22 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
-    for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
+    for (auto second_level_nodes = top_level_node.first_child(); ! second_level_nodes.empty(); second_level_nodes = second_level_nodes.next_sibling())
     {
         // us-gaap is a namespace but pugixml doesn't directly support namespaces.
 
         if (US_GAAP_NS.compare(0, GAAP_LEN, second_level_nodes.name(), GAAP_LEN) != 0)
+        {
             continue;
+        }
 
         // need to filter out table type content.
 
-        if (std::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::string_view::npos
-            || sv.find("<div") != std::string_view::npos || sv.find("<p ") != std::string_view::npos)
+        if (std::experimental::string_view sv{second_level_nodes.child_value()}; sv.find("<table") != std::experimental::string_view::npos
+            || sv.find("<div") != std::experimental::string_view::npos || sv.find("<p ") != std::experimental::string_view::npos)
+        {
             continue;
+        }
 
         // we need to construct our field name label so we can match up with its 'user version' later.
 
@@ -280,8 +267,10 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
     std::string n_name{top_level_node.name()};
 
     std::string namespace_prefix;
-    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
+    if (auto pos = n_name.find(':'); pos != std::experimental::string_view::npos)
+    {
         namespace_prefix = n_name.substr(0, pos + 1);
+    }
 
     std::string label_node_name{namespace_prefix + "label"};
     std::string loc_node_name{namespace_prefix + "loc"};
@@ -328,25 +317,28 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
 
     // some files have separate labelLink sections for each link element set !!
 
-    for (auto links = top_level_node.child(label_link_name.c_str()); links; links = links.next_sibling(label_link_name.c_str()))
+    for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty(); links = links.next_sibling(label_link_name.c_str()))
     {
-        for (auto label_link = links.child(label_node_name.c_str()); label_link; label_link = label_link.next_sibling(label_node_name.c_str()))
+        for (auto label_link = links.child(label_node_name.c_str()); ! label_link.empty(); label_link = label_link.next_sibling(label_node_name.c_str()))
         {
             // this routine is based upon physical order of items in the file using our scan sequence identified above.
+
             switch(scan_sequence)
             {
             case 1:
             case 5:
                 {
                     auto loc_label{label_link.next_sibling()};
-                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    if (std::experimental::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
                     {
                         // we may have a stand-alone link element,
 
                         HandleStandAloneLabel(result, label_link);
                     }
                     else
+                    {
                         HandleLabel(result, label_link, loc_label);
+                    }
                 }
                 break;
 
@@ -354,14 +346,16 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
                 {
                     auto tmp = label_link.next_sibling();
                     auto loc_label{tmp.next_sibling()};
-                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    if (std::experimental::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
                     {
                         // we may have a stand-alone link element,
 
                         HandleStandAloneLabel(result, label_link);
                     }
                     else
+                    {
                         HandleLabel(result, label_link, loc_label);
+                    }
                 }
                 break;
 
@@ -369,14 +363,16 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
             case 6:
                 {
                     auto loc_label{label_link.previous_sibling()};
-                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    if (std::experimental::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
                     {
                         // we may have a stand-alone link element,
 
                         HandleStandAloneLabel(result, label_link);
                     }
                     else
+                    {
                         HandleLabel(result, label_link, loc_label);
+                    }
                 }
                 break;
 
@@ -384,14 +380,16 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
                 {
                     auto tmp = label_link.previous_sibling();
                     auto loc_label{tmp.previous_sibling()};
-                    if (std::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
+                    if (std::experimental::string_view loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
                     {
                         // we may have a stand-alone link element,
 
                         HandleStandAloneLabel(result, label_link);
                     }
                     else
+                    {
                         HandleLabel(result, label_link, loc_label);
+                    }
                 }
                 break;
 
@@ -405,14 +403,16 @@ EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
 
 void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link)
 {
-    std::string_view role{label_link.attribute("xlink:role").value()};
-    std::string_view link_name{label_link.attribute("xlink:label").value()};
-    if (auto pos = link_name.find(US_GAAP_PFX); pos  != std::string_view::npos)
+    std::experimental::string_view role{label_link.attribute("xlink:role").value()};
+    std::experimental::string_view link_name{label_link.attribute("xlink:label").value()};
+    if (auto pos = link_name.find(US_GAAP_PFX); pos  != std::experimental::string_view::npos)
     {
         link_name.remove_prefix(pos);
-        // if (link_name.find('_', 8) != std::string_view::npos)
-        if (link_name.find('_') != std::string_view::npos)
+        // if (link_name.find('_', 8) != std::experimental::string_view::npos)
+        if (link_name.find('_') != std::experimental::string_view::npos)
+        {
             return;
+        }
 
         // we may have multiple entries for each identifier. if so, we want to give preference to the plain 'label' value.
 
@@ -433,27 +433,32 @@ void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link)
 
 void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label)
 {
-    std::string_view role{label_link.attribute("xlink:role").value()};
+    std::experimental::string_view role{label_link.attribute("xlink:role").value()};
 
-    std::string_view href{loc_label.attribute("xlink:href").value()};
-    if (href.find("us-gaap") == std::string_view::npos)
+    std::experimental::string_view href{loc_label.attribute("xlink:href").value()};
+    if (href.find("us-gaap") == std::experimental::string_view::npos)
+    {
         return;
+    }
 
     auto pos = href.find('#');
-    if (pos == std::string_view::npos)
+    if (pos == std::experimental::string_view::npos)
+    {
         throw ExtractException("Can't find label start.");
+    }
+    href.remove_prefix(pos + 1);
 
     if (boost::algorithm::ends_with(role, "role/label"))
     {
         // if we're here, it means we have a plain 'total' label, so we want this to succeed.
 
-        result.insert_or_assign(href.data() + pos + 1, label_link.child_value());
+        result.insert_or_assign(href.data(), label_link.child_value());
     }
     else
     {
         // if this fails, it's because we already have an entry so that's OK
 
-        result.try_emplace(href.data() + pos + 1, label_link.child_value());
+        result.try_emplace(href.data(), label_link.child_value());
     }
 }
 
@@ -469,17 +474,23 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     std::string n_name{top_level_node.name()};
 
     std::string namespace_prefix;
-    if (auto pos = n_name.find(':'); pos != std::string_view::npos)
+    if (auto pos = n_name.find(':'); pos != std::experimental::string_view::npos)
+    {
         namespace_prefix = n_name.substr(0, pos + 1);
+    }
 
     auto test_node = top_level_node.child((namespace_prefix + "context").c_str());
     if (! test_node)
     {
         test_node = top_level_node.child("xbrli:context");
-        if (test_node)
+        if (! test_node.empty())
+        {
             namespace_prefix = "xbrli:";
+        }
         else
+        {
             throw ExtractException("Can't find 'context' section in file.");
+        }
     }
 
     std::string node_name{namespace_prefix + "context"};
@@ -489,7 +500,7 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     std::string end_label{namespace_prefix + "endDate"};
     std::string instant_label{namespace_prefix + "instant"};
 
-    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); second_level_nodes;
+    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); ! second_level_nodes.empty();
         second_level_nodes = second_level_nodes.next_sibling(node_name.c_str()))
     {
         // need to pull out begin/end values.
@@ -497,7 +508,6 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
         const char* start_ptr = nullptr;
         const char* end_ptr = nullptr;
 
-        auto id = second_level_nodes.attribute("id").value();
         auto period = second_level_nodes.child(period_label.c_str());
 
         if (auto instant = period.child(instant_label.c_str()); instant)
@@ -514,66 +524,67 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
             end_ptr = end.child_value();
         }
         if (auto [it, success] = result.try_emplace(second_level_nodes.attribute("id").value(), EE::EDGAR_TimePeriod{start_ptr, end_ptr}); ! success)
+        {
             std::cout << "Can't insert value for label: " << second_level_nodes.attribute("id").value()  << '\n';
+        }
     }
 
     return result;
 }
 
-std::vector<std::string_view> LocateDocumentSections(std::string_view file_content)
+std::vector<std::experimental::string_view> LocateDocumentSections(std::experimental::string_view file_content)
 {
-    std::vector<std::string_view> result;
+    std::vector<std::experimental::string_view> result;
 
-    for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
+    for (auto doc = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc);
         doc != boost::cregex_token_iterator{}; ++doc)
     {
-		result.emplace_back(std::string_view(doc->first, doc->length()));
+		result.emplace_back(std::experimental::string_view(doc->first, doc->length()));
     }
 
     return result;
 }
 
-std::string_view FindFileName(std::string_view document)
+std::experimental::string_view FindFileName(std::experimental::string_view document)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
-        const std::string_view file_name(matches[1].first, matches[1].length());
+        const std::experimental::string_view file_name(matches[1].first, matches[1].length());
         return file_name;
     }
-    else
-        throw ExtractException("Can't find file name in document.\n");
+    throw ExtractException("Can't find file name in document.\n");
 }
 
-std::string_view FindFileType(std::string_view document)
+std::experimental::string_view FindFileType(std::experimental::string_view document)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
     if (found_it)
     {
-        const std::string_view file_type(matches[1].first, matches[1].length());
+        const std::experimental::string_view file_type(matches[1].first, matches[1].length());
         return file_type;
     }
-    else
-        throw ExtractException("Can't find file type in document.\n");
+    throw ExtractException("Can't find file type in document.\n");
 }
 
-std::string_view TrimExcessXML(std::string_view document)
+std::experimental::string_view TrimExcessXML(std::experimental::string_view document)
 {
     auto xbrl_loc = document.find(R"***(<XBRL>)***");
     document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
     auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-    if (xbrl_end_loc != std::string_view::npos)
+    if (xbrl_end_loc != std::experimental::string_view::npos)
+    {
         document.remove_suffix(document.length() - xbrl_end_loc);
-    else
-        throw ExtractException("Can't find end of XBLR in document.\n");
+        return document;
+    }
+    throw ExtractException("Can't find end of XBLR in document.\n");
 
-    return document;
 }
 
-pugi::xml_document ParseXMLContent(std::string_view document)
+pugi::xml_document ParseXMLContent(std::experimental::string_view document)
 {
     pugi::xml_document doc;
     auto result = doc.load_buffer(document.data(), document.size());
@@ -602,11 +613,13 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 			;
     auto row = query.exec1(check_for_existing_content_cmd.str());
     query.commit();
-	int have_data = row[0].as<int>();
-    if (have_data && ! replace_content)
+	auto have_data = row[0].as<int>();
+    if (have_data != 0 && ! replace_content)
     {
-        if (the_logger)
+        if (the_logger != nullptr)
+        {
             the_logger->debug("Skipping: Form data exists and Replace not specifed for file: " + SEC_fields.at("file_name"));
+        }
         return;
     }
 
@@ -653,7 +666,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
             " VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
     			% trxn.esc(filing_ID)
     			% trxn.esc(label)
-    			% trxn.esc(AtOr(label_fields, label))
+    			% trxn.esc(FindOrDefault(label_fields, label, "Missing Value"))
     			% trxn.esc(value)
     			% trxn.esc(context_ID)
                 % trxn.esc(context_fields.at(context_ID).begin)
