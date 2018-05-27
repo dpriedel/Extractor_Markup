@@ -31,14 +31,14 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include "SEC_Header.h"
+
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/regex.hpp>
 
 #include "Poco/Logger.h"
 
 namespace bg = boost::gregorian;
-
-#include "SEC_Header.h"
 
 const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 
@@ -48,20 +48,16 @@ const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-SEC_Header::SEC_Header ()
-{
-}  // -----  end of method SEC_Header::SEC_Header  (constructor)  -----
-
-void SEC_Header::UseData (std::string_view file_content)
+void SEC_Header::UseData (std::experimental::string_view file_content)
 {
 	boost::cmatch results;
-	bool found_it = boost::regex_search(file_content.data(), file_content.data() + file_content.size(), results, regex_SEC_header);
+	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);
 	poco_assert_msg(found_it, "Can't find SEC Header");
 
     header_data_ = results[0].first, results[0].length();
 }		// -----  end of method SEC_Header::UseData  -----
 
-void SEC_Header::ExtractHeaderFields (void)
+void SEC_Header::ExtractHeaderFields ()
 {
 	ExtractCIK();
 	ExtractSIC();
@@ -70,102 +66,97 @@ void SEC_Header::ExtractHeaderFields (void)
 	ExtractQuarterEnding();
 	ExtractFileName();
 	ExtractCompanyName();
-	return ;
 }		// -----  end of method SEC_Header::ExtractHeaderFields  -----
 
-void SEC_Header::ExtractCIK (void)
+void SEC_Header::ExtractCIK ()
 {
 	const boost::regex ex{R"***(^\s+CENTRAL INDEX KEY:\s+([0-9]+$))***"};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find CIK in SEC Header");
 
 	parsed_header_data_["cik"] = results.str(1);
-	return ;
 }		// -----  end of method SEC_Header::ExtractCIK  -----
 
-void SEC_Header::ExtractSIC (void)
+void SEC_Header::ExtractSIC ()
 {
 	// this field is sometimes missing in my test files.  I can live without it.
 
 	const boost::regex ex{R"***(^\s+STANDARD INDUSTRIAL CLASSIFICATION:.+?\[?([0-9]+)\]?)***"};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	if (found_it)
+    {
 		parsed_header_data_["sic"] = results.str(1);
+    }
 	else
+    {
 		parsed_header_data_["sic"] = "unknown";
-
-	return ;
+    }
 }		// -----  end of method SEC_Header::ExtractSIC  -----
 
-void SEC_Header::ExtractFormType (void)
+void SEC_Header::ExtractFormType ()
 {
 	const boost::regex ex{R"***(^CONFORMED SUBMISSION TYPE:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find 'form type' in SEC Header");
 
 	parsed_header_data_["form_type"] = results.str(1);
-	return ;
 }		// -----  end of method SEC_Header::ExtractFormNumber  -----
 
-void SEC_Header::ExtractDateFiled (void)
+void SEC_Header::ExtractDateFiled ()
 {
 	const boost::regex ex{R"***(^FILED AS OF DATE:\s+([0-9]+?)$)***"};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find 'date filed' in SEC Header");
 
 	bg::date d1{bg::from_undelimited_string(results.str(1))};
 	parsed_header_data_["date_filed"] = bg::to_iso_extended_string(d1);
-	return ;
 }		// -----  end of method SEC_Header::ExtractDateFiled  -----
 
-void SEC_Header::ExtractQuarterEnding (void)
+void SEC_Header::ExtractQuarterEnding ()
 {
 	const boost::regex ex{R"***(^CONFORMED PERIOD OF REPORT:\s+([0-9]+?)$)***"};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find 'quarter ending' in SEC Header");
 
 	bg::date d1{bg::from_undelimited_string(results.str(1))};
 	parsed_header_data_["quarter_ending"] = bg::to_iso_extended_string(d1);
-	return ;
 }		// -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
-void SEC_Header::ExtractFileName (void)
+void SEC_Header::ExtractFileName ()
 {
 	const boost::regex ex{R"***(^ACCESSION NUMBER:\s+([0-9-]+?)$)***"};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find 'file name' in SEC Header");
 
 	parsed_header_data_["file_name"] = results.str(1) + ".txt";
-	return ;
 }		// -----  end of method SEC_Header::ExtractFileName  -----
 
-void SEC_Header::ExtractCompanyName (void)
+void SEC_Header::ExtractCompanyName ()
 {
 	const boost::regex ex{R"***(^\s+COMPANY CONFORMED NAME:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
 
 	boost::cmatch results;
-	bool found_it = boost::regex_search(header_data_.data(), header_data_.data() + header_data_.length(), results, ex);
+	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
 	poco_assert_msg(found_it, "Can't find 'company name' in SEC Header");
 
 	parsed_header_data_["company_name"] = results.str(1);
-	return ;
 }		// -----  end of method SEC_Header::ExtractCompanyName  -----

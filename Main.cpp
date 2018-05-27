@@ -31,9 +31,10 @@
 	/* along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 
+#include "ExtractEDGAR_XBRLApp.h"
+
 #include <iostream>
 
-#include "ExtractEDGAR_XBRLApp.h"
 
 int main(int argc, char** argv)
 {

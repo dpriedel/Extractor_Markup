@@ -49,7 +49,7 @@ class SEC_Header
 
 		// ====================  LIFECYCLE     =======================================
 
-		SEC_Header ();                             // constructor
+		SEC_Header () = default;                             // constructor
 
 		// ====================  ACCESSORS     =======================================
 
@@ -57,7 +57,7 @@ class SEC_Header
 
 		// ====================  MUTATORS      =======================================
 
-		void UseData(std::string_view file_content);
+		void UseData(std::experimental::string_view file_content);
 		void ExtractHeaderFields(void);
 
 		// ====================  OPERATORS     =======================================
@@ -77,7 +77,7 @@ class SEC_Header
 	private:
 		// ====================  DATA MEMBERS  =======================================
 
-		std::string_view header_data_;
+		std::experimental::string_view header_data_;
 
 		EE::SEC_Header_fields parsed_header_data_;
 

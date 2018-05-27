@@ -41,10 +41,11 @@
 
 // #include <fstream>
 #include <atomic>
+#include <experimental/filesystem>
+#include <experimental/string_view>
 #include <functional>
 #include <tuple>
 #include <vector>
-#include <experimental/filesystem>
 
 // #include <boost/filesystem.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -52,16 +53,15 @@
 namespace bg = boost::gregorian;
 namespace fs = std::experimental::filesystem;
 
+#include "Poco/AutoPtr.h"
+#include "Poco/Channel.h"
+#include "Poco/Logger.h"
+#include "Poco/Util/AbstractConfiguration.h"
 #include "Poco/Util/Application.h"
+#include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/Option.h"
 #include "Poco/Util/OptionSet.h"
-#include "Poco/Util/HelpFormatter.h"
-#include "Poco/Util/AbstractConfiguration.h"
-#include "Poco/AutoPtr.h"
 #include "Poco/Util/Validator.h"
-
-#include "Poco/Logger.h"
-#include "Poco/Channel.h"
 
 #include "ExtractEDGAR.h"
 
@@ -72,7 +72,7 @@ public:
 
 	ExtractEDGAR_XBRLApp(int argc, char* argv[]);
 	ExtractEDGAR_XBRLApp(const ExtractEDGAR_XBRLApp& rhs) = delete;
-    ExtractEDGAR_XBRLApp();
+    ExtractEDGAR_XBRLApp() = default;
 
 protected:
 
@@ -110,8 +110,8 @@ protected:
 
 	void ProcessDirectory(void);
 	void LoadFilesFromListToDB(void);
-	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::string_view file_content, std::atomic<int>& forms_processed);
-	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::string_view file_content);
+	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::experimental::string_view file_content, std::atomic<int>& forms_processed);
+	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::experimental::string_view file_content);
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
 	bool LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
@@ -161,7 +161,7 @@ private:
 
 		// ====================  DATA MEMBERS  =======================================
 
-	using FilterList = std::vector<std::function<bool(const EE::SEC_Header_fields& header_fields, std::string_view)>>;
+	using FilterList = std::vector<std::function<bool(const EE::SEC_Header_fields& header_fields, std::experimental::string_view)>>;
 
 
     Poco::AutoPtr<Poco::Channel> logger_file_;
@@ -175,9 +175,9 @@ private:
 	std::string SIC_;
     std::string logging_level_{"information"};
 
-	std::vector<std::string_view> form_list_;
-	std::vector<std::string_view> CIK_list_;
-	std::vector<std::string_view> SIC_list_;
+	std::vector<std::experimental::string_view> form_list_;
+	std::vector<std::experimental::string_view> CIK_list_;
+	std::vector<std::experimental::string_view> SIC_list_;
 
 	FilterList filters_;
 
