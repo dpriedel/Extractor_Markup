@@ -37,8 +37,10 @@
 #ifndef __XBRL_Extractors__
 #define __XBRL_Extractors__
 
-#include <experimental/string_view>
 #include <experimental/filesystem>
+#include <experimental/string_view>
+
+using sview = std::experimental::string_view;
 
 #include <boost/hana.hpp>
 
@@ -53,17 +55,17 @@ namespace hana = boost::hana;
 
 struct XBRL_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct XBRL_Label_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(std::string_view document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 
@@ -71,21 +73,21 @@ struct DocumentCounter
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct HTM_data
 {
     inline static int document_counter = 0;
 
-    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(std::string_view, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.

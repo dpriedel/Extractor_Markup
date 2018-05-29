@@ -48,7 +48,7 @@ const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-void SEC_Header::UseData (std::experimental::string_view file_content)
+void SEC_Header::UseData (sview file_content)
 {
 	boost::cmatch results;
 	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);

@@ -74,7 +74,7 @@ int main(int argc, const char* argv[])
 
         std::atomic<int> files_processed{0};
 
-        const std::string_view form_type{argv[3]};
+        const sview form_type{argv[3]};
 
         auto use_file = FilterFiles(file_content, form_type, 1, files_processed);
         if (! use_file)
@@ -85,7 +85,7 @@ int main(int argc, const char* argv[])
         for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
             doc != boost::cregex_token_iterator{}; ++doc)
         {
-            std::string_view document(doc->first, doc->length());
+            sview document(doc->first, doc->length());
             hana::for_each(the_filters, [document, &output_directory, &use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
         }
 

@@ -41,6 +41,8 @@
 
 #include <experimental/string_view>
 
+using sview = std::experimental::string_view;
+
 #include "ExtractEDGAR.h"
 
 class SEC_Header
@@ -57,7 +59,7 @@ class SEC_Header
 
 		// ====================  MUTATORS      =======================================
 
-		void UseData(std::experimental::string_view file_content);
+		void UseData(sview file_content);
 		void ExtractHeaderFields(void);
 
 		// ====================  OPERATORS     =======================================
@@ -77,7 +79,7 @@ class SEC_Header
 	private:
 		// ====================  DATA MEMBERS  =======================================
 
-		std::experimental::string_view header_data_;
+		sview header_data_;
 
 		EE::SEC_Header_fields parsed_header_data_;
 
