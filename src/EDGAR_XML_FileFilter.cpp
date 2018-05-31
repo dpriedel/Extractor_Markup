@@ -251,7 +251,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 
     // some files have separate labelLink sections for each link element set !!
 
-    std::map<sview, sview> labels;
+    std::vector<std::pair<sview, sview>> labels;
 
     for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
         links = links.next_sibling(label_link_name.c_str()))
@@ -271,7 +271,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
                 {
                     link_name.remove_prefix(GAAP_PFX_LEN);
                 }
-                labels[link_name] = label_node.child_value();
+                labels.emplace_back(link_name, label_node.child_value());
             }
         }
     }
@@ -282,7 +282,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 //        std::cout << "name: " << name << "\t\tvalue: " << value << '\n';
 //    }
 
-    std::vector<std::pair<sview, sview>> locs;
+    std::map<sview, sview> locs;
 
     for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
         links = links.next_sibling(label_link_name.c_str()))
@@ -316,7 +316,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
             {
                 link_name.remove_prefix(GAAP_PFX_LEN);
             }
-            locs.emplace_back(link_name, href);
+            locs[link_name] = href;
         }
     }
 
@@ -353,7 +353,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
             {
                 to.remove_prefix(GAAP_PFX_LEN);
             }
-            arcs[from] = to;
+            arcs[to] = from;
         }
     }
 
@@ -363,23 +363,24 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 //        std::cout << "from: " << name << "\t\tto: " << value << '\n';
 //    }
 
-    // now, build output by following links to tie identifier to user value
-    // to match against data from Instance document.
-    
-    for (auto [link_from, href] : locs)
+    for (auto [link_to, value] : labels)
     {
-        auto link_to = arcs.find(link_from);
-        if (link_to == arcs.end())
+        auto link_from = arcs.find(link_to);
+        if (link_from == arcs.end())
         {
+            // stand-alone link
+        
+            std::cout << "stand-alone: ARCS\n";
+            continue;    
+        }
+        auto href = locs.find(link_from->second);
+        if (href == locs.end())
+        {
+            // non-gaap field
+            
             continue;
         }
-        auto linked_to_label = labels.find(link_to->second);
-        if (linked_to_label == labels.end())
-        {
-            continue;
-        }
-
-        result.emplace(href, linked_to_label->second);
+       result.emplace(href->second, value); 
     }
 
 //    std::cout << "RESULT:\n";
