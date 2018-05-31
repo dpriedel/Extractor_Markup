@@ -215,9 +215,10 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
             continue;
         }
 
-        // we need to construct our field name label so we can match up with its 'user version' later.
+        // collect our data: name, context, units, decimals, value.
 
-        EE::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
+//        EE::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
+        EE::GAAP_Data fields{second_level_nodes.name() + GAAP_LEN,
             second_level_nodes.attribute("contextRef").value(), second_level_nodes.attribute("unitRef").value(),
             second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
 
@@ -227,7 +228,170 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
     return result;
 }
 
-EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
+EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
+{
+    EE::EDGAR_Labels result;
+
+    auto top_level_node = labels_xml.first_child();
+
+    // we need to look for possible namespace here.
+
+    std::string n_name{top_level_node.name()};
+
+    std::string namespace_prefix;
+    if (auto pos = n_name.find(':'); pos != sview::npos)
+    {
+        namespace_prefix = n_name.substr(0, pos + 1);
+    }
+
+    std::string label_node_name{namespace_prefix + "label"};
+    std::string loc_node_name{namespace_prefix + "loc"};
+    std::string arc_node_name{namespace_prefix + "labelArc"};
+    std::string label_link_name{namespace_prefix + "labelLink"};
+
+    // some files have separate labelLink sections for each link element set !!
+
+    std::map<sview, sview> labels;
+
+    for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
+        links = links.next_sibling(label_link_name.c_str()))
+    {
+        for (auto label_node = links.child(label_node_name.c_str()); ! label_node.empty();
+            label_node = label_node.next_sibling(label_node_name.c_str()))
+        {
+            sview role{label_node.attribute("xlink:role").value()};
+            if (boost::algorithm::ends_with(role, "role/label"))
+            {
+                sview link_name{label_node.attribute("xlink:label").value()};
+                if (auto pos = link_name.find('_'); pos != sview::npos)
+                {
+                    link_name.remove_prefix(pos + 1);
+                }
+                if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
+                {
+                    link_name.remove_prefix(GAAP_PFX_LEN);
+                }
+                labels[link_name] = label_node.child_value();
+            }
+        }
+    }
+
+//    std::cout << "LABELS:\n";
+//    for (auto [name, value] : labels)
+//    {
+//        std::cout << "name: " << name << "\t\tvalue: " << value << '\n';
+//    }
+
+    std::vector<std::pair<sview, sview>> locs;
+
+    for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
+        links = links.next_sibling(label_link_name.c_str()))
+    {
+        for (auto loc_node = links.child(loc_node_name.c_str()); ! loc_node.empty();
+            loc_node = loc_node.next_sibling(loc_node_name.c_str()))
+        {
+            sview href{loc_node.attribute("xlink:href").value()};
+            if (href.find("us-gaap") == sview::npos)
+            {
+                continue;
+            }
+
+            auto pos = href.find('#');
+            if (pos == sview::npos)
+            {
+                throw ExtractException("Can't find href label start.");
+            }
+            href.remove_prefix(pos + 1);
+
+            if (boost::algorithm::starts_with(href, US_GAAP_PFX))
+            {
+                href.remove_prefix(GAAP_PFX_LEN);
+            }
+            sview link_name{loc_node.attribute("xlink:label").value()};
+            if (auto pos = link_name.find('_'); pos != sview::npos)
+            {
+                link_name.remove_prefix(pos + 1);
+            }
+            if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
+            {
+                link_name.remove_prefix(GAAP_PFX_LEN);
+            }
+            locs.emplace_back(link_name, href);
+        }
+    }
+
+//    std::cout << "LOCS:\n";
+//    for (auto [name, value] : locs)
+//    {
+//        std::cout << "name: " << name << "\t\tvalue: " << value << '\n';
+//    }
+
+    std::map<sview, sview> arcs;
+
+    for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
+        links = links.next_sibling(label_link_name.c_str()))
+    {
+        for (auto arc_node = links.child(arc_node_name.c_str()); ! arc_node.empty();
+            arc_node = arc_node.next_sibling(arc_node_name.c_str()))
+        {
+            sview from{arc_node.attribute("xlink:from").value()};
+            sview to{arc_node.attribute("xlink:to").value()};
+
+            if (auto pos = from.find('_'); pos != sview::npos)
+            {
+                from.remove_prefix(pos + 1);
+            }
+            if (boost::algorithm::starts_with(from, US_GAAP_PFX))
+            {
+                from.remove_prefix(GAAP_PFX_LEN);
+            }
+            if (auto pos = to.find('_'); pos != sview::npos)
+            {
+                to.remove_prefix(pos + 1);
+            }
+            if (boost::algorithm::starts_with(to, US_GAAP_PFX))
+            {
+                to.remove_prefix(GAAP_PFX_LEN);
+            }
+            arcs[from] = to;
+        }
+    }
+
+//    std::cout << "ARCS:\n";
+//    for (auto [name, value] : arcs)
+//    {
+//        std::cout << "from: " << name << "\t\tto: " << value << '\n';
+//    }
+
+    // now, build output by following links to tie identifier to user value
+    // to match against data from Instance document.
+    
+    for (auto [link_from, href] : locs)
+    {
+        auto link_to = arcs.find(link_from);
+        if (link_to == arcs.end())
+        {
+            continue;
+        }
+        auto linked_to_label = labels.find(link_to->second);
+        if (linked_to_label == labels.end())
+        {
+            continue;
+        }
+
+        result.emplace(href, linked_to_label->second);
+    }
+
+//    std::cout << "RESULT:\n";
+//    for (auto [name, value] : result)
+//    {
+//        std::cout << "key: " << name << "\t\tvalue: " << value << '\n';
+//    }
+    return result;
+}		// -----  end of function ExtractFieldLabels2  -----
+
+
+EE::EDGAR_Labels ExtractFieldLabels0(const pugi::xml_document& labels_xml)
 {
     EE::EDGAR_Labels result;
 
@@ -575,7 +739,7 @@ sview TrimExcessXML(sview document)
 pugi::xml_document ParseXMLContent(sview document)
 {
     pugi::xml_document doc;
-    auto result = doc.load_buffer(document.data(), document.size());
+    auto result = doc.load_buffer(document.data(), document.size(), pugi::parse_default | pugi::parse_wnorm_attribute);
     if (! result)
     {
         throw ExtractException{"Error description: "s + result.description() + "\nError offset: "s

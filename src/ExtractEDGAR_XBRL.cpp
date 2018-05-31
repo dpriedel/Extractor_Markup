@@ -59,7 +59,7 @@ namespace bg = boost::gregorian;
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+?</SEC-HEADER>)***"};
 
-void ParseTheXMl(const sview document, const EE::SEC_Header_fields& fields)
+void ParseTheXMl(sview document, const EE::SEC_Header_fields& fields)
 {
     // TODO: add error handling all over the place here.
 
@@ -149,7 +149,7 @@ void ParseTheXMl(const sview document, const EE::SEC_Header_fields& fields)
     std::cout << "Found: " << counter << "\n ****** \n";
 }
 
-std::string ConvertPeriodEndDateToContextName(const sview period_end_date)
+std::string ConvertPeriodEndDateToContextName(sview period_end_date)
 
 {
     //  our given date is yyyy-mm-dd.
@@ -203,7 +203,7 @@ void ParseTheXMl_Labels(const sview document, const EE::SEC_Header_fields& field
 
     std::cout << "\n ****** \n";
 }
-std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content, sview form_type,
+std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
     if (file_content.find(R"***(<XBRL>)***") != sview::npos)
@@ -213,7 +213,7 @@ std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content
         // And while we are at it, let's collect our identifying data.
 
     	boost::cmatch results;
-    	bool found_it = boost::regex_search(file_content.data(), file_content.data() + file_content.size(), results, regex_SEC_header);
+    	bool found_it = boost::regex_search(file_content.begin(), file_content.end(), results, regex_SEC_header);
 
     	poco_assert_msg(found_it, "Can't find SEC Header");
 
@@ -238,7 +238,7 @@ std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content
         return std::nullopt;
 }
 
-void WriteDataToFile(const fs::path& output_file_name, const sview document)
+void WriteDataToFile(const fs::path& output_file_name, sview document)
 {
     std::ofstream output_file(output_file_name);
     if (not output_file)
@@ -248,22 +248,22 @@ void WriteDataToFile(const fs::path& output_file_name, const sview document)
     output_file.close();
 }
 
-fs::path FindFileName(const fs::path& output_directory, const sview document, const boost::regex& regex_fname)
+fs::path FindFileName(const fs::path& output_directory, sview document, const boost::regex& regex_fname)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
-        const sview file_name(matches[1].first, matches[1].length());
+        sview file_name(matches[1].first, matches[1].length());
         fs::path output_file_name{output_directory};
-        output_file_name /= file_name.data();
+        output_file_name.append(file_name.begin(), file_name.end());
         return output_file_name;
     }
     else
         throw std::runtime_error("Can't find file name in document.\n");
 }
 
-const sview FindFileType(const sview document, const boost::regex& regex_ftype)
+const sview FindFileType(sview document, const boost::regex& regex_ftype)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);

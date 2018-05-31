@@ -52,18 +52,18 @@ namespace fs = std::experimental::filesystem;
 
 // determine whether or not we want to process this file
 
-std::optional<EE::SEC_Header_fields> FilterFiles(const std::string& file_content, sview form_type, const int MAX_FILES, std::atomic<int>& files_processed);
+std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_type, const int MAX_FILES, std::atomic<int>& files_processed);
 
-void ParseTheXMl(const sview document, const EE::SEC_Header_fields& fields);
-void ParseTheXMl_Labels(const sview document, const EE::SEC_Header_fields& fields);
+void ParseTheXMl(sview document, const EE::SEC_Header_fields& fields);
+void ParseTheXMl_Labels(sview document, const EE::SEC_Header_fields& fields);
 
-void WriteDataToFile(const fs::path& output_file_name, const sview document);
+void WriteDataToFile(const fs::path& output_file_name, sview document);
 
-fs::path FindFileName(const fs::path& output_directory, const sview document, const boost::regex& regex_fname);
+fs::path FindFileName(const fs::path& output_directory, sview document, const boost::regex& regex_fname);
 
-const sview FindFileType(const sview document, const boost::regex& regex_ftype);
+const sview FindFileType(sview document, const boost::regex& regex_ftype);
 
-std::string ConvertPeriodEndDateToContextName(const sview period_end_date);
+std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 
 
 #endif /* end of include guard: __EXTRACTEDGAR_XBRL__*/
