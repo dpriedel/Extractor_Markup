@@ -163,6 +163,15 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
 EE::EDGAR_Labels ExtractFieldLabels0(const pugi::xml_document& labels_xml);
 
+std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& top_level_node,
+        const std::string& label_link_name, const std::string& label_node_name);
+
+std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
+        const std::string& label_link_name, const std::string& loc_node_name);
+
+std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_node,
+        const std::string& label_link_name, const std::string& arc_node_name);
+
 void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link);
 
 void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label);
