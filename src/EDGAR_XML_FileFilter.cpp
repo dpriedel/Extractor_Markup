@@ -131,7 +131,7 @@ bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_field
     return (begin_date_ <= report_date && report_date <= end_date_);
 }
 
-sview LocateInstanceDocument(const std::vector<std::experimental::string_view>& document_sections)
+sview LocateInstanceDocument(const std::vector<sview>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -145,7 +145,7 @@ sview LocateInstanceDocument(const std::vector<std::experimental::string_view>& 
     return {};
 }
 
-sview LocateLabelDocument(const std::vector<std::experimental::string_view>& document_sections)
+sview LocateLabelDocument(const std::vector<sview>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -174,7 +174,7 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
     return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding};
 }
 
-std::string ConvertPeriodEndDateToContextName(const std::experimental::string_view& period_end_date)
+std::string ConvertPeriodEndDateToContextName(sview period_end_date)
 
 {
     //  our given date is yyyy-mm-dd.
@@ -252,8 +252,6 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
 EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 {
-    EE::EDGAR_Labels result;
-
     auto top_level_node = labels_xml.first_child();
 
     // we need to look for possible namespace here.
@@ -297,25 +295,7 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 //        std::cout << "from: " << name << "\t\tto: " << value << '\n';
 //    }
 
-    for (auto [link_to, value] : labels)
-    {
-        auto link_from = arcs.find(link_to);
-        if (link_from == arcs.end())
-        {
-            // stand-alone link
-        
-            std::cout << "stand-alone: ARCS\n";
-            continue;    
-        }
-        auto href = locs.find(link_from->second);
-        if (href == locs.end())
-        {
-            // non-gaap field
-            
-            continue;
-        }
-       result.emplace(href->second, value); 
-    }
+    auto result = AssembleLookupTable(labels, locs, arcs);
 
 //    std::cout << "RESULT:\n";
 //    for (auto [name, value] : result)
@@ -428,227 +408,32 @@ std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_nod
     return arcs;
 }		/* -----  end of function FindLabelArcElements  ----- */
 
-EE::EDGAR_Labels ExtractFieldLabels0(const pugi::xml_document& labels_xml)
+EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
+        const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs)
 {
     EE::EDGAR_Labels result;
 
-    auto top_level_node = labels_xml.first_child();
-
-    // we need to look for possible namespace here.
-
-    std::string n_name{top_level_node.name()};
-
-    std::string namespace_prefix;
-    if (auto pos = n_name.find(':'); pos != sview::npos)
+    for (auto [link_to, value] : labels)
     {
-        namespace_prefix = n_name.substr(0, pos + 1);
-    }
-
-    std::string label_node_name{namespace_prefix + "label"};
-    std::string loc_node_name{namespace_prefix + "loc"};
-    std::string arc_node_name{namespace_prefix + "labelArc"};
-    std::string label_link_name{namespace_prefix + "labelLink"};
-
-    auto tmp1 = top_level_node.child(label_link_name.c_str());
-
-    // sequence of nodes DOES vary between documents.
-    // ASSUMPTION: sequence DOES NOT vary within a given document.
-    // HOWEVER, not every link:label element has a link:loc element. these are stand-alone links.
-
-    // For non-stand-alone links, there are three link nodes involved: link, loc, labelArc,
-    // for a total of 6 sequence permutations.  We need to see what we've got so
-    // we know how to scan through them.
-
-    auto a_child = tmp1.first_child();
-    std::string n1{a_child.name()};
-    a_child = a_child.next_sibling();
-    std::string n2{a_child.name()};
-    a_child = a_child.next_sibling();
-    std::string n3{a_child.name()};
-
-    //  we have 6 possible scan sequences but since we only need 2 out of 3 nodes
-    // to get our data, only 4 sequences are actually different.
-    // plus, we need to deal with stand-alone labels.
-
-    int scan_sequence{0};
-
-    if (n1 == label_node_name && n2 == loc_node_name)
-    {
-        scan_sequence = 1;
-    }
-    else if (n1 == label_node_name && n3 == loc_node_name)
-    {
-        scan_sequence = 2;
-    }
-    else if (n1 == loc_node_name && n2 == label_node_name)
-    {
-        scan_sequence = 3;
-    }
-    else if (n1 == loc_node_name && n3 == label_node_name)
-    {
-        scan_sequence = 4;
-    }
-    else if (n2 == label_node_name && n3 == loc_node_name)
-    {
-        scan_sequence = 1;
-    }
-    else if (n2 == loc_node_name && n3 == label_node_name)
-    {
-        scan_sequence = 3;
-    }
-    else
-    {
-        throw ExtractException("Unknown link node sequence: " + n1 + ":" + n2 + ":" + n3);
-    }
-
-    // some files have separate labelLink sections for each link element set !!
-
-    for (auto links = top_level_node.child(label_link_name.c_str()); ! links.empty();
-        links = links.next_sibling(label_link_name.c_str()))
-    {
-        for (auto label_link = links.child(label_node_name.c_str()); ! label_link.empty();
-            label_link = label_link.next_sibling(label_node_name.c_str()))
+        auto link_from = arcs.find(link_to);
+        if (link_from == arcs.end())
         {
-            // this routine is based upon physical order of items in the file using our scan sequence identified above.
-
-            switch(scan_sequence)
-            {
-            case 1:
-            case 5:
-                {
-                    auto loc_label{label_link.next_sibling()};
-                    if (sview loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                    {
-                        // we may have a stand-alone link element,
-
-                        HandleStandAloneLabel(result, label_link);
-                    }
-                    else
-                    {
-                        HandleLabel(result, label_link, loc_label);
-                    }
-                }
-                break;
-
-            case 2:
-                {
-                    auto tmp = label_link.next_sibling();
-                    auto loc_label{tmp.next_sibling()};
-                    if (sview loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                    {
-                        // we may have a stand-alone link element,
-
-                        HandleStandAloneLabel(result, label_link);
-                    }
-                    else
-                    {
-                        HandleLabel(result, label_link, loc_label);
-                    }
-                }
-                break;
-
-            case 3:
-            case 6:
-                {
-                    auto loc_label{label_link.previous_sibling()};
-                    if (sview loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                    {
-                        // we may have a stand-alone link element,
-
-                        HandleStandAloneLabel(result, label_link);
-                    }
-                    else
-                    {
-                        HandleLabel(result, label_link, loc_label);
-                    }
-                }
-                break;
-
-            case 4:
-                {
-                    auto tmp = label_link.previous_sibling();
-                    auto loc_label{tmp.previous_sibling()};
-                    if (sview loc_label_name {loc_label.name()}; loc_label_name != loc_node_name)
-                    {
-                        // we may have a stand-alone link element,
-
-                        HandleStandAloneLabel(result, label_link);
-                    }
-                    else
-                    {
-                        HandleLabel(result, label_link, loc_label);
-                    }
-                }
-                break;
-
-            default:
-                throw ExtractException("I don't know what I'm doing here.");
-            }
+            // stand-alone link
+        
+            std::cout << "stand-alone: ARCS\n";
+            continue;    
         }
+        auto href = locs.find(link_from->second);
+        if (href == locs.end())
+        {
+            // non-gaap field
+            
+            continue;
+        }
+       result.emplace(href->second, value); 
     }
     return result;
-}
-
-void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link)
-{
-    sview role{label_link.attribute("xlink:role").value()};
-    sview link_name{label_link.attribute("xlink:label").value()};
-    if (auto pos = link_name.find(US_GAAP_PFX); pos  != sview::npos)
-    {
-        link_name.remove_prefix(pos);
-        // if (link_name.find('_', 8) != sview::npos)
-        if (link_name.find('_') != sview::npos)
-        {
-            return;
-        }
-
-        // we may have multiple entries for each identifier. if so, we want to give preference to the plain 'label' value.
-
-        if (boost::algorithm::ends_with(role, "role/label"))
-        {
-            // if we're here, it means we have a plain 'total' label, so we want this to succeed.
-
-            result.insert_or_assign(link_name.data(), label_link.child_value());
-        }
-        else
-        {
-            // if this fails, it's because we already have an entry so that's OK
-
-            result.try_emplace(link_name.data(), label_link.child_value());
-        }
-    }
-}
-
-void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label)
-{
-    sview role{label_link.attribute("xlink:role").value()};
-
-    sview href{loc_label.attribute("xlink:href").value()};
-    if (href.find("us-gaap") == sview::npos)
-    {
-        return;
-    }
-
-    auto pos = href.find('#');
-    if (pos == sview::npos)
-    {
-        throw ExtractException("Can't find label start.");
-    }
-    href.remove_prefix(pos + 1);
-
-    if (boost::algorithm::ends_with(role, "role/label"))
-    {
-        // if we're here, it means we have a plain 'total' label, so we want this to succeed.
-
-        result.insert_or_assign(href.data(), label_link.child_value());
-    }
-    else
-    {
-        // if this fails, it's because we already have an entry so that's OK
-
-        result.try_emplace(href.data(), label_link.child_value());
-    }
-}
+}		/* -----  end of function AssembleLookupTable  ----- */
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)
 {
@@ -721,14 +506,14 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     return result;
 }
 
-std::vector<std::experimental::string_view> LocateDocumentSections(sview file_content)
+std::vector<sview> LocateDocumentSections(sview file_content)
 {
-    std::vector<std::experimental::string_view> result;
+    std::vector<sview> result;
 
     for (auto doc = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc);
         doc != boost::cregex_token_iterator{}; ++doc)
     {
-		result.emplace_back(std::experimental::string_view(doc->first, doc->length()));
+		result.emplace_back(sview(doc->first, doc->length()));
     }
 
     return result;

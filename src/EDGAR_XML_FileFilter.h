@@ -72,9 +72,9 @@ public:
 
 // function to split a string on a delimiter and return a vector of string-views
 
-inline std::vector<std::experimental::string_view> split_string(const std::experimental::string_view& string_data, char delim)
+inline std::vector<sview> split_string(sview string_data, char delim)
 {
-    std::vector<std::experimental::string_view> results;
+    std::vector<sview> results;
 	for (auto it = 0; it != sview::npos; ++it)
 	{
 		auto pos = string_data.find(delim, it);
@@ -101,32 +101,32 @@ struct FileHasXBRL
 
 struct FileHasFormType
 {
-    FileHasFormType(const std::vector<std::experimental::string_view>& form_list)
+    FileHasFormType(const std::vector<sview>& form_list)
         : form_list_{form_list} {}
 
     bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
 
-    const std::vector<std::experimental::string_view>& form_list_;
+    const std::vector<sview>& form_list_;
 };
 
 struct FileHasCIK
 {
-    FileHasCIK(const std::vector<std::experimental::string_view>& CIK_list)
+    FileHasCIK(const std::vector<sview>& CIK_list)
         : CIK_list_{CIK_list} {}
 
     bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
 
-    const std::vector<std::experimental::string_view>& CIK_list_;
+    const std::vector<sview>& CIK_list_;
 };
 
 struct FileHasSIC
 {
-    FileHasSIC(const std::vector<std::experimental::string_view>& SIC_list)
+    FileHasSIC(const std::vector<sview>& SIC_list)
         : SIC_list_{SIC_list} {}
 
     bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
 
-    const std::vector<std::experimental::string_view>& SIC_list_;
+    const std::vector<sview>& SIC_list_;
 };
 
 struct FileIsWithinDateRange
@@ -150,18 +150,17 @@ auto ApplyFilters(const EE::SEC_Header_fields& header_fields, sview file_content
 	return (... && (ts(header_fields, file_content)));
 }
 
-sview LocateInstanceDocument(const std::vector<std::experimental::string_view>& document_sections);
+sview LocateInstanceDocument(const std::vector<sview>& document_sections);
 
-sview LocateLabelDocument(const std::vector<std::experimental::string_view>& document_sections);
+sview LocateLabelDocument(const std::vector<sview>& document_sections);
 
-std::vector<std::experimental::string_view> LocateDocumentSections(sview file_content);
+std::vector<sview> LocateDocumentSections(sview file_content);
 
 EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
 std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
 EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
-EE::EDGAR_Labels ExtractFieldLabels0(const pugi::xml_document& labels_xml);
 
 std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& label_node_name);
@@ -172,13 +171,12 @@ std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
 std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& arc_node_name);
 
-void HandleStandAloneLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link);
-
-void HandleLabel(EE::EDGAR_Labels& result, pugi::xml_node label_link, pugi::xml_node loc_label);
+EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
+        const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs);
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
-// std::vector<std::experimental::string_view> LocateDocumentSections2(sview file_content);
+// std::vector<sview> LocateDocumentSections2(sview file_content);
 
 sview FindFileName(sview document);
 
@@ -188,7 +186,7 @@ sview TrimExcessXML(sview document);
 
 pugi::xml_document ParseXMLContent(sview document);
 
-std::string ConvertPeriodEndDateToContextName(const std::experimental::string_view& period_end_date);
+std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 
 void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
