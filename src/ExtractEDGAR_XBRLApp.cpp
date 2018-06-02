@@ -123,6 +123,7 @@ int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono
                 throw std::runtime_error("wait_for_all(): deferred future");
             }
         }
+    continue_here = 0;
     std::this_thread::sleep_for(d);
     }
 }
@@ -835,8 +836,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
     {
         // we want to keep max_at_a_time_ tasks going so, as one finishes,
         // we replace it with another
+    
         ready_task = wait_for_any(tasks, continue_here, std::chrono::microseconds{100});
-        // std::cout << "k: " << k << '\n';
         try
         {
             auto result = tasks[ready_task].get();
@@ -876,11 +877,17 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
             // we ignore these...
 
+            if (current_file < list_of_files_to_process_.size())
+            {
+                tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
+                continue_here = (ready_task + 1) % max_at_a_time_;
+                ready_task = -1;
+            }
             continue;
         }
         catch (std::exception& e)
         {
-            // any problems, we'll document them and continue.
+            // any problems, we'll document them and finish any other active tasks.
 
             poco_error(logger(), e.what());
             ++error_counter;
