@@ -124,8 +124,16 @@ int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono
             }
         }
     continue_here = 0;
+
+    if (ExtractEDGAR_XBRLApp::SignalReceived())
+    {
+        break;
+    }
+
     std::this_thread::sleep_for(d);
     }
+
+    return -1;
 }
 
 ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
@@ -512,6 +520,7 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
 
 void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
 {
+    list_of_files_to_process_.clear();      //  in case of reprocessing.
 
     std::ifstream input_file{list_of_files_to_process_path_};
 
@@ -686,7 +695,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory()
     std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
 }
 
-bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, std::experimental::string_view file_content, std::atomic<int>& forms_processed)
+bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed)
 {
     bool use_file{true};
     for (const auto& filter : filters_)
@@ -708,7 +717,7 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
     return use_file;
 }
 
-void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, std::experimental::string_view file_content)
+void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content)
 {
 
     logger().debug("Loading contents from file: " + file_name);
@@ -763,7 +772,15 @@ bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atom
     bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
     if (use_file)
     {
+        try
+        {
         LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+        }
+        catch(ExtractException& e)
+        {
+            poco_error(logger(), e.what());
+            return false;
+        }
     }
     else
     {
@@ -838,6 +855,10 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         // we replace it with another
     
         ready_task = wait_for_any(tasks, continue_here, std::chrono::microseconds{100});
+        if (ready_task < 0)
+        {
+            break;
+        }
         try
         {
             auto result = tasks[ready_task].get();
@@ -868,23 +889,23 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             }
             break;
         }
-        catch (ExtractException& e)
-        {
-            // any problems, we'll document them and continue.
-
-            poco_error(logger(), e.what());
-            ++error_counter;
-
-            // we ignore these...
-
-            if (current_file < list_of_files_to_process_.size())
-            {
-                tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
-                continue_here = (ready_task + 1) % max_at_a_time_;
-                ready_task = -1;
-            }
-            continue;
-        }
+//        catch (ExtractException& e)
+//        {
+//            // any problems, we'll document them and continue.
+//
+//            poco_error(logger(), e.what());
+//            ++error_counter;
+//
+//            // we ignore these...
+//
+//            if (current_file < list_of_files_to_process_.size())
+//            {
+//                tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
+//                continue_here = (ready_task + 1) % max_at_a_time_;
+//                ready_task = -1;
+//            }
+//            continue;
+//        }
         catch (std::exception& e)
         {
             // any problems, we'll document them and finish any other active tasks.
@@ -940,14 +961,17 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             {
                 continue;
             }
-            auto result = tasks[i].get();
-            if (result)
+            if (tasks[i].valid())
             {
-                ++success_counter;
-            }
-            else
-            {
-                ++skipped_counter;
+                auto result = tasks[i].get();
+                if (result)
+                {
+                    ++success_counter;
+                }
+                else
+                {
+                    ++skipped_counter;
+                }
             }
         }
         catch (ExtractException& e)

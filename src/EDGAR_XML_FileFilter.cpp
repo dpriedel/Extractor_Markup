@@ -579,16 +579,16 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     // start stuffing the database.
 
     pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
-    pqxx::work query{c};
+    pqxx::work trxn{c};
 
 	auto check_for_existing_content_cmd = boost::format("SELECT count(*) FROM xbrl_extracts.edgar_filing_id WHERE"
         " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
-			% query.esc(SEC_fields.at("cik"))
-			% query.esc(SEC_fields.at("form_type"))
-			% query.esc(filing_fields.period_end_date)
+			% trxn.esc(SEC_fields.at("cik"))
+			% trxn.esc(SEC_fields.at("form_type"))
+			% trxn.esc(filing_fields.period_end_date)
 			;
-    auto row = query.exec1(check_for_existing_content_cmd.str());
-    query.commit();
+    auto row = trxn.exec1(check_for_existing_content_cmd.str());
+//    trxn.commit();
 	auto have_data = row[0].as<int>();
     if (have_data != 0 && ! replace_content)
     {
@@ -599,7 +599,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
         return;
     }
 
-    pqxx::work trxn{c};
+//    pqxx::work trxn{c};
 
 	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
         " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
@@ -626,14 +626,14 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd.str());
-    trxn.commit();
+//    trxn.commit();
 
 	std::string filing_ID;
 	res[0]["filing_ID"].to(filing_ID);
 
     // now, the goal of all this...save all the financial values for the given time period.
 
-    pqxx::work details{c};
+//    pqxx::work trxn{c};
     int counter = 0;
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
@@ -652,9 +652,9 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     			% trxn.esc(decimals)
     			;
         // std::cout << detail_cmd << '\n';
-        details.exec(detail_cmd.str());
+        trxn.exec(detail_cmd.str());
     }
 
-    details.commit();
+    trxn.commit();
     c.disconnect();
 }
