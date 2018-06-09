@@ -131,6 +131,17 @@ bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_field
     return (begin_date_ <= report_date && report_date <= end_date_);
 }
 
+bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_name)
+{
+    auto check_for_form_in_name([&file_name](auto form_type)
+        {
+            auto pos = file_name.find("/" + form_type.to_string() + "/");
+            return (pos != file_name.npos ? true : false);
+        }
+    );
+    return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
+}		/* -----  end of function FormIsInFileName  ----- */
+
 sview LocateInstanceDocument(const std::vector<sview>& document_sections)
 {
     for (auto document : document_sections)
@@ -166,12 +177,14 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
     // next, some filing specific data from the XBRL portion of our document.
 
     auto trading_symbol = top_level_node.child("dei:TradingSymbol").child_value();
-    auto shares_outstanding = top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value();
+
+    sview shares_outstanding{top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value()};
+
     auto period_end_date = top_level_node.child("dei:DocumentPeriodEndDate").child_value();
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
-    return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding};
+    return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding.empty() ? "0" : shares_outstanding.to_string()};
 }
 
 std::string ConvertPeriodEndDateToContextName(sview period_end_date)
@@ -596,6 +609,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
         {
             the_logger->debug("Skipping: Form data exists and Replace not specifed for file: " + SEC_fields.at("file_name"));
         }
+        c.disconnect();
         return;
     }
 
@@ -612,7 +626,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding)"
-		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%', %10%) RETURNING filing_ID")
+		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%', '%10%') RETURNING filing_ID")
 		% trxn.esc(SEC_fields.at("cik"))
 		% trxn.esc(SEC_fields.at("company_name"))
 		% trxn.esc(SEC_fields.at("file_name"))

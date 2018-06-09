@@ -351,6 +351,20 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .argument("value")
             .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_concurrency_limit)));
 
+    options.addOption(
+        Poco::Util::Option("filename-has-form", "", "form number is in file path. Default is 'false'")
+            .required(false)
+            .repeatable(false)
+            .noArgument()
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_filename_has_form)));
+
+    options.addOption(
+        Poco::Util::Option("resume-at", "", "find this file name in list and resume processing there.")
+            .required(false)
+            .repeatable(false)
+            .argument("value")
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_resume_at_filename)));
+
 }
 
 void  ExtractEDGAR_XBRLApp::handleHelp(const std::string& name, const std::string& value)
@@ -504,6 +518,11 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
         poco_assert_msg(fs::exists(local_form_file_directory_), ("Can't find EDGAR file directory: " + local_form_file_directory_.string()).c_str());
         poco_assert_msg(fs::is_directory(local_form_file_directory_), ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
     }
+    
+    if (! resume_at_this_filename_.empty())
+    {
+        poco_assert_msg(list_of_files_to_process_.empty(), "You must provide a list of files to process when specifying file to resume at.");
+    }
 
     if (! list_of_files_to_process_path_.empty())
     {
@@ -538,6 +557,23 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
     input_file.close();
 
     logger().debug("Found: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
+
+    if (resume_at_this_filename_.empty())
+    {
+        return;
+    }
+
+    auto pos = std::find(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), resume_at_this_filename_);
+    if (pos != std::end(list_of_files_to_process_))
+    {
+        list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
+    }
+    else
+    {
+        throw std::range_error("File: " + resume_at_this_filename_ + " not found in list of files.");
+    }
+
+    logger().debug("Resuming with: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
 }
 
 void ExtractEDGAR_XBRLApp::BuildFilterList()
@@ -635,6 +671,13 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
         {
             try
             {
+                if (filename_has_form_)
+                {
+                    if (! FormIsInFileName(form_list_, file_name))
+                    {
+                        return;
+                    }
+                }
                 logger().debug("Scanning file: " + file_name);
                 std::string file_content(fs::file_size(file_name), '\0');
                 std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
@@ -673,6 +716,13 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory()
     {
         if (dir_ent.status().type() == fs::file_type::regular)
         {
+            if (filename_has_form_)
+            {
+                if (! FormIsInFileName(form_list_, dir_ent.path().string()))
+                {
+                    return;
+                }
+            }
             logger().debug("Scanning file: " + dir_ent.path().string());
             std::string file_content(fs::file_size(dir_ent.path()), '\0');
             std::ifstream input_file{dir_ent.path(), std::ios_base::in | std::ios_base::binary};
@@ -758,6 +808,13 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::Validate(const Poco::Util::Option&
 
 bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
+    if (filename_has_form_)
+    {
+        if (! FormIsInFileName(form_list_, file_name))
+        {
+            return false;
+        }
+    }
     logger().debug("Scanning file: " + file_name);
     std::string file_content(fs::file_size(file_name), '\0');
     std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};

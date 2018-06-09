@@ -162,6 +162,8 @@ private:
     void inline store_log_path(const std::string& name, const std::string& value) { log_file_path_name_ = value; }
     void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process_ = std::stoi(value); }
     void inline store_concurrency_limit(const std::string& name, const std::string& value) { max_at_a_time_ = std::stoi(value); }
+    void inline store_filename_has_form(const std::string& name, const std::string& value) { filename_has_form_ = true; }
+    void inline store_resume_at_filename(const std::string& name, const std::string& value) { resume_at_this_filename_ = value; }
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -178,6 +180,7 @@ private:
 	std::string CIK_;
 	std::string SIC_;
     std::string logging_level_{"information"};
+    std::string resume_at_this_filename_;
 
 	std::vector<sview> form_list_;
 	std::vector<sview> CIK_list_;
@@ -197,6 +200,7 @@ private:
 
 	bool replace_DB_content_{false};
 	bool help_requested_{false};
+    bool filename_has_form_{false};
 
     static bool had_signal_;
 

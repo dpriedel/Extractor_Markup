@@ -150,6 +150,8 @@ auto ApplyFilters(const EE::SEC_Header_fields& header_fields, sview file_content
 	return (... && (ts(header_fields, file_content)));
 }
 
+bool FormIsInFileName(std::vector<sview>& form_types, const std::string& file_name);
+
 sview LocateInstanceDocument(const std::vector<sview>& document_sections);
 
 sview LocateLabelDocument(const std::vector<sview>& document_sections);
