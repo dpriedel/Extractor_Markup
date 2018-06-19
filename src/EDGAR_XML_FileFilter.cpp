@@ -286,6 +286,14 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 
     auto labels = FindLabelElements(top_level_node, label_link_name, label_node_name);
 
+    // sometimes, the namespace prefix is not used for the actual link nodes.
+    
+    if (labels.empty())
+    {
+        labels = FindLabelElements(top_level_node, label_link_name, label_node_name.substr(namespace_prefix.size()));
+    }
+
+
 //    std::cout << "LABELS:\n";
 //    for (auto [name, value] : labels)
 //    {
@@ -293,6 +301,10 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 //    }
 
     auto locs = FindLocElements(top_level_node, label_link_name, loc_node_name);
+    if (locs.empty())
+    {
+        locs = FindLocElements(top_level_node, label_link_name, loc_node_name.substr(namespace_prefix.size()));
+    }
 
 //    std::cout << "LOCS:\n";
 //    for (auto [name, value] : locs)
@@ -301,6 +313,10 @@ EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 //    }
 
     auto arcs = FindLabelArcElements(top_level_node, label_link_name, arc_node_name);
+    if (arcs.empty())
+    {
+        arcs = FindLabelArcElements(top_level_node, label_link_name, arc_node_name.substr(namespace_prefix.size()));
+    }
 
 //    std::cout << "ARCS:\n";
 //    for (auto [name, value] : arcs)

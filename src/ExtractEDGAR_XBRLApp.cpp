@@ -716,28 +716,39 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory()
     {
         if (dir_ent.status().type() == fs::file_type::regular)
         {
-            if (filename_has_form_)
+            try
             {
-                if (! FormIsInFileName(form_list_, dir_ent.path().string()))
+                if (filename_has_form_)
                 {
-                    return;
+                    if (! FormIsInFileName(form_list_, dir_ent.path().string()))
+                    {
+                        return;
+                    }
+                }
+                logger().debug("Scanning file: " + dir_ent.path().string());
+                std::string file_content(fs::file_size(dir_ent.path()), '\0');
+                std::ifstream input_file{dir_ent.path(), std::ios_base::in | std::ios_base::binary};
+                input_file.read(&file_content[0], file_content.size());
+                input_file.close();
+
+                SEC_Header SEC_data;
+                SEC_data.UseData(file_content);
+                SEC_data.ExtractHeaderFields();
+                decltype(auto) SEC_fields = SEC_data.GetFields();
+
+                bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+                if (use_file)
+                {
+                    LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
                 }
             }
-            logger().debug("Scanning file: " + dir_ent.path().string());
-            std::string file_content(fs::file_size(dir_ent.path()), '\0');
-            std::ifstream input_file{dir_ent.path(), std::ios_base::in | std::ios_base::binary};
-            input_file.read(&file_content[0], file_content.size());
-            input_file.close();
-
-            SEC_Header SEC_data;
-            SEC_data.UseData(file_content);
-            SEC_data.ExtractHeaderFields();
-            decltype(auto) SEC_fields = SEC_data.GetFields();
-
-            bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-            if (use_file)
+            catch(std::range_error& e)
             {
-                LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
+                throw;
+            }
+            catch(std::exception& e)
+            {
+                std::cout << "Problem processing file: " << dir_ent.path().string() << ". " << e.what() << '\n';
             }
         }
     });
