@@ -957,23 +957,6 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             }
             break;
         }
-//        catch (ExtractException& e)
-//        {
-//            // any problems, we'll document them and continue.
-//
-//            poco_error(logger(), e.what());
-//            ++error_counter;
-//
-//            // we ignore these...
-//
-//            if (current_file < list_of_files_to_process_.size())
-//            {
-//                tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
-//                continue_here = (ready_task + 1) % max_at_a_time_;
-//                ready_task = -1;
-//            }
-//            continue;
-//        }
         catch (std::exception& e)
         {
             // any problems, we'll document them and finish any other active tasks.

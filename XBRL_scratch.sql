@@ -4,6 +4,15 @@
 
 select 1;
 
+-- how many entries in our table
+
+select count(*) from live_extracts.edgar_filing_id ;
+select count(*) from live_extracts.edgar_filing_data ;
+
+select count(*) from xbrl_extracts.edgar_filing_id ;
+select count(*) from xbrl_extracts.edgar_filing_data ;
+
+
 select count(*) from live_extracts.edgar_filing_data where user_label = 'Missing Value' ;
 
 select count(*) from xbrl_extracts.edgar_filing_data where user_label = 'Missing Value' ;
