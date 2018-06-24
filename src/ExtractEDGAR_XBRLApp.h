@@ -109,16 +109,16 @@ protected:
 
 	void BuildFilterList(void);
 	void BuildListOfFilesToProcess(void);
-
-	void LoadSingleFileToDB(const fs::path& input_file_name);
-
-	void ProcessDirectory(void);
-	void LoadFilesFromListToDB(void);
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
-	void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+
+    void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+
+    std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
+    std::tuple<int, int, int> ProcessDirectory(void);
+    std::tuple<int, int, int> LoadFilesFromListToDB(void);
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
-	bool LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
+    std::tuple<int, int, int> LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -126,21 +126,11 @@ private:
 
     static void HandleSignal(int signal);
 
-	struct comma_list_parser
-	{
-		std::vector<std::string>& destination_;
-		std::string seperator_;
-
-		comma_list_parser(std::vector<std::string>& destination, const std::string& seperator)
-			: destination_(destination), seperator_{seperator} {}
-
-		void parse_string(const std::string& comma_list);
-	};
     class LogLevelValidator : public Poco::Util::Validator
     {
         LogLevelValidator(void) : Validator() {}
 
-        virtual void Validate(const Poco::Util::Option& option, const std::string& value);
+        virtual void validate(const Poco::Util::Option& option, const std::string& value) override;
     };
 
     // a set of functions to be used to capture values from the command line.

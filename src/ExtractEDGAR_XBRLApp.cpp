@@ -65,6 +65,8 @@
 #include "Poco/Util/AbstractConfiguration.h"
 #include "Poco/Util/OptionException.h"
 
+#include <pqxx/pqxx>
+
 #include "EDGAR_XML_FileFilter.h"
 #include "SEC_Header.h"
 
@@ -93,6 +95,38 @@ struct line_only_whitespace : std::ctype<char>
     }
     explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
 };
+
+// let's add tuples...
+// based on code techniques from C++17 STL Cookbook zipping tuples.
+// (works for any class which supports the '+' operator)
+
+template <typename ...Ts>
+std::tuple<Ts...> AddTs(std::tuple<Ts...> const & t1, std::tuple<Ts...> const & t2)
+{
+    auto z_([] (auto ...xs)
+    {
+        return [xs ...] (auto ...ys)
+        {
+            return std::make_tuple((xs + ys) ...);
+        };
+    });
+
+    return  std::apply(std::apply(z_, t1), t2);
+}
+
+// let's sum the contents of a single tuple
+// (from C++ Templates...second edition p.58
+// and C++17 STL Cookbook.
+
+template <typename ...Ts>
+auto SumT(const std::tuple<Ts...>& t)
+{
+    auto z_([] (auto ...ys)
+    {
+        return (... + ys);
+    });
+    return std::apply(z_, t);
+}
 
 bool ExtractEDGAR_XBRLApp::had_signal_ = false;
 
@@ -547,11 +581,9 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
 
     input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
 
-    std::istream_iterator<std::string> itor{input_file};
-    std::istream_iterator<std::string> itor_end;
     std::copy(
-        itor,
-        itor_end,
+        std::istream_iterator<std::string>{input_file},
+        std::istream_iterator<std::string>{},
         std::back_inserter(list_of_files_to_process_)
     );
     input_file.close();
@@ -573,7 +605,29 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
         throw std::range_error("File: " + resume_at_this_filename_ + " not found in list of files.");
     }
 
-    logger().debug("Resuming with: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
+    logger().information("Resuming with: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
+}
+
+bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed)
+{
+    bool use_file{true};
+    for (const auto& filter : filters_)
+    {
+        use_file = use_file && filter(SEC_fields, file_content);
+        if (! use_file)
+        {
+            break;
+        }
+    }
+    if (use_file)
+    {
+        auto x = forms_processed.fetch_add(1);
+        if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+        {
+            throw std::range_error("Exceeded file limit: " + std::to_string(max_forms_to_process_) + '\n');
+        }
+    }
+    return use_file;
 }
 
 void ExtractEDGAR_XBRLApp::BuildFilterList()
@@ -605,67 +659,85 @@ void ExtractEDGAR_XBRLApp::BuildFilterList()
 
 void ExtractEDGAR_XBRLApp::Do_Run ()
 {
+    std::tuple<int, int, int> counters;
+
     // for now, I know this is all we are doing.
 
     if (! single_file_to_process_.empty())
     {
-        this->LoadSingleFileToDB(single_file_to_process_);
+        counters = this->LoadSingleFileToDB(single_file_to_process_);
     }
 
     if (! list_of_files_to_process_.empty())
     {
         if (max_at_a_time_ < 1)
         {
-            this->LoadFilesFromListToDB();
+            counters = this->LoadFilesFromListToDB();
         }
         else
         {
-            auto[succeesses, skips, errors] = this->LoadFilesFromListToDBConcurrently();
-            poco_information(logger(), "F: Loaded to DB: " + std::to_string(succeesses) +
-                ". Skipped: " + std::to_string(skips) + ". Errors: " + std::to_string(errors));
+            counters = this->LoadFilesFromListToDBConcurrently();
         }
     }
 
     if (! local_form_file_directory_.empty())
     {
-        this->ProcessDirectory();
+        counters = this->ProcessDirectory();
     }
 
+    auto [success_counter, skipped_counter, error_counter] = counters;
+
+    poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
+        + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_Run  -----
 
-void ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
-    std::string file_content(fs::file_size(input_file_name), '\0');
-    std::ifstream input_file{input_file_name, std::ios_base::in | std::ios_base::binary};
-    input_file.read(&file_content[0], file_content.size());
-    input_file.close();
+    try
+    {
+        std::string file_content(fs::file_size(input_file_name), '\0');
+        std::ifstream input_file{input_file_name, std::ios_base::in | std::ios_base::binary};
+        input_file.read(&file_content[0], file_content.size());
+        input_file.close();
 
-    auto document_sections{LocateDocumentSections(file_content)};
+        auto document_sections{LocateDocumentSections(file_content)};
 
-    auto labels_document = LocateLabelDocument(document_sections);
-    auto labels_xml = ParseXMLContent(labels_document);
+        auto labels_document = LocateLabelDocument(document_sections);
+        auto labels_xml = ParseXMLContent(labels_document);
 
-    auto instance_document = LocateInstanceDocument(document_sections);
-    auto instance_xml = ParseXMLContent(instance_document);
+        auto instance_document = LocateInstanceDocument(document_sections);
+        auto instance_xml = ParseXMLContent(instance_document);
 
-    auto filing_data = ExtractFilingData(instance_xml);
-    auto gaap_data = ExtractGAAPFields(instance_xml);
-    auto context_data = ExtractContextDefinitions(instance_xml);
-    auto label_data = ExtractFieldLabels(labels_xml);
+        auto filing_data = ExtractFilingData(instance_xml);
+        auto gaap_data = ExtractGAAPFields(instance_xml);
+        auto context_data = ExtractContextDefinitions(instance_xml);
+        auto label_data = ExtractFieldLabels(labels_xml);
 
-    SEC_Header SEC_data;
-    SEC_data.UseData(file_content);
-    SEC_data.ExtractHeaderFields();
-    decltype(auto) SEC_fields = SEC_data.GetFields();
+        SEC_Header SEC_data;
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
+        decltype(auto) SEC_fields = SEC_data.GetFields();
 
-    LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
+        LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
+    }
+    catch(const std::exception& e)
+    {
+        poco_error(logger(), "Problem processing file: " + input_file_name.string() + ". " + e.what());
+        return {0, 0, 1};
+    }
+
+    return {1, 0, 0};
 }
 
-void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
 {
+    int success_counter{0};
+    int skipped_counter{0};
+    int error_counter{0};
+
     std::atomic<int> forms_processed{0};
 
-    auto process_file([this, &forms_processed](const auto& file_name)
+    auto process_file([this, &forms_processed, &success_counter, & skipped_counter, & error_counter](const auto& file_name)
     {
         if (fs::is_regular_file(file_name))
         {
@@ -675,6 +747,7 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                 {
                     if (! FormIsInFileName(form_list_, file_name))
                     {
+                        ++skipped_counter;
                         return;
                     }
                 }
@@ -693,26 +766,46 @@ void ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                 if (use_file)
                 {
                     LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+                    ++success_counter;
+                }
+                else
+                {
+                    ++skipped_counter;
                 }
             }
             catch(std::range_error& e)
             {
+                ++error_counter;
+                poco_error(logger(), "Processed: "s + std::to_string(success_counter + skipped_counter + error_counter)
+                    + " files. Successes: " + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+                    + ". Errors: " + std::to_string(error_counter) + ".");
                 throw;
             }
             catch(std::exception& e)
             {
-                std::cout << "Problem processing file: " << file_name << ". " << e.what() << '\n';
+                ++error_counter;
+                poco_error(logger(), "Processed: "s + std::to_string(success_counter + skipped_counter + error_counter)
+                    + " files. Successes: " + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+                    + ". Errors: " + std::to_string(error_counter) + ".");
+                poco_error(logger(), "Problem processing file: " + file_name + ". " + e.what());
             }
         }
     });
 
     std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
+
+    return {success_counter, skipped_counter, error_counter};
 }
-void ExtractEDGAR_XBRLApp::ProcessDirectory()
+
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
 {
+    int success_counter{0};
+    int skipped_counter{0};
+    int error_counter{0};
+
     std::atomic<int> forms_processed{0};
 
-    auto test_file([this, &forms_processed](const auto& dir_ent)
+    auto test_file([this, &forms_processed, &success_counter, & skipped_counter, & error_counter](const auto& dir_ent)
     {
         if (dir_ent.status().type() == fs::file_type::regular)
         {
@@ -722,6 +815,7 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory()
                 {
                     if (! FormIsInFileName(form_list_, dir_ent.path().string()))
                     {
+                        ++skipped_counter;
                         return;
                     }
                 }
@@ -740,42 +834,35 @@ void ExtractEDGAR_XBRLApp::ProcessDirectory()
                 if (use_file)
                 {
                     LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
+                    ++success_counter;
+                }
+                else
+                {
+                    ++skipped_counter;
                 }
             }
             catch(std::range_error& e)
             {
+                ++error_counter;
+                poco_error(logger(), "Processed: "s + std::to_string(success_counter + skipped_counter + error_counter)
+                    + " files. Successes: " + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+                    + ". Errors: " + std::to_string(error_counter) + ".");
                 throw;
             }
             catch(std::exception& e)
             {
-                std::cout << "Problem processing file: " << dir_ent.path().string() << ". " << e.what() << '\n';
+                ++error_counter;
+                poco_error(logger(), "Processed: "s + std::to_string(success_counter + skipped_counter + error_counter)
+                    + " files. Successes: " + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+                    + ". Errors: " + std::to_string(error_counter) + ".");
+                poco_error(logger(), "Problem processing file: " + dir_ent.path().string() + ". " + e.what());
             }
         }
     });
 
     std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
-}
 
-bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed)
-{
-    bool use_file{true};
-    for (const auto& filter : filters_)
-    {
-        use_file = use_file && filter(SEC_fields, file_content);
-        if (! use_file)
-        {
-            break;
-        }
-    }
-    if (use_file)
-    {
-        auto x = forms_processed.fetch_add(1);
-        if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
-        {
-            throw std::range_error("Exceeded file limit: " + std::to_string(max_forms_to_process_) + '\n');
-        }
-    }
-    return use_file;
+    return {success_counter, skipped_counter, error_counter};
 }
 
 void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content)
@@ -804,12 +891,7 @@ void ExtractEDGAR_XBRLApp::Do_Quit ()
     logger().information("\n\n*** End run " + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_Quit  -----
 
-void ExtractEDGAR_XBRLApp::comma_list_parser::parse_string (const std::string& comma_list)
-{
-    boost::algorithm::split(destination_, comma_list, boost::algorithm::is_any_of(seperator_));
-}       // -----  end of method comma_list_parser::parse_string  -----
-
-void ExtractEDGAR_XBRLApp::LogLevelValidator::Validate(const Poco::Util::Option& option, const std::string& value)
+void ExtractEDGAR_XBRLApp::LogLevelValidator::validate(const Poco::Util::Option& option, const std::string& value)
 {
     if (value != "error" && value != "none" && value != "information" && value != "debug")
     {
@@ -817,13 +899,18 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::Validate(const Poco::Util::Option&
     }
 }
 
-bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
+    int success_counter{0};
+    int skipped_counter{0};
+    int error_counter{0};
+
     if (filename_has_form_)
     {
         if (! FormIsInFileName(form_list_, file_name))
         {
-            return false;
+            ++skipped_counter;
+            return {success_counter, skipped_counter, error_counter};
         }
     }
     logger().debug("Scanning file: " + file_name);
@@ -842,20 +929,28 @@ bool ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atom
     {
         try
         {
-        LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+            LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
+            ++success_counter;
         }
-        catch(ExtractException& e)
+        catch(const ExtractException& e)
         {
             poco_error(logger(), e.what());
-            return false;
+            ++error_counter;
+        }
+        catch(const pqxx::sql_error& e)
+        {
+            poco_error(logger(), "Database error: "s + e.what());
+            poco_error(logger(), "Query was: " + e.query());
+            ++error_counter;
         }
     }
     else
     {
         logger().debug("Skipping file: " + file_name);
+        ++skipped_counter;
     }
 
-    return use_file;
+    return {success_counter, skipped_counter, error_counter};
 }
 
 
@@ -884,15 +979,14 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     std::exception_ptr ep{nullptr};
 
-    int success_counter{0};
-    int error_counter{0};
-    int skipped_counter{0};
+    // TODO: use strong types here.
+    std::tuple<int, int, int> counters{0, 0, 0};  // success, skips, errors
 
     std::atomic<int> forms_processed{0};
 
     // keep track of our async processes here.
 
-    std::vector<std::future<bool>> tasks;
+    std::vector<std::future<std::tuple<int, int, int>>> tasks;
     tasks.reserve(max_at_a_time_);
 
     auto do_work([this, &forms_processed](int i)
@@ -930,14 +1024,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         try
         {
             auto result = tasks[ready_task].get();
-            if (result)
-            {
-                ++success_counter;
-            }
-            else
-            {
-                ++skipped_counter;
-            }
+            counters = AddTs(counters, result);
         }
         catch (std::system_error& e)
         {
@@ -945,9 +1032,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
             poco_error(logger(), e.what());
             auto ec = e.code();
-            poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
+            poco_error(logger(), "Category: "s + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
                 + ec.message());
-            ++error_counter;
+            counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
 
@@ -962,7 +1049,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             // any problems, we'll document them and finish any other active tasks.
 
             poco_error(logger(), e.what());
-            ++error_counter;
+            counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
 
@@ -977,7 +1064,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             // any problems, we'll document them and continue.
 
             poco_error(logger(), "Unknown problem with async file processing");
-            ++error_counter;
+            counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
 
@@ -1015,14 +1102,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             if (tasks[i].valid())
             {
                 auto result = tasks[i].get();
-                if (result)
-                {
-                    ++success_counter;
-                }
-                else
-                {
-                    ++skipped_counter;
-                }
+                counters = AddTs(counters, result);
             }
         }
         catch (ExtractException& e)
@@ -1030,7 +1110,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             // any problems, we'll document them and continue.
 
             poco_error(logger(), e.what());
-            ++error_counter;
+            counters = AddTs(counters, {0, 0, 1});
 
             // we ignore these...
 
@@ -1038,7 +1118,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         }
         catch(std::exception& e)
         {
-            ++error_counter;
+            counters = AddTs(counters, {0, 0, 1});
             if (! ep)
             {
                 ep = std::current_exception();
@@ -1046,13 +1126,19 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         }
     }
 
+    auto [success_counter, skipped_counter, error_counter] = counters;
+
     if (ep)
     {
+        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
+            + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
         std::rethrow_exception(ep);
     }
 
     if (ExtractEDGAR_XBRLApp::had_signal_)
     {
+        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
+            + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
         throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated after loading: "
             + std::to_string(success_counter) + " files.");
     }
@@ -1061,7 +1147,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     sigaction(SIGINT, &sa_old, 0);
 
-    return std::tuple(success_counter, skipped_counter, error_counter);
+    return counters;
 
 }       // -----  end of method HTTPS_Downloader::DownloadFilesConcurrently  -----
 
