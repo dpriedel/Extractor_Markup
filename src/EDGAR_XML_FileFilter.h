@@ -54,6 +54,8 @@ namespace bg = boost::gregorian;
 
 #include "ExtractEDGAR.h"
 
+std::string LoadXMLDataFileForUse(const char* file_name);
+
 namespace Poco
 {
     class Logger;

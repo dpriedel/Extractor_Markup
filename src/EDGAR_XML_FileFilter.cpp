@@ -39,7 +39,8 @@
 #include "EDGAR_XML_FileFilter.h"
 
 #include <algorithm>
-#include <iostream>
+#include <fstream>
+#include <experimental/filesystem>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
@@ -51,6 +52,7 @@
 
 #include "SEC_Header.h"
 
+namespace fs = std::experimental::filesystem;
 using namespace std::string_literals;
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
@@ -95,6 +97,16 @@ ExtractException::ExtractException(const std::string& text)
     : std::runtime_error(text)
 {
 
+}
+
+std::string LoadXMLDataFileForUse(const char* file_name)
+{
+    std::string file_content(fs::file_size(file_name), '\0');
+    std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+    input_file.read(&file_content[0], file_content.size());
+    input_file.close();
+    
+    return file_content;
 }
 
 bool FileHasXBRL::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)

@@ -695,10 +695,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
 {
     try
     {
-        std::string file_content(fs::file_size(input_file_name), '\0');
-        std::ifstream input_file{input_file_name, std::ios_base::in | std::ios_base::binary};
-        input_file.read(&file_content[0], file_content.size());
-        input_file.close();
+        const std::string file_content(LoadXMLDataFileForUse(input_file_name.string().c_str()));
 
         auto document_sections{LocateDocumentSections(file_content)};
 
@@ -752,10 +749,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                     }
                 }
                 logger().debug("Scanning file: " + file_name);
-                std::string file_content(fs::file_size(file_name), '\0');
-                std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
-                input_file.read(&file_content[0], file_content.size());
-                input_file.close();
+                const std::string file_content(LoadXMLDataFileForUse(file_name.c_str()));
 
                 SEC_Header SEC_data;
                 SEC_data.UseData(file_content);
@@ -820,10 +814,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                     }
                 }
                 logger().debug("Scanning file: " + dir_ent.path().string());
-                std::string file_content(fs::file_size(dir_ent.path()), '\0');
-                std::ifstream input_file{dir_ent.path(), std::ios_base::in | std::ios_base::binary};
-                input_file.read(&file_content[0], file_content.size());
-                input_file.close();
+                const std::string file_content(LoadXMLDataFileForUse(dir_ent.path().c_str()));
 
                 SEC_Header SEC_data;
                 SEC_data.UseData(file_content);
@@ -914,10 +905,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
         }
     }
     logger().debug("Scanning file: " + file_name);
-    std::string file_content(fs::file_size(file_name), '\0');
-    std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
-    input_file.read(&file_content[0], file_content.size());
-    input_file.close();
+    const std::string file_content(LoadXMLDataFileForUse(file_name.c_str()));
 
     SEC_Header SEC_data;
     SEC_data.UseData(file_content);
