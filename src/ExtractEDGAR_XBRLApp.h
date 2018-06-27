@@ -111,7 +111,7 @@ protected:
 	void BuildListOfFilesToProcess(void);
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
 
-    void LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
     std::tuple<int, int, int> ProcessDirectory(void);

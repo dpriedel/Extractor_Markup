@@ -192,7 +192,7 @@ pugi::xml_document ParseXMLContent(sview document);
 
 std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 
-void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
 

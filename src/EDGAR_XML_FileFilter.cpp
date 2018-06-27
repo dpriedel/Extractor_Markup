@@ -55,10 +55,6 @@
 namespace fs = std::experimental::filesystem;
 using namespace std::string_literals;
 
-const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
-const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
-
 const auto XBLR_TAG_LEN{7};
 
 const std::string US_GAAP_NS{"us-gaap:"};
@@ -549,6 +545,7 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
 
 std::vector<sview> LocateDocumentSections(sview file_content)
 {
+    const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
     std::vector<sview> result;
 
     for (auto doc = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc);
@@ -562,7 +559,9 @@ std::vector<sview> LocateDocumentSections(sview file_content)
 
 sview FindFileName(sview document)
 {
+    const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
+
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
@@ -574,7 +573,9 @@ sview FindFileName(sview document)
 
 sview FindFileType(sview document)
 {
+    const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
+
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
     if (found_it)
     {
@@ -613,7 +614,7 @@ pugi::xml_document ParseXMLContent(sview document)
 }
 
 
-void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger)
 {
@@ -638,7 +639,7 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
             the_logger->debug("Skipping: Form data exists and Replace not specifed for file: " + SEC_fields.at("file_name"));
         }
         c.disconnect();
-        return;
+        return false;
     }
 
 //    pqxx::work trxn{c};
@@ -699,4 +700,6 @@ void LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 
     trxn.commit();
     c.disconnect();
+
+    return true;
 }

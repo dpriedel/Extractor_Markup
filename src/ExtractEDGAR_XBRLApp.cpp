@@ -131,11 +131,13 @@ auto SumT(const std::tuple<Ts...>& t)
 bool ExtractEDGAR_XBRLApp::had_signal_ = false;
 
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
+// with modifications.
+//
+// return index of ready future
+// if no future is ready, wait for d before trying again
 
 template<typename T>
 int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono::steady_clock::duration d)
-// return index of ready future
-// if no future is ready, wait for d before trying again
 {
     while(true)
     {
@@ -157,14 +159,14 @@ int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono
                 throw std::runtime_error("wait_for_all(): deferred future");
             }
         }
-    continue_here = 0;
+        continue_here = 0;
 
-    if (ExtractEDGAR_XBRLApp::SignalReceived())
-    {
-        break;
-    }
+        if (ExtractEDGAR_XBRLApp::SignalReceived())
+        {
+            break;
+        }
 
-    std::this_thread::sleep_for(d);
+        std::this_thread::sleep_for(d);
     }
 
     return -1;
@@ -693,6 +695,8 @@ void ExtractEDGAR_XBRLApp::Do_Run ()
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
+    bool did_load{false};
+
     try
     {
         const std::string file_content(LoadXMLDataFileForUse(input_file_name.string().c_str()));
@@ -715,7 +719,10 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
+        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
+        {
+            did_load = true;
+        }
     }
     catch(const std::exception& e)
     {
@@ -723,7 +730,11 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
         return {0, 0, 1};
     }
 
-    return {1, 0, 0};
+    if (did_load)
+    {
+        return {1, 0, 0};
+    }
+    return {0, 1, 0};
 }
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
@@ -759,8 +770,14 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                 bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
                 if (use_file)
                 {
-                    LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
-                    ++success_counter;
+                    if (LoadFileFromFolderToDB(file_name, SEC_fields, file_content))
+                    {
+                        ++success_counter;
+                    }
+                    else
+                    {
+                        ++skipped_counter;
+                    }
                 }
                 else
                 {
@@ -824,8 +841,14 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                 bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
                 if (use_file)
                 {
-                    LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content);
-                    ++success_counter;
+                    if (LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content))
+                    {
+                        ++success_counter;
+                    }
+                    else
+                    {
+                        ++skipped_counter;
+                    }
                 }
                 else
                 {
@@ -856,7 +879,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
     return {success_counter, skipped_counter, error_counter};
 }
 
-void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content)
+bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content)
 {
 
     logger().debug("Loading contents from file: " + file_name);
@@ -874,7 +897,7 @@ void ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, 
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
+    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
 }
 
 void ExtractEDGAR_XBRLApp::Do_Quit ()
@@ -917,8 +940,14 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
     {
         try
         {
-            LoadFileFromFolderToDB(file_name, SEC_fields, file_content);
-            ++success_counter;
+            if (LoadFileFromFolderToDB(file_name, SEC_fields, file_content))
+            {
+                ++success_counter;
+            }
+            else
+            {
+                ++skipped_counter;
+            }
         }
         catch(const ExtractException& e)
         {

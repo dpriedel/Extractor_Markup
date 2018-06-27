@@ -40,7 +40,6 @@
 
 namespace bg = boost::gregorian;
 
-const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 
 //--------------------------------------------------------------------------------------
 //       Class:  SEC_Header
@@ -50,7 +49,9 @@ const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 
 void SEC_Header::UseData (sview file_content)
 {
+    const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 	boost::cmatch results;
+
 	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);
 	poco_assert_msg(found_it, "Can't find SEC Header");
 
