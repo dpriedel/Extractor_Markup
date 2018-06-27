@@ -913,30 +913,21 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::validate(const Poco::Util::Option&
     }
 }
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
-{
-    int success_counter{0};
-    int skipped_counter{0};
-    int error_counter{0};
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const
+        std::string& file_name, std::atomic<int>& forms_processed) { int
+    success_counter{0}; int skipped_counter{0}; int error_counter{0};
 
-    if (filename_has_form_)
-    {
-        if (! FormIsInFileName(form_list_, file_name))
-        {
-            ++skipped_counter;
-            return {success_counter, skipped_counter, error_counter};
-        }
-    }
-    logger().debug("Scanning file: " + file_name);
+    if (filename_has_form_) { if (! FormIsInFileName(form_list_, file_name)) {
+        ++skipped_counter; return {success_counter, skipped_counter,
+            error_counter}; } } logger().debug("Scanning file: " + file_name);
     const std::string file_content(LoadXMLDataFileForUse(file_name.c_str()));
 
-    SEC_Header SEC_data;
-    SEC_data.UseData(file_content);
-    SEC_data.ExtractHeaderFields();
-    decltype(auto) SEC_fields = SEC_data.GetFields();
+    SEC_Header SEC_data; SEC_data.UseData(file_content);
+    SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields =
+        SEC_data.GetFields();
 
-    bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-    if (use_file)
+    bool use_file = this->ApplyFilters(SEC_fields, file_content,
+            forms_processed); if (use_file)
     {
         try
         {
