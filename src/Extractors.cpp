@@ -48,6 +48,26 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  SelectExtractors
+ *  Description:  
+ * =====================================================================================
+ */
+FilterList SelectExtractors (int argc, const char* argv[])
+{
+    FilterList filters;
+
+//    filters.emplace_back(XBRL_data{});
+//    filters.emplace_back(XBRL_Label_data{});
+//    filters.emplace_back(SS_data{});
+//    filters.emplace_back(DocumentCounter{});
+
+    filters.emplace_back(Count_SS{});
+    return filters;
+}		/* -----  end of function SelectExtractors  ----- */
+
 void XBRL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
@@ -61,9 +81,13 @@ void XBRL_data::UseExtractor(sview document, const fs::path& output_directory, c
 
         auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
         if (xbrl_end_loc != sview::npos)
+        {
             document.remove_suffix(document.length() - xbrl_end_loc);
+        }
         else
+        {
             throw std::runtime_error("Can't find end of XBLR in document.\n");
+        }
 
         if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
         {
@@ -89,9 +113,13 @@ void XBRL_Label_data::UseExtractor(sview document, const fs::path& output_direct
 
         auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
         if (xbrl_end_loc != sview::npos)
+        {
             document.remove_suffix(document.length() - xbrl_end_loc);
+        }
         else
+        {
             throw std::runtime_error("Can't find end of XBLR in document.\n");
+        }
 
         if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
         {
@@ -124,18 +152,30 @@ void SS_data::UseExtractor(sview document, const fs::path& output_directory, con
 
         auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
         if (xbrl_end_loc != sview::npos)
+        {
             document.remove_suffix(document.length() - xbrl_end_loc);
+        }
         else
+        {
             throw std::runtime_error("Can't find end of spread sheet in document.\n");
+        }
 
         WriteDataToFile(output_file_name, document);
     }
 }
 
+void Count_SS::UseExtractor (sview document,  const fs::path&, const EE::SEC_Header_fields& fields)
+{
+    if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+    {
+        ++SS_counter;
+    }
+}		/* -----  end of method Count_SS::UseExtractor  ----- */
+
 
 void DocumentCounter::UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields& fields)
 {
-    ++DocumentCounter::document_counter;
+    ++document_counter;
 }
 
 
@@ -158,9 +198,13 @@ void HTM_data::UseExtractor(sview document, const fs::path& output_directory, co
 
         auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
         if (xbrl_end_loc != sview::npos)
+        {
             document.remove_suffix(document.length() - xbrl_end_loc);
+        }
         else
+        {
             throw std::runtime_error("Can't find end of XBLR in document.\n");
+        }
 
         WriteDataToFile(output_file_name, document);
     }
@@ -183,9 +227,13 @@ void ALL_data::UseExtractor(sview document, const fs::path& output_directory, co
 
     auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
     if (xbrl_end_loc != sview::npos)
+    {
         document.remove_suffix(document.length() - xbrl_end_loc);
+    }
     else
+    {
         throw std::runtime_error("Can't find end of XBLR in document.\n");
+    }
 
     WriteDataToFile(output_file_name, document);
 }

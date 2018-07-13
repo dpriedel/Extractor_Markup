@@ -39,15 +39,15 @@
 
 #include <experimental/filesystem>
 #include <experimental/string_view>
-
+#include <variant>
 using sview = std::experimental::string_view;
 
-#include <boost/hana.hpp>
+//#include <boost/hana.hpp>
 
 #include "ExtractEDGAR.h"
 
 namespace fs = std::experimental::filesystem;
-namespace hana = boost::hana;
+/* namespace hana = boost::hana; */
 
 
 // list of filters that can be applied to the input document
@@ -68,18 +68,22 @@ struct SS_data
     void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
+struct Count_SS
+{
+    int SS_counter = 0;
+
+    void UseExtractor(sview document, const fs::path&, const EE::SEC_Header_fields&);
+};
 
 struct DocumentCounter
 {
-    inline static int document_counter = 0;
+    int document_counter = 0;
 
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct HTM_data
 {
-    inline static int document_counter = 0;
-
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
@@ -101,15 +105,20 @@ struct ALL_data
 // and leave the rest of the code as generic.
 // I use the Hana library since it makes the subsequent iteration over the generic list MUCH simpler...
 
-inline auto SelectExtractors(int argc, const char* argv[])
-{
-    // we imagine the user has somehow told us to use these three filter types.
+// BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
-    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Label_data>(), std::make_unique<SS_data>(),  std::make_unique<DocumentCounter>());
-    // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
-    // auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
-    return L;
-}
+using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data, ALL_data>;
+using FilterList = std::vector<FilterTypes>;
+
+FilterList SelectExtractors(int argc, const char* argv[]);
+//{
+//    // we imagine the user has somehow told us to use these three filter types.
+//
+//    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Label_data>(), std::make_unique<SS_data>(),  std::make_unique<DocumentCounter>());
+//    // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
+//    // auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
+//    return L;
+//}
 
 
 #endif /* end of include guard:  __XBRL_Extractors__*/

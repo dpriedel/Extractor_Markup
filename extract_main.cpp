@@ -35,6 +35,7 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <algorithm>
 #include <atomic>
 #include <fstream>
 #include <iostream>
@@ -65,7 +66,9 @@ int main(int argc, const char* argv[])
         const fs::path input_file_name {argv[1]};
 
         if (! fs::exists(input_file_name) || fs::file_size(input_file_name) == 0)
+        {
             throw std::runtime_error("Input file is missing or empty.");
+        }
 
         std::ifstream input_file{input_file_name};
 
@@ -78,7 +81,9 @@ int main(int argc, const char* argv[])
 
         auto use_file = FilterFiles(file_content, form_type, 1, files_processed);
         if (! use_file)
+        {
             throw std::runtime_error("Bad input file.\n");
+        }
 
         auto the_filters = SelectExtractors(argc, argv);
 
@@ -86,14 +91,22 @@ int main(int argc, const char* argv[])
             doc != boost::cregex_token_iterator{}; ++doc)
         {
             sview document(doc->first, doc->length());
-            hana::for_each(the_filters, [document, &output_directory, &use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
+            for(auto& e : the_filters)
+            {
+                std::visit([document, &output_directory, &use_file](auto &&x)
+                    {x.UseExtractor(document, output_directory, use_file.value());}, e);
+            }
         }
 
         // let's see if we got a count...
 
-        auto document_counter = hana::index_if(the_filters, hana::is_a<std::unique_ptr<DocumentCounter>>);
-        if (document_counter != hana::nothing)
-            std::cout << "Found: " << DocumentCounter::document_counter << " document blocks.\n";
+        for (const auto& e : the_filters)
+        {
+            if (auto f = std::get_if<DocumentCounter>(&e))
+            {
+                std::cout << "Found: " << f->document_counter << " document blocks.\n";
+            }
+        }
     }
     catch (std::exception& e)
     {
