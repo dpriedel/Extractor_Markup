@@ -67,6 +67,7 @@ CFG_LIB := -lpthread \
 		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt \
 		-lboost_regex-mt \
+		-lboost_program_options-mt \
 		-L/usr/local/lib \
 		-lPocoFoundationd \
 		-lPocoUtild \

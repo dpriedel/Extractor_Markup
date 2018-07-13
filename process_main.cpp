@@ -37,22 +37,61 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <experimental/filesystem>
+#include <experimental/string_view>
 #include <fstream>
 #include <iostream>
 #include <parallel/algorithm>
-#include <experimental/filesystem>
-#include <experimental/string_view>
 
 namespace fs = std::experimental::filesystem;
+using sview = std::experimental::string_view;
+using namespace std::string_literals;
 
+#include <boost/program_options.hpp>
 #include <boost/regex.hpp>
+
+namespace po = boost::program_options;
 
 #include "ExtractEDGAR_XBRL.h"
 #include "Extractors.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
+
+void SetupProgramOptions();
+void ParseProgramOptions(int argc, const char* argv[]);
+void CheckArgs();
+std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list,
+        bool file_name_has_form, const std::string& form_type);
+std::string LoadXMLDataFileForUse(const std::string& file_name);
+
+po::positional_options_description	Positional;			//	old style options
+po::options_description				NewOptions;			//	new style options (with identifiers)
+po::variables_map					VariableMap;
+
+fs::path input_directory;
+fs::path output_directory;
+fs::path file_list;
+std::string form_type;
 int MAX_FILES{-1};
+bool file_name_has_form{false};
+
+// This ctype facet does NOT classify spaces and tabs as whitespace
+// from cppreference example
+
+struct line_only_whitespace : std::ctype<char>
+{
+    static const mask* make_table()
+    {
+        // make a copy of the "C" locale table
+        static std::vector<mask> v(classic_table(), classic_table() + table_size);
+        v['\t'] &= ~space;      // tab will not be classified as whitespace
+        v[' '] &= ~space;       // space will not be classified as whitespace
+        return &v[0];
+    }
+    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
+};
+
 
 int main(int argc, const char* argv[])
 {
@@ -60,72 +99,51 @@ int main(int argc, const char* argv[])
 
     try
     {
-        if (argc < 4)
-            throw std::runtime_error("Missing arguments: 'input directory', 'output directory', 'form type' required.\n");
-
-        const fs::path input_directory{argv[1]};
-        if (! fs::exists(input_directory))
-            throw std::runtime_error("Input directory is missing.\n");
-
-        const fs::path output_directory{argv[2]};
-        if (fs::exists(output_directory))
-        {
-            fs::remove_all(output_directory);
-        }
-        fs::create_directories(output_directory);
-
-        // 1 form type at a time for now...
-
-        const std::string_view form_type{argv[3]};
-
-        // we may want to limit how many files we process
-
-        if (argc > 4)
-        {
-            MAX_FILES = std::atoi(argv[4]);
-            if (! MAX_FILES)
-                throw std::runtime_error("Must provide a number for max files.\n");
-        }
+        SetupProgramOptions();
+        ParseProgramOptions(argc, argv);
+        CheckArgs();
 
         auto the_filters = SelectExtractors(argc, argv);
 
         std::atomic<int> files_processed{0};
 
-        std::vector<fs::path> files_to_scan;
-        auto make_file_list([&files_to_scan](const auto& dir_ent)
-        {
-            if (dir_ent.status().type() == fs::file_type::regular)
-                files_to_scan.push_back(dir_ent.path());
-        });
-
-        std::for_each(fs::recursive_directory_iterator(input_directory), fs::recursive_directory_iterator(), make_file_list);
+        auto files_to_scan = MakeListOfFilesToProcess(input_directory, file_list, file_name_has_form, form_type);
 
         std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
 
-        auto scan_file([&the_filters, &files_processed, &output_directory, &form_type](const auto& file_path)
+        auto scan_file([&the_filters, &files_processed](const auto& file_path)
         {
-            std::ifstream input_file{file_path};
-
             std::cout << "processing file: " << file_path << '\n';
-
-            const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
-            input_file.close();
+            auto file_content = LoadXMLDataFileForUse(file_path);
 
             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
+            
             if (use_file)
             {
                 for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
                     doc != boost::cregex_token_iterator{}; ++doc)
                 {
-                    std::string_view document(doc->first, doc->length());
-
-                    hana::for_each(the_filters, [document, &output_directory, &use_file](const auto &x){x->UseExtractor(document, output_directory, use_file.value());});
+                    sview document(doc->first, doc->length());
+                    for(auto& e : the_filters)
+                    {
+                        std::visit([document, &use_file](auto &&x)
+                            {x.UseExtractor(document, output_directory, use_file.value());}, e);
+                    }
                 }
             }
         });
 
         __gnu_parallel::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
+        // let's see if we got a count...
+
+        for (const auto& e : the_filters)
+        {
+            if (auto f = std::get_if<Count_SS>(&e))
+            {
+                std::cout << "Found: " << f->SS_counter << " spread sheets.\n";
+            }
+        }
 
     }
     catch (std::exception& e)
@@ -137,3 +155,157 @@ int main(int argc, const char* argv[])
     return result;
 
 }        // -----  end of method main  -----
+
+void SetupProgramOptions ()
+{
+	NewOptions.add_options()
+		("help,h",								"produce help message")
+		/* ("mode", 		po::value<std::string>(&this->mode_)->default_value("daily"), "'daily' or 'quarterly' for index files, 'ticker-only'") */
+		/* ("begin-date",	po::value<bg::date>(&this->begin_date_)->default_value(bg::day_clock::local_day()), "retrieve files with dates greater than or equal to") */
+		/* ("end-date",	po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to") */
+		("form",	po::value<std::string>(&form_type)->required(),	"name of form type[s] we are processing")
+		/* ("ticker",	po::value<std::string>(&this->ticker_),	"ticker to lookup and filter form downloads") */
+		/* ("file,f",				po::value<std::string>(),	"name of file containing data for ticker. Default is stdin") */
+		/* ("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'") */
+		/* ("output,o",			po::value<std::string>(),	"output file name") */
+		/* ("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.") */
+		/* ("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'") */
+		/* ("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1") */
+		/* ("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'") */
+		("form-dir",		po::value<fs::path>(&input_directory),	"directory of form files to be processed")
+		("list-file",		po::value<fs::path>(&file_list),	"path to file with list of files to process.")
+		("output-dir",		po::value<fs::path>(&output_directory)->required(),	"top level directory to save outputs to")
+		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1), "maximum number of files to extract. Default of -1 means no limit.")
+		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true), "form number is part of file path. Default is 'false'")
+		;
+
+}		// -----  end of method CollectEDGARApp::Do_SetupProgramOptions  -----
+
+void ParseProgramOptions(int argc, const char* argv[])
+{
+	decltype(auto) options = po::parse_command_line(argc, argv, NewOptions);
+	po::store(options, VariableMap);
+	if (argc == 1 || VariableMap.count("help"))
+	{
+		std::cout << NewOptions << "\n";
+		throw std::runtime_error("\nExit after 'help'.\n");
+	}
+	po::notify(VariableMap);    
+}		/* -----  end of function ParseProgramOptions  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CheckArgs
+ *  Description:  
+ * =====================================================================================
+ */
+void CheckArgs ()
+{
+    if (! input_directory.empty() && ! fs::exists(input_directory))
+    {
+        throw std::runtime_error("Input directory is missing.\n");
+    }
+
+    if (! file_list.empty() && ! fs::exists(file_list))
+    {
+        throw std::runtime_error("List file is missing.\n");
+    }
+
+    if (input_directory.empty() && file_list.empty())
+    {
+        throw std::runtime_error("You must specify either a directory to process or a list of files to process.");
+    }
+
+    if (! input_directory.empty() && !file_list.empty())
+    {
+        throw std::runtime_error("You must specify EITHER a directory to process or a list of files to process -- not both.");
+    }
+
+    if (fs::exists(output_directory))
+    {
+        fs::remove_all(output_directory);
+    }
+    fs::create_directories(output_directory);
+
+}		/* -----  end of function CheckArgs  ----- */
+
+std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list);
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  MakeListOfFilesToProcess
+ *  Description:  
+ * =====================================================================================
+ */
+std::vector<std::string> MakeListOfFilesToProcess (const fs::path& input_directory, const fs::path& file_list,
+        bool file_name_has_form, const std::string& form_type)
+{
+    std::vector<std::string> list_of_files_to_process;
+
+    if (! input_directory.empty())
+    {
+        auto add_file_to_list([&list_of_files_to_process, file_name_has_form, form_type](const auto& dir_ent)
+        {
+            if (dir_ent.status().type() == fs::file_type::regular)
+            {
+                if (file_name_has_form)
+                {
+                    if (dir_ent.path().string().find("/"s + form_type + "/"s) != std::string::npos)
+                    {
+                        list_of_files_to_process.emplace_back(dir_ent.path().string());
+                    }
+                }
+                else
+                {
+                    list_of_files_to_process.emplace_back(dir_ent.path().string());
+                }
+            }
+        });
+
+        std::for_each(fs::recursive_directory_iterator(input_directory), fs::recursive_directory_iterator(), add_file_to_list);
+    }
+    else
+    {
+        std::ifstream input_file{file_list};
+
+        // Tell the stream to use our facet, so only '\n' is treated as a space.
+
+        input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
+
+        auto use_this_file([&list_of_files_to_process, file_name_has_form, form_type](const auto& file_name)
+        {
+            if (file_name_has_form)
+            {
+                if (file_name.find("/"s + form_type + "/"s) != std::string::npos)
+                {
+                    return true;
+                }
+                return false;
+            }
+            return true;
+        });
+
+        std::copy_if(
+            std::istream_iterator<std::string>{input_file},
+            std::istream_iterator<std::string>{},
+            std::back_inserter(list_of_files_to_process),
+            use_this_file
+        );
+        input_file.close();
+    }
+
+    return list_of_files_to_process;
+}		/* -----  end of function MakeListOfFilesToProcess  ----- */
+
+std::string LoadXMLDataFileForUse(const std::string& file_name)
+{
+    std::string file_content(fs::file_size(file_name), '\0');
+    std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+    input_file.read(&file_content[0], file_content.size());
+    input_file.close();
+    
+    return file_content;
+}		/* -----  end of function LoadXMLDataFileForUse  ----- */
+
