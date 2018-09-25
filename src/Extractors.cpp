@@ -61,9 +61,10 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-//    filters.emplace_back(SS_data{});
+    filters.emplace_back(SS_data{});
 //    filters.emplace_back(DocumentCounter{});
 
+    filters.emplace_back(HTM_data{});
     filters.emplace_back(Count_SS{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
@@ -86,7 +87,7 @@ void XBRL_data::UseExtractor(sview document, const fs::path& output_directory, c
         }
         else
         {
-            throw std::runtime_error("Can't find end of XBLR in document.\n");
+            throw std::runtime_error("Can't find end of XBRL in document.\n");
         }
 
         if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
@@ -118,7 +119,7 @@ void XBRL_Label_data::UseExtractor(sview document, const fs::path& output_direct
         }
         else
         {
-            throw std::runtime_error("Can't find end of XBLR in document.\n");
+            throw std::runtime_error("Can't find end of XBRL in document.\n");
         }
 
         if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
@@ -134,7 +135,7 @@ void XBRL_Label_data::UseExtractor(sview document, const fs::path& output_direct
 
 void SS_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+    if (auto ss_loc = document.find(R"***(.xls)***"); ss_loc != sview::npos)
     {
         std::cout << "spread sheet\n";
 
@@ -203,7 +204,7 @@ void HTM_data::UseExtractor(sview document, const fs::path& output_directory, co
         }
         else
         {
-            throw std::runtime_error("Can't find end of XBLR in document.\n");
+            throw std::runtime_error("Can't find end of HTML in document.\n");
         }
 
         WriteDataToFile(output_file_name, document);
@@ -232,7 +233,7 @@ void ALL_data::UseExtractor(sview document, const fs::path& output_directory, co
     }
     else
     {
-        throw std::runtime_error("Can't find end of XBLR in document.\n");
+        throw std::runtime_error("Can't find end of XBRL in document.\n");
     }
 
     WriteDataToFile(output_file_name, document);
