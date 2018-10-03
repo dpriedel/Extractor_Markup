@@ -39,8 +39,22 @@
 #include <atomic>
 #include <fstream>
 #include <iostream>
-
+//#include <regex>
 #include <boost/regex.hpp>
+
+//#include <range/v3/all.hpp>
+//namespace rng = ranges::v3;
+
+// gumbo-query
+
+#include "gq/Document.h"
+#include "gq/Selection.h"
+#include "gq/Node.h"
+
+// namespace fs = boost::filesystem;
+
+#include "pstreams/pstream.h"
+
 
 #include "ExtractEDGAR_XBRL.h"
 #include "Extractors.h"
@@ -87,16 +101,24 @@ int main(int argc, const char* argv[])
 
         auto the_filters = SelectExtractors(argc, argv);
 
-        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
-            doc != boost::cregex_token_iterator{}; ++doc)
-        {
-            sview document(doc->first, doc->length());
-            for(auto& e : the_filters)
-            {
-                std::visit([document, &output_directory, &use_file](auto &&x)
-                    {x.UseExtractor(document, output_directory, use_file.value());}, e);
-            }
-        }
+        std::vector<sview> documents;
+        std::transform(boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc),
+                boost::cregex_token_iterator{},
+                std::back_inserter(documents),
+                [](const auto segment) {sview document(segment.first, segment.length()); return document; });
+
+        std::cout << documents.size() << '\n';
+
+//        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
+//            doc != boost::cregex_token_iterator{}; ++doc)
+//        {
+//            sview document(doc->first, doc->length());
+//            for(auto& e : the_filters)
+//            {
+//                std::visit([document, &output_directory, &use_file](auto &&x)
+//                    {x.UseExtractor(document, output_directory, use_file.value());}, e);
+//            }
+//        }
 
         // let's see if we got a count...
 
@@ -107,6 +129,11 @@ int main(int argc, const char* argv[])
                 std::cout << "Found: " << f->document_counter << " document blocks.\n";
             }
         }
+
+        // let's try a range to find all the 'DOCUMENT' sections of the file.
+
+//        auto docs = file_content | rng::view::tokenize(regex_doc) | rng::view::take(100);
+//        std::cout << docs.size() << '\n';
     }
     catch (std::exception& e)
     {
