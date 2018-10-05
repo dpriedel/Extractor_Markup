@@ -67,6 +67,8 @@ CFG_LIB := -lpthread \
 		-L/usr/local/lib \
 		-lPocoFoundationd \
 		-lPocoUtild \
+		-lgumbo \
+		-lgq \
 		-L/usr/lib \
 		-lpugixml \
 		-lpq -lpqxx

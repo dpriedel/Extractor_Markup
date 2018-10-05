@@ -43,6 +43,17 @@
 
 #include "Extractors.h"
 
+// gumbo-query
+
+#include "gq/Document.h"
+#include "gq/Selection.h"
+#include "gq/Node.h"
+
+// namespace fs = boost::filesystem;
+
+//#include "pstreams/pstream.h"
+
+
 const auto XBLR_TAG_LEN{7};
 
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
@@ -207,7 +218,25 @@ void HTM_data::UseExtractor(sview document, const fs::path& output_directory, co
             throw std::runtime_error("Can't find end of HTML in document.\n");
         }
 
-        WriteDataToFile(output_file_name, document);
+        // we only care about data in tables so let's extract those.
+
+        std::string tables;
+        CDocument the_filing;
+        the_filing.parse(std::string{document});
+        CSelection c = the_filing.find("table");
+
+        for (int indx = 0 ; indx < c.nodeNum(); ++indx)
+        {
+            CNode pNode = c.nodeAt(indx);
+
+            // use the 'Outer' functions to include the table tags in the extracted content.
+
+            tables.append(std::string{document.substr(pNode.startPosOuter(), pNode.endPosOuter() - pNode.startPosOuter())});
+        }
+        std::cout << tables.size() << '\n';
+
+
+        WriteDataToFile(output_file_name, tables);
     }
 }
 

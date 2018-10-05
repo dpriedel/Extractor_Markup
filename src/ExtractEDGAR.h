@@ -36,7 +36,7 @@
 
 
 #include <map>
-#include <string>
+#include <experimental/string>
 
 namespace ExtractEDGAR
 {
