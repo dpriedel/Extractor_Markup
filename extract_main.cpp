@@ -59,8 +59,6 @@
 #include "ExtractEDGAR_XBRL.h"
 #include "Extractors.h"
 
-const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-
 int main(int argc, const char* argv[])
 {
     auto result{0};
@@ -101,12 +99,7 @@ int main(int argc, const char* argv[])
 
         auto the_filters = SelectExtractors(argc, argv);
 
-        std::vector<sview> documents;
-        std::transform(boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc),
-                boost::cregex_token_iterator{},
-                std::back_inserter(documents),
-                [](const auto segment) {sview document(segment.first, segment.length()); return document; });
-
+        auto documents = FindDocumentSections(file_content);
         std::cout << documents.size() << '\n';
 
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
