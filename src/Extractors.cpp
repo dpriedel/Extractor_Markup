@@ -74,13 +74,6 @@ std::vector<sview> FindDocumentSections(sview file_content)
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindHTML
- *  Description:  
- * =====================================================================================
- */
-
-/* 
- * ===  FUNCTION  ======================================================================
  *         Name:  FindFileNameInSection
  *  Description:  
  * =====================================================================================
@@ -96,6 +89,13 @@ sview FindFileNameInSection (sview document)
     }
     throw std::runtime_error("Can't find file name in document.\n");
 }		/* -----  end of function FindFileNameInSection  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindHTML
+ *  Description:  
+ * =====================================================================================
+ */
 
 sview FindHTML (sview document)
 {
@@ -137,7 +137,21 @@ sview FindHTML (sview document)
  */
 std::string CollectTables (sview html)
 {
-    return {} ;
+    std::string tables;
+    CDocument the_filing;
+    the_filing.parse(std::string{html});
+    CSelection c = the_filing.find("table");
+
+    for (int indx = 0 ; indx < c.nodeNum(); ++indx)
+    {
+        CNode pNode = c.nodeAt(indx);
+
+        // use the 'Outer' functions to include the table tags in the extracted content.
+
+        tables.append(std::string{html.substr(pNode.startPosOuter(), pNode.endPosOuter() - pNode.startPosOuter())});
+    }
+    std::cout << tables.size() << '\n';
+    return tables;
 }		/* -----  end of function CollectTables  ----- */
 
 FilterList SelectExtractors (int argc, const char* argv[])

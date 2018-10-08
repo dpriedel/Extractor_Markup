@@ -42,14 +42,14 @@
 //#include <regex>
 #include <boost/regex.hpp>
 
-//#include <range/v3/all.hpp>
-//namespace rng = ranges::v3;
+#include <range/v3/all.hpp>
+namespace rng = ranges::v3;
 
 // gumbo-query
 
 #include "gq/Document.h"
-#include "gq/Selection.h"
 #include "gq/Node.h"
+#include "gq/Selection.h"
 
 // namespace fs = boost::filesystem;
 
@@ -59,6 +59,8 @@
 #include "ExtractEDGAR_XBRL.h"
 #include "Extractors.h"
 
+using namespace std::string_literals;
+
 int main(int argc, const char* argv[])
 {
     auto result{0};
@@ -66,8 +68,9 @@ int main(int argc, const char* argv[])
     try
     {
         if (argc < 4)
+        {
             throw std::runtime_error("Missing arguments: 'input file', 'output directory', 'form type' required.\n");
-
+        }
         const fs::path output_directory{argv[2]};
         if (fs::exists(output_directory))
         {
@@ -101,6 +104,13 @@ int main(int argc, const char* argv[])
 
         auto documents = FindDocumentSections(file_content);
         std::cout << documents.size() << '\n';
+
+        auto yyy = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTables(content); }), ""s);
+
+        std::cout << yyy.size() << '\n';
+
+        WriteDataToFile(fs::path{output_directory} /= "data.html", yyy);
+
 
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
 //            doc != boost::cregex_token_iterator{}; ++doc)
