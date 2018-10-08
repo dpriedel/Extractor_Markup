@@ -49,6 +49,15 @@ using sview = std::experimental::string_view;
 namespace fs = std::experimental::filesystem;
 /* namespace hana = boost::hana; */
 
+// for use with ranges.
+
+std::vector<sview> FindDocumentSections(sview file_content);
+
+sview FindFileNameInSection(sview document);
+
+sview FindHTML(sview document);
+
+std::string CollectTables(sview html);
 
 // list of filters that can be applied to the input document
 // to select content.

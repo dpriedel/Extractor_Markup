@@ -59,13 +59,87 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
+std::vector<sview> FindDocumentSections(sview file_content)
+{
+    const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+
+    std::vector<sview> documents;
+    std::transform(boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc),
+            boost::cregex_token_iterator{},
+            std::back_inserter(documents),
+            [](const auto segment) {sview document(segment.first, segment.length()); return document; });
+
+    return documents;
+}		/* -----  end of function FindDocumentSections  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  SelectExtractors
+ *         Name:  FindHTML
  *  Description:  
  * =====================================================================================
  */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFileNameInSection
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindFileNameInSection (sview document)
+{
+    boost::cmatch matches;
+    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
+    if (found_it)
+    {
+        sview file_name(matches[1].first, matches[1].length());
+        return file_name;
+    }
+    throw std::runtime_error("Can't find file name in document.\n");
+}		/* -----  end of function FindFileNameInSection  ----- */
+
+sview FindHTML (sview document)
+{
+    auto file_name = FindFileNameInSection(document);
+    if (boost::algorithm::ends_with(file_name, ".htm"))
+    {
+        std::cout << "got htm" << '\n';
+
+        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+        auto x = document.find(R"***(<TEXT>)***");
+
+        // skip 1 more line.
+
+        x = document.find('\n', x + 1);
+
+        document.remove_prefix(x);
+
+        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        if (xbrl_end_loc != sview::npos)
+        {
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        }
+        else
+        {
+            throw std::runtime_error("Can't find end of HTML in document.\n");
+        }
+
+        return document;
+    }
+    return {};
+}		/* -----  end of function FindHTML  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectTables
+ *  Description:  
+ * =====================================================================================
+ */
+std::string CollectTables (sview html)
+{
+    return {} ;
+}		/* -----  end of function CollectTables  ----- */
+
 FilterList SelectExtractors (int argc, const char* argv[])
 {
     FilterList filters;
