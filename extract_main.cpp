@@ -105,11 +105,11 @@ int main(int argc, const char* argv[])
         auto documents = FindDocumentSections(file_content);
         std::cout << documents.size() << '\n';
 
-        auto yyy = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTables(content); }), ""s);
+        auto all_html_tables = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTables(content); }), ""s);
 
-        std::cout << yyy.size() << '\n';
+        std::cout << all_html_tables.size() << '\n';
 
-        WriteDataToFile(fs::path{output_directory} /= "data.html", yyy);
+        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".html"), all_html_tables);
 
 
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
