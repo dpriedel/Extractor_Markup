@@ -59,6 +59,12 @@ const auto XBLR_TAG_LEN{7};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindDocumentSections
+ *  Description:  
+ * =====================================================================================
+ */
 std::vector<sview> FindDocumentSections(sview file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
