@@ -109,7 +109,7 @@ int main(int argc, const char* argv[])
 
         std::cout << all_html_tables.size() << '\n';
 
-        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".html"), all_html_tables);
+        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".txt"), all_html_tables);
 
 
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);

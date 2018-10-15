@@ -59,6 +59,8 @@ sview FindHTML(sview document);
 
 std::string CollectTables(sview html);
 
+std::string FilterFoundHTML(const std::string& new_row_data);
+
 // list of filters that can be applied to the input document
 // to select content.
 

@@ -46,8 +46,8 @@
 // gumbo-query
 
 #include "gq/Document.h"
-#include "gq/Selection.h"
 #include "gq/Node.h"
+#include "gq/Selection.h"
 
 // namespace fs = boost::filesystem;
 
@@ -55,14 +55,16 @@
 
 
 const auto XBLR_TAG_LEN{7};
+const std::string::size_type START_WITH{1000000};
 
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
-/* 
+
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  FindDocumentSections
- *  Description:  
+ *  Description:
  * =====================================================================================
  */
 std::vector<sview> FindDocumentSections(sview file_content)
@@ -78,10 +80,10 @@ std::vector<sview> FindDocumentSections(sview file_content)
     return documents;
 }		/* -----  end of function FindDocumentSections  ----- */
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  FindFileNameInSection
- *  Description:  
+ *  Description:
  * =====================================================================================
  */
 sview FindFileNameInSection (sview document)
@@ -96,10 +98,10 @@ sview FindFileNameInSection (sview document)
     throw std::runtime_error("Can't find file name in document.\n");
 }		/* -----  end of function FindFileNameInSection  ----- */
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  FindHTML
- *  Description:  
+ *  Description:
  * =====================================================================================
  */
 
@@ -135,30 +137,77 @@ sview FindHTML (sview document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  CollectTables
- *  Description:  
+ *  Description:
  * =====================================================================================
  */
 std::string CollectTables (sview html)
 {
-    std::string tables;
+    std::string table_data;
+    table_data.reserve(START_WITH);
     CDocument the_filing;
     the_filing.parse(std::string{html});
-    CSelection c = the_filing.find("table");
+    CSelection all_tables = the_filing.find("table");
 
-    for (int indx = 0 ; indx < c.nodeNum(); ++indx)
+    // loop through all tables in the document.
+
+    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
     {
-        CNode pNode = c.nodeAt(indx);
+        CNode a_table = all_tables.nodeAt(indx);
 
-        // use the 'Outer' functions to include the table tags in the extracted content.
+        // now, for each table, find all rows in the table.
 
-        tables.append(std::string{html.substr(pNode.startPosOuter(), pNode.endPosOuter() - pNode.startPosOuter())});
+        CSelection a_table_rows = a_table.find("tr");
+
+        for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+        {
+            CNode a_table_row = a_table_rows.nodeAt(indx);
+
+            // for each row in the table, find all the fields.
+
+            CSelection a_table_row_cells = a_table_row.find("td");
+
+            std::string new_row_data;
+            for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+            {
+                CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
+                new_row_data += a_table_row_cell.text() += '\t';
+            }
+            auto new_data = FilterFoundHTML(new_row_data);
+            if (! new_data.empty())
+            {
+                table_data += new_data;
+                table_data += '\n';
+            }
+        }
     }
-    std::cout << tables.size() << '\n';
-    return tables;
+    std::cout << table_data.size() << '\n';
+    return table_data;
 }		/* -----  end of function CollectTables  ----- */
+
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FilterFoundHTML
+ *  Description:  Apply various filters to cut down on amount of undesired data
+ * =====================================================================================
+ */
+std::string FilterFoundHTML (const std::string& new_row_data)
+{
+    // let's start by looking for rows with at least 1 number.
+
+const boost::regex regex_number{R"***(\t\(?[-+.,0-9]+\t)***"};
+
+    boost::smatch matches;
+    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_number);
+    if (found_it)
+    {
+        return new_row_data;
+    }
+    return {};
+}		/* -----  end of function FilterFoundHTML  ----- */
 
 FilterList SelectExtractors (int argc, const char* argv[])
 {
