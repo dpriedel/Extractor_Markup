@@ -44,6 +44,8 @@ using sview = std::experimental::string_view;
 
 //#include <boost/hana.hpp>
 
+#include "gq/Node.h"
+
 #include "ExtractEDGAR.h"
 
 namespace fs = std::experimental::filesystem;
@@ -57,7 +59,13 @@ sview FindFileNameInSection(sview document);
 
 sview FindHTML(sview document);
 
-std::string CollectTables(sview html);
+sview FindTableOfContents(sview document);
+
+std::string CollectTableContent(sview html);
+
+std::string CollectFinancialStatementContent (sview document_content);
+
+std::string ExtractTextDataFromTable (CNode& a_table);
 
 std::string FilterFoundHTML(const std::string& new_row_data);
 

@@ -137,14 +137,124 @@ sview FindHTML (sview document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindTableOfContents
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindTableOfContents (sview document)
+{
+    auto html = FindHTML(document);
+    if (html.empty())
+    {
+        return {};
+    }
+
+    CDocument the_filing;
+    the_filing.parse(std::string{html});
+    CSelection all_anchors = the_filing.find("a");
+    if (all_anchors.nodeNum())
+    {
+        for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+        {
+            CNode an_anchor = all_anchors.nodeAt(indx);
+            std::cout << "anchor text: " << an_anchor.text() << '\n';
+
+            if (an_anchor.text() == "Table of Contents")
+            {
+                return html;
+            }
+        }
+    }
+    return {};
+}		/* -----  end of function FindTableOfContents  ----- */
+
 /*
  * ===  FUNCTION  ======================================================================
- *         Name:  CollectTables
+ *         Name:  CollectTableContent
  *  Description:
  * =====================================================================================
  */
-std::string CollectTables (sview html)
+std::string CollectTableContent (sview html)
 {
+    std::string table_data;
+    table_data.reserve(START_WITH);
+    CDocument the_filing;
+    the_filing.parse(std::string{html});
+    CSelection all_tables = the_filing.find("table");
+
+    // loop through all tables in the document.
+
+    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
+    {
+        // now, for each table, extract all the text
+
+        CNode a_table = all_tables.nodeAt(indx);
+        table_data += ExtractTextDataFromTable(a_table);
+
+    }
+    std::cout << table_data.size() << '\n';
+    return table_data;
+}		/* -----  end of function CollectTableContent  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  ExtractTextDataFromTable
+ *  Description:  
+ * =====================================================================================
+ */
+
+std::string ExtractTextDataFromTable (CNode& a_table)
+{
+    std::string table_text;
+    table_text.reserve(START_WITH);
+
+    // now, the each table, find all rows in the table.
+
+    CSelection a_table_rows = a_table.find("tr");
+
+    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+    {
+        CNode a_table_row = a_table_rows.nodeAt(indx);
+
+        // for each row in the table, find all the fields.
+
+        CSelection a_table_row_cells = a_table_row.find("td");
+
+        std::string new_row_data;
+        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+        {
+            CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
+            new_row_data += a_table_row_cell.text() += '\t';
+        }
+        auto new_data = FilterFoundHTML(new_row_data);
+        if (! new_data.empty())
+        {
+            table_text += new_data;
+            table_text += '\n';
+        }
+    }
+    table_text.shrink_to_fit();
+    return table_text;
+}		/* -----  end of function ExtractTextDataFromTable  ----- */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectFinancialStatementContent
+ *  Description:  
+ * =====================================================================================
+ */
+
+std::string CollectFinancialStatementContent (sview document_content)
+{
+    // first. let's see if we've got some html here.
+    
+    auto html = FindHTML(document_content);
+    if (html.empty())
+    {
+        return {};
+    }
     std::string table_data;
     table_data.reserve(START_WITH);
     CDocument the_filing;
@@ -157,36 +267,32 @@ std::string CollectTables (sview html)
     {
         CNode a_table = all_tables.nodeAt(indx);
 
-        // now, for each table, find all rows in the table.
+        // now, for each table, see if table has financial statement content
 
-        CSelection a_table_rows = a_table.find("tr");
+        bool use_this_table{false};
 
-        for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+        CSelection all_anchors = a_table.find("a");
+        if (all_anchors.nodeNum())
         {
-            CNode a_table_row = a_table_rows.nodeAt(indx);
-
-            // for each row in the table, find all the fields.
-
-            CSelection a_table_row_cells = a_table_row.find("td");
-
-            std::string new_row_data;
-            for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+            for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
             {
-                CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
-                new_row_data += a_table_row_cell.text() += '\t';
+                CNode an_anchor = all_anchors.nodeAt(indx);
+
+                if (an_anchor.text() == "Table of Contents")
+                {
+                    use_this_table = true;
+                    break;
+                }
             }
-            auto new_data = FilterFoundHTML(new_row_data);
-            if (! new_data.empty())
-            {
-                table_data += new_data;
-                table_data += '\n';
-            }
+        }
+        if (use_this_table)
+        {
+            table_data += ExtractTextDataFromTable(a_table);
         }
     }
     std::cout << table_data.size() << '\n';
     return table_data;
-}		/* -----  end of function CollectTables  ----- */
-
+}		/* -----  end of function CollectFinancialStatementContent  ----- */
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -196,17 +302,18 @@ std::string CollectTables (sview html)
  */
 std::string FilterFoundHTML (const std::string& new_row_data)
 {
-    // let's start by looking for rows with at least 1 number.
+    // let's start by looking for rows with at least 1 word followed by at least 1 number.
 
-const boost::regex regex_number{R"***(\t\(?[-+.,0-9]+\t)***"};
-
-    boost::smatch matches;
-    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_number);
-    if (found_it)
-    {
         return new_row_data;
-    }
-    return {};
+//    const boost::regex regex_word_number{R"***([a-zA-Z]+.*?\t\(?[-+.,0-9]+\t)***"};
+//
+//    boost::smatch matches;
+//    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_word_number);
+//    if (found_it)
+//    {
+//        return new_row_data;
+//    }
+//    return {};
 }		/* -----  end of function FilterFoundHTML  ----- */
 
 FilterList SelectExtractors (int argc, const char* argv[])

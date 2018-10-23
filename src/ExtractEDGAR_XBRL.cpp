@@ -206,17 +206,11 @@ void ParseTheXMl_Labels(const sview document, const EE::SEC_Header_fields& field
 std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
-    if (file_content.find(R"***(<XBRL>)***") != sview::npos)
+    boost::cmatch results;
+    bool found_it = boost::regex_search(file_content.begin(), file_content.end(), results, regex_SEC_header);
+
+    if (found_it)
     {
-        // we know the file has XBRL content, so let's check to see if it
-        // has the form type(s) we are looking for.
-        // And while we are at it, let's collect our identifying data.
-
-    	boost::cmatch results;
-    	bool found_it = boost::regex_search(file_content.begin(), file_content.end(), results, regex_SEC_header);
-
-    	poco_assert_msg(found_it, "Can't find SEC Header");
-
     	const sview SEC_header_content(results[0].first, results[0].length());
         SEC_Header file_header;
         file_header.UseData(SEC_header_content);
@@ -224,18 +218,19 @@ std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_
         auto header_fields = file_header.GetFields();
 
         if (header_fields["form_type"] != form_type)
+        {
             return std::nullopt;
-
+        }
         auto x = files_processed.fetch_add(1);
         if (MAX_FILES > 0 && x > MAX_FILES)
+        {
             throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
-
+        }
         std::cout << "got one" << '\n';
 
         return std::optional{header_fields};
     }
-    else
-        return std::nullopt;
+    return std::nullopt;
 }
 
 void WriteDataToFile(const fs::path& output_file_name, sview document)
@@ -259,8 +254,7 @@ fs::path FindFileName(const fs::path& output_directory, sview document, const bo
         output_file_name.append(file_name.begin(), file_name.end());
         return output_file_name;
     }
-    else
-        throw std::runtime_error("Can't find file name in document.\n");
+    throw std::runtime_error("Can't find file name in document.\n");
 }
 
 const sview FindFileType(sview document, const boost::regex& regex_ftype)

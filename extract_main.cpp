@@ -105,13 +105,33 @@ int main(int argc, const char* argv[])
         auto documents = FindDocumentSections(file_content);
         std::cout << documents.size() << '\n';
 
-        auto all_html_tables = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTables(content); }), ""s);
+//        auto all_html_tables = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTableContent(content); }), ""s);
 
-        std::cout << all_html_tables.size() << '\n';
+//        std::cout << all_html_tables.size() << '\n';
+//
+//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".txt"), all_html_tables);
 
-        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".txt"), all_html_tables);
+//        auto all_document_html_content = rng::accumulate(rng::view::transform(documents, [](auto content) { return std::string{FindHTML(content)}; }), ""s);
+//
+//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".html"), all_document_html_content);
 
+        // let's look for the table of contents
+        
+        auto all_financial_tables = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectFinancialStatementContent(document_content); }), ""s);
 
+        std::cout << all_financial_tables.size() << '\n';
+
+        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".stmt.txt"), all_financial_tables);
+
+        for (auto document : documents)
+        {
+            auto toc = FindTableOfContents(document);
+            if (! toc.empty())
+            {
+                std::cout << "found anchor\n" << toc << '\n';
+                break;
+            }
+        }
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
 //            doc != boost::cregex_token_iterator{}; ++doc)
 //        {
