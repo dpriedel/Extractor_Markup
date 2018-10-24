@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_XML_FileFilter.cpp
+//       Filename:  EDGAR_FileFilter.cpp
 //
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
@@ -32,11 +32,11 @@
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_XML_FileFilter
+//        Class:  EDGAR_FileFilter
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#include "EDGAR_XML_FileFilter.h"
+#include "EDGAR_FileFilter.h"
 
 #include <algorithm>
 #include <fstream>
@@ -95,7 +95,7 @@ ExtractException::ExtractException(const std::string& text)
 
 }
 
-std::string LoadXMLDataFileForUse(const char* file_name)
+std::string LoadDataFileForUse(const char* file_name)
 {
     std::string file_content(fs::file_size(file_name), '\0');
     std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
@@ -103,6 +103,18 @@ std::string LoadXMLDataFileForUse(const char* file_name)
     input_file.close();
     
     return file_content;
+}
+
+bool FileHasHTML::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+{
+    // for now, let's assume we will not use any file which also has XBRL content.
+    
+    FileHasXBRL xbrl_filter;
+    if (xbrl_filter(header_fields, file_content))
+    {
+        return false;
+    }
+    return (file_content.find(".htm\n") != sview::npos);
 }
 
 bool FileHasXBRL::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)

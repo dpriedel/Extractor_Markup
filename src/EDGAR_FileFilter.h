@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_XML_FileFilter.h
+//       Filename:  EDGAR__FileFilter.h
 //
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
@@ -32,12 +32,12 @@
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_XML_FileFilter
+//        Class:  EDGAR_FileFilter
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#ifndef  _EDGAR_XML_FILTER_
-#define  _EDGAR_XML_FILTER_
+#ifndef  _EDGAR_FILEFILTER_
+#define  _EDGAR_FILEFILTER_
 
 #include <exception>
 #include <experimental/string_view>
@@ -54,7 +54,7 @@ namespace bg = boost::gregorian;
 
 #include "ExtractEDGAR.h"
 
-std::string LoadXMLDataFileForUse(const char* file_name);
+std::string LoadDataFileForUse(const char* file_name);
 
 namespace Poco
 {
@@ -95,6 +95,11 @@ inline std::vector<sview> split_string(sview string_data, char delim)
 }
 
 // let's use some function objects for our filters.
+
+struct FileHasHTML
+{
+    bool operator()(const EE::SEC_Header_fields&, sview file_content);
+};
 
 struct FileHasXBRL
 {
