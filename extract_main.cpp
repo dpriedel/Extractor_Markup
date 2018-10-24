@@ -117,21 +117,26 @@ int main(int argc, const char* argv[])
 
         // let's look for the table of contents
         
-        auto all_financial_tables = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectFinancialStatementContent(document_content); }), ""s);
+//        auto all_financial_tables = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectFinancialStatementContent(document_content); }), ""s);
+//
+//        std::cout << all_financial_tables.size() << '\n';
+//
+//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".stmt.txt"), all_financial_tables);
 
-        std::cout << all_financial_tables.size() << '\n';
+        auto all_anchors = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectAllAnchors(document_content); }), ""s);
 
-        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".stmt.txt"), all_financial_tables);
+        std::cout << all_anchors.size() << '\n';
 
-        for (auto document : documents)
-        {
-            auto toc = FindTableOfContents(document);
-            if (! toc.empty())
-            {
-                std::cout << "found anchor\n" << toc << '\n';
-                break;
-            }
-        }
+        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".a.html"), all_anchors);
+//        for (auto document : documents)
+//        {
+//            auto toc = FindTableOfContents(document);
+//            if (! toc.empty())
+//            {
+//                std::cout << "found anchor\n" << toc << '\n';
+//                break;
+//            }
+//        }
 //        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
 //            doc != boost::cregex_token_iterator{}; ++doc)
 //        {

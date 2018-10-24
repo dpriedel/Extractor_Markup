@@ -61,6 +61,8 @@ sview FindHTML(sview document);
 
 sview FindTableOfContents(sview document);
 
+std::string CollectAllAnchors (sview document);
+
 std::string CollectTableContent(sview html);
 
 std::string CollectFinancialStatementContent (sview document_content);

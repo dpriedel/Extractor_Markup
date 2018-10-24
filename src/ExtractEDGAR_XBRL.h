@@ -54,8 +54,8 @@ namespace fs = std::experimental::filesystem;
 
 std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_type, const int MAX_FILES, std::atomic<int>& files_processed);
 
-void ParseTheXMl(sview document, const EE::SEC_Header_fields& fields);
-void ParseTheXMl_Labels(sview document, const EE::SEC_Header_fields& fields);
+void ParseTheXML(sview document, const EE::SEC_Header_fields& fields);
+void ParseTheXML_Labels(sview document, const EE::SEC_Header_fields& fields);
 
 void WriteDataToFile(const fs::path& output_file_name, sview document);
 

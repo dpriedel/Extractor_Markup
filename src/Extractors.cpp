@@ -163,13 +163,50 @@ sview FindTableOfContents (sview document)
 
             if (an_anchor.text() == "Table of Contents")
             {
-                return html;
+                // let's provide a little context
+                
+                sview anchor_entry{document.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()};
+                return anchor_entry;
+//                return parent_entry;
             }
         }
     }
     return {};
 }		/* -----  end of function FindTableOfContents  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectAllAnchors
+ *  Description:  
+ * =====================================================================================
+ */
+std::string CollectAllAnchors (sview document)
+{
+    auto html = FindHTML(document);
+    if (html.empty())
+    {
+        return {};
+    }
+
+    std::string the_anchors;
+    the_anchors.reserve(START_WITH);
+
+    CDocument the_filing;
+    the_filing.parse(std::string{html});
+    CSelection all_anchors = the_filing.find("a");
+    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+    {
+        auto an_anchor = all_anchors.nodeAt(indx);
+        auto anchor_parent = an_anchor.parent();
+        std::cout << anchor_parent.tag() << '\n';
+
+        sview anchor_parent_entry{html.data() + anchor_parent.startPosOuter(), anchor_parent.endPosOuter() - anchor_parent.startPosOuter()};
+        the_anchors.append(anchor_parent_entry.to_string());
+        the_anchors += '\n';
+    }
+    return the_anchors;
+}		/* -----  end of function CollectAllAnchors  ----- */
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  CollectTableContent
@@ -388,7 +425,7 @@ void XBRL_Label_data::UseExtractor(sview document, const fs::path& output_direct
 
             std::cout << "got one" << '\n';
 
-            ParseTheXMl_Labels(document, fields);
+            ParseTheXML_Labels(document, fields);
         }
         WriteDataToFile(output_file_name, document);
     }

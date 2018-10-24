@@ -59,7 +59,7 @@ namespace bg = boost::gregorian;
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+?</SEC-HEADER>)***"};
 
-void ParseTheXMl(sview document, const EE::SEC_Header_fields& fields)
+void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 {
     // TODO: add error handling all over the place here.
 
@@ -167,7 +167,7 @@ std::string ConvertPeriodEndDateToContextName(sview period_end_date)
     return result;
 }
 
-void ParseTheXMl_Labels(const sview document, const EE::SEC_Header_fields& fields)
+void ParseTheXML_Labels(const sview document, const EE::SEC_Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file_l.txt"};
     logfile << document;
