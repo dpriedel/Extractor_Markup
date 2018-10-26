@@ -96,11 +96,6 @@ inline std::vector<sview> split_string(sview string_data, char delim)
 
 // let's use some function objects for our filters.
 
-struct FileHasHTML
-{
-    bool operator()(const EE::SEC_Header_fields&, sview file_content);
-};
-
 struct FileHasXBRL
 {
     bool operator()(const EE::SEC_Header_fields&, sview file_content);
@@ -200,5 +195,21 @@ std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
+
+
+// HTML content related functions
+
+struct FileHasHTML
+{
+    bool operator()(const EE::SEC_Header_fields&, sview file_content);
+};
+
+sview FindHTML(sview document);
+
+std::vector<sview> CollectAllAnchors(sview html);
+
+std::vector<sview> FilterAnchors(const std::vector<sview>& all_anchors);
+
+std::vector<sview> FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
 
 #endif

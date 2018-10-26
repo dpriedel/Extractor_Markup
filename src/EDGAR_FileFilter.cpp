@@ -39,8 +39,8 @@
 #include "EDGAR_FileFilter.h"
 
 #include <algorithm>
-#include <fstream>
 #include <experimental/filesystem>
+#include <fstream>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
@@ -49,6 +49,12 @@
 #include <Poco/Logger.h>
 
 #include <pqxx/pqxx>
+
+// gumbo-query
+
+#include "gq/Document.h"
+#include "gq/Node.h"
+#include "gq/Selection.h"
 
 #include "SEC_Header.h"
 
@@ -66,6 +72,7 @@ const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
     "October", "November", "December"};
 
+const std::string::size_type START_WITH{1000000};
 
 // special case utility function to wrap map lookup for field names
 // returns a defualt value if not found.
@@ -103,18 +110,6 @@ std::string LoadDataFileForUse(const char* file_name)
     input_file.close();
     
     return file_content;
-}
-
-bool FileHasHTML::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
-{
-    // for now, let's assume we will not use any file which also has XBRL content.
-    
-    FileHasXBRL xbrl_filter;
-    if (xbrl_filter(header_fields, file_content))
-    {
-        return false;
-    }
-    return (file_content.find(".htm\n") != sview::npos);
 }
 
 bool FileHasXBRL::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
@@ -715,3 +710,130 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 
     return true;
 }
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FileHasHTML::operator()
+ *  Description:  
+ * =====================================================================================
+ */
+bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview file_content) 
+{
+    // for now, let's assume we will not use any file which also has XBRL content.
+    
+    FileHasXBRL xbrl_filter;
+    if (xbrl_filter(header_fields, file_content))
+    {
+        return false;
+    }
+    return (file_content.find(".htm\n") != sview::npos);
+}		/* -----  end of function FileHasHTML::operator()  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindDocumentAnchorsForFinancialStatements 
+ *  Description:  document must have 3 or 4 part of the financial statements
+ *      - Balance Statement
+ *      - Statement of Operations
+ *      - Cash Flow statement
+ *      - Shareholder equity (not always there ?? )
+ * =====================================================================================
+ */
+std::vector<sview> FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
+{
+    std::vector<sview> anchors;
+
+    for(auto document : documents)
+    {
+        auto html = FindHTML(document);
+        if (html.empty())
+        {
+            continue;
+        }
+        auto new_anchors = CollectAllAnchors(html);
+        auto financial_anchors = FilterAnchors(new_anchors);
+        std::move(new_anchors.begin(),
+                new_anchors.end(),
+                std::back_inserter(anchors)
+                );
+    }
+    return anchors;
+}		/* -----  end of function FindDocumentAnchorsForFinancialStatements ----- */
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindHTML
+ *  Description:
+ * =====================================================================================
+ */
+
+sview FindHTML (sview document)
+{
+    auto file_name = FindFileName(document);
+    if (boost::algorithm::ends_with(file_name, ".htm"))
+    {
+        std::cout << "got htm" << '\n';
+
+        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+        auto x = document.find(R"***(<TEXT>)***");
+
+        // skip 1 more line.
+
+        x = document.find('\n', x + 1);
+
+        document.remove_prefix(x);
+
+        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        if (xbrl_end_loc != sview::npos)
+        {
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        }
+        else
+        {
+            throw std::runtime_error("Can't find end of HTML in document.\n");
+        }
+
+        return document;
+    }
+    return {};
+}		/* -----  end of function FindHTML  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectAllAnchors
+ *  Description:  
+ * =====================================================================================
+ */
+std::vector<sview> CollectAllAnchors (sview html)
+{
+    std::vector<sview> the_anchors;
+
+    CDocument the_filing;
+    the_filing.parse(std::string{html});
+    CSelection all_anchors = the_filing.find("a");
+    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+    {
+        auto an_anchor = all_anchors.nodeAt(indx);
+        if (! an_anchor.text().empty())
+        {
+            the_anchors.push_back(an_anchor.text());
+        }
+    }
+    return the_anchors;
+}		/* -----  end of function CollectAllAnchors  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FilterAnchors
+ *  Description:  
+ * =====================================================================================
+ */
+
+std::vector<sview> FilterAnchors(const std::vector<sview>& all_anchors)
+{
+    return all_anchors;
+}		/* -----  end of function FilterAnchors  ----- */

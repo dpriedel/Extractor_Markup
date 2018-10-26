@@ -119,11 +119,11 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Release/EDGAR_XML_FileFilter.o",
-            "src/EDGAR_XML_FileFilter.cpp"
+            "Release/EDGAR_FileFilter.o",
+            "src/EDGAR_FileFilter.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
-        "file": "src/EDGAR_XML_FileFilter.cpp"
+        "file": "src/EDGAR_FileFilter.cpp"
     },
     {
         "arguments": [
