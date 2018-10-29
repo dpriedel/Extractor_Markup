@@ -844,21 +844,32 @@ std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_ancho
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    auto filter([](const auto anchor)
+    const boost::regex regex_balance_sheet{R"***(consol.*bal)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_operations{R"***(consol.*oper)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_cash_flow{R"***(consol.*flow)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_equity{R"***(consol.*equi)***", boost::regex_constants::normal | boost::regex_constants::icase};
+
+    auto filter([&](const auto anchor)
             {
-                if(auto found_it = boost::ifind_first(anchor, "bal"); found_it)
+                boost::smatch matches;
+
+                bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet);
+                if (found_it)
                 {
                     return true;
                 }
-                if(auto found_it = boost::ifind_first(anchor, "oper"); found_it)
+                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_operations);
+                if (found_it)
                 {
                     return true;
                 }
-                if(auto found_it = boost::ifind_first(anchor, "flo"); found_it)
+                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_equity);
+                if (found_it)
                 {
                     return true;
                 }
-                if(auto found_it = boost::ifind_first(anchor, "equ"); found_it)
+                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_cash_flow);
+                if (found_it)
                 {
                     return true;
                 }
