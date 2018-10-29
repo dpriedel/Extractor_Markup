@@ -42,6 +42,7 @@
 #include <experimental/filesystem>
 #include <fstream>
 
+#include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
@@ -741,9 +742,9 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
  *      - Shareholder equity (not always there ?? )
  * =====================================================================================
  */
-std::vector<sview> FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
+std::vector<std::string> FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
 {
-    std::vector<sview> anchors;
+    std::vector<std::string> anchors;
 
     for(auto document : documents)
     {
@@ -754,8 +755,8 @@ std::vector<sview> FindDocumentAnchorsForFinancialStatements (const std::vector<
         }
         auto new_anchors = CollectAllAnchors(html);
         auto financial_anchors = FilterAnchors(new_anchors);
-        std::move(new_anchors.begin(),
-                new_anchors.end(),
+        std::move(financial_anchors.begin(),
+                financial_anchors.end(),
                 std::back_inserter(anchors)
                 );
     }
@@ -808,9 +809,9 @@ sview FindHTML (sview document)
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> CollectAllAnchors (sview html)
+std::vector<std::string> CollectAllAnchors (sview html)
 {
-    std::vector<sview> the_anchors;
+    std::vector<std::string> the_anchors;
 
     CDocument the_filing;
     the_filing.parse(std::string{html});
@@ -818,9 +819,15 @@ std::vector<sview> CollectAllAnchors (sview html)
     for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
     {
         auto an_anchor = all_anchors.nodeAt(indx);
-        if (! an_anchor.text().empty())
+        std::string values = an_anchor.attribute("href");
+        if (! values.empty())
         {
-            the_anchors.push_back(an_anchor.text());
+            values += '\t';
+        }
+        values += an_anchor.text();
+        if (! values.empty())
+        {
+            the_anchors.emplace_back(values);
         }
     }
     return the_anchors;
@@ -833,7 +840,40 @@ std::vector<sview> CollectAllAnchors (sview html)
  * =====================================================================================
  */
 
-std::vector<sview> FilterAnchors(const std::vector<sview>& all_anchors)
+std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_anchors)
 {
-    return all_anchors;
+    // we need to just keep the anchors related to the 4 sections we are interested in
+
+    auto filter([](const auto anchor)
+            {
+                if(auto found_it = boost::ifind_first(anchor, "bal"); found_it)
+                {
+                    return true;
+                }
+                if(auto found_it = boost::ifind_first(anchor, "oper"); found_it)
+                {
+                    return true;
+                }
+                if(auto found_it = boost::ifind_first(anchor, "flo"); found_it)
+                {
+                    return true;
+                }
+                if(auto found_it = boost::ifind_first(anchor, "equ"); found_it)
+                {
+                    return true;
+                }
+
+                return false;        // no match so delete this elemeent
+            });
+
+    std::vector<std::string> wanted_anchors;
+    std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
+
+    std::cout << "Found anchors: \n";
+    for (const auto a : all_anchors)
+        std:: cout << '\t' << a << '\n';
+    std::cout << "Selected anchors: \n";
+    for (const auto a : wanted_anchors)
+        std:: cout << '\t' << a << '\n';
+    return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */

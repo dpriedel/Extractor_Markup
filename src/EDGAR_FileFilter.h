@@ -206,10 +206,10 @@ struct FileHasHTML
 
 sview FindHTML(sview document);
 
-std::vector<sview> CollectAllAnchors(sview html);
+std::vector<std::string> CollectAllAnchors(sview html);
 
-std::vector<sview> FilterAnchors(const std::vector<sview>& all_anchors);
+std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_anchors);
 
-std::vector<sview> FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
+std::vector<std::string> FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
 
 #endif
