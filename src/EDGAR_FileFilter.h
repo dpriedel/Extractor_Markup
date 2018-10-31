@@ -43,6 +43,7 @@
 #include <experimental/string_view>
 #include <map>
 #include <vector>
+#include <tuple>
 
 using sview = std::experimental::string_view;
 
@@ -206,10 +207,13 @@ struct FileHasHTML
 
 sview FindHTML(sview document);
 
-std::vector<std::string> CollectAllAnchors(sview html);
+using AnchorData = std::tuple<std::string, std::string, sview>;
+using AnchorList = std::vector<AnchorData>;
 
-std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_anchors);
+AnchorList CollectAllAnchors(sview html);
 
-std::vector<std::string> FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
+AnchorList FilterAnchors(const AnchorList& all_anchors);
+
+AnchorList FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
 
 #endif

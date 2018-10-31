@@ -742,9 +742,9 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
  *      - Shareholder equity (not always there ?? )
  * =====================================================================================
  */
-std::vector<std::string> FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
+AnchorList FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
 {
-    std::vector<std::string> anchors;
+    AnchorList anchors;
 
     for(auto document : documents)
     {
@@ -809,26 +809,30 @@ sview FindHTML (sview document)
  *  Description:  
  * =====================================================================================
  */
-std::vector<std::string> CollectAllAnchors (sview html)
+AnchorList CollectAllAnchors (sview html)
 {
-    std::vector<std::string> the_anchors;
+    AnchorList the_anchors;
 
     CDocument the_filing;
     the_filing.parse(std::string{html});
-    CSelection all_anchors = the_filing.find("a");
+    CSelection all_anchors = the_filing.find("a"s);
     for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
     {
         auto an_anchor = all_anchors.nodeAt(indx);
-        std::string values = an_anchor.attribute("href");
-        if (! values.empty())
-        {
-            values += '\t';
-        }
-        values += an_anchor.text();
-        if (! values.empty())
-        {
-            the_anchors.emplace_back(values);
-        }
+
+        // just looking...
+
+//        sview n{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()};
+//        std::cout << "sview\t" << n << '\n';
+//
+//        std::string values = an_anchor.attribute("href");
+//        values += '\t';
+//        values += an_anchor.text();
+//        if (values.size() > 1)
+//        {
+//            the_anchors.emplace_back(values);
+//        }
+        the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s), sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()}});
     }
     return the_anchors;
 }		/* -----  end of function CollectAllAnchors  ----- */
@@ -840,7 +844,7 @@ std::vector<std::string> CollectAllAnchors (sview html)
  * =====================================================================================
  */
 
-std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_anchors)
+AnchorList FilterAnchors(const AnchorList& all_anchors)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
@@ -849,42 +853,40 @@ std::vector<std::string> FilterAnchors(const std::vector<std::string>& all_ancho
     const boost::regex regex_cash_flow{R"***(consol.*flow)***", boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_equity{R"***(consol.*equi)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
-    auto filter([&](const auto anchor)
-            {
-                boost::smatch matches;
+    auto filter([&](const auto& anchor_data)
+    {
+        boost::cmatch matches;
 
-                bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet);
-                if (found_it)
-                {
-                    return true;
-                }
-                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_operations);
-                if (found_it)
-                {
-                    return true;
-                }
-                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_equity);
-                if (found_it)
-                {
-                    return true;
-                }
-                found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_cash_flow);
-                if (found_it)
-                {
-                    return true;
-                }
+        decltype(auto) anchor = std::get<2>(anchor_data);
 
-                return false;        // no match so delete this elemeent
-            });
+        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet); found_it)
+        {
+            return true;
+        }
+        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_operations); found_it)
+        {
+            return true;
+        }
+        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_equity); found_it)
+        {
+            return true;
+        }
+        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_cash_flow); found_it)
+        {
+            return true;
+        }
 
-    std::vector<std::string> wanted_anchors;
+        return false;        // no match so do not copy this element
+    });
+
+    AnchorList wanted_anchors;
     std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
 
     std::cout << "Found anchors: \n";
-    for (const auto a : all_anchors)
-        std:: cout << '\t' << a << '\n';
+    for (const auto& a : all_anchors)
+        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
     std::cout << "Selected anchors: \n";
-    for (const auto a : wanted_anchors)
-        std:: cout << '\t' << a << '\n';
+    for (const auto& a : wanted_anchors)
+        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
     return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */
