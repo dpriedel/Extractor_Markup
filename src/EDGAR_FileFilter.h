@@ -212,8 +212,12 @@ using AnchorList = std::vector<AnchorData>;
 
 AnchorList CollectAllAnchors(sview html);
 
-AnchorList FilterAnchors(const AnchorList& all_anchors);
+AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
 
-AnchorList FindDocumentAnchorsForFinancialStatements(const std::vector<sview>& documents);
+AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const AnchorList& all_anchors);
+
+AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
+
+std::vector<std::string> FindDollarMultipliers(const AnchorList& financial_anchors);
 
 #endif

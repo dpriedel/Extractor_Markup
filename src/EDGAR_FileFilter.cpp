@@ -734,7 +734,7 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindDocumentAnchorsForFinancialStatements 
+ *         Name:  FindAllDocumentAnchors 
  *  Description:  document must have 3 or 4 part of the financial statements
  *      - Balance Statement
  *      - Statement of Operations
@@ -742,7 +742,7 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
  *      - Shareholder equity (not always there ?? )
  * =====================================================================================
  */
-AnchorList FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& documents)
+AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents)
 {
     AnchorList anchors;
 
@@ -754,14 +754,13 @@ AnchorList FindDocumentAnchorsForFinancialStatements (const std::vector<sview>& 
             continue;
         }
         auto new_anchors = CollectAllAnchors(html);
-        auto financial_anchors = FilterAnchors(new_anchors);
-        std::move(financial_anchors.begin(),
-                financial_anchors.end(),
+        std::move(new_anchors.begin(),
+                new_anchors.end(),
                 std::back_inserter(anchors)
                 );
     }
     return anchors;
-}		/* -----  end of function FindDocumentAnchorsForFinancialStatements ----- */
+}		/* -----  end of function FindAllDocumentAnchors ----- */
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -820,19 +819,8 @@ AnchorList CollectAllAnchors (sview html)
     {
         auto an_anchor = all_anchors.nodeAt(indx);
 
-        // just looking...
-
-//        sview n{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()};
-//        std::cout << "sview\t" << n << '\n';
-//
-//        std::string values = an_anchor.attribute("href");
-//        values += '\t';
-//        values += an_anchor.text();
-//        if (values.size() > 1)
-//        {
-//            the_anchors.emplace_back(values);
-//        }
-        the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s), sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()}});
+        the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s),
+                sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()}});
     }
     return the_anchors;
 }		/* -----  end of function CollectAllAnchors  ----- */
@@ -844,7 +832,7 @@ AnchorList CollectAllAnchors (sview html)
  * =====================================================================================
  */
 
-AnchorList FilterAnchors(const AnchorList& all_anchors)
+AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
@@ -855,7 +843,15 @@ AnchorList FilterAnchors(const AnchorList& all_anchors)
 
     auto filter([&](const auto& anchor_data)
     {
-        boost::cmatch matches;
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+        // at this point, I'm only interested in internal hrefs.
+        
+        decltype(auto) href = std::get<0>(anchor_data);
+        if (href.empty() || href[0] != '#')
+        {
+            return false;
+        }
 
         decltype(auto) anchor = std::get<2>(anchor_data);
 
@@ -890,3 +886,52 @@ AnchorList FilterAnchors(const AnchorList& all_anchors)
         std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
     return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindAnchorDestinations
+ *  Description:  
+ * =====================================================================================
+ */
+AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const AnchorList& all_anchors)
+{
+    AnchorList destinations;
+
+    for (const auto& an_anchor : financial_anchors)
+    {
+        decltype(auto) looking_for = std::get<0>(an_anchor);
+
+        auto compare_it([&looking_for](const auto& anchor)
+        {
+            decltype(auto) possible_match = std::get<1>(anchor);
+            if (looking_for.compare(1, looking_for.size() - 1, possible_match) == 0)
+            {
+                return true;
+            }
+            return false;    
+        });
+        auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), compare_it);
+        if (found_it == all_anchors.cend())
+            throw std::runtime_error("Can't find destination anchor for: " + std::get<0>(an_anchor));
+
+        destinations.push_back(*found_it);
+    }
+    std::cout << "\nDestination anchors: \n";
+    for (const auto& a : destinations)
+        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
+    return destinations;
+}		/* -----  end of function FindAnchorDestinations  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindDollarMultipliers
+ *  Description:  
+ * =====================================================================================
+ */
+
+std::vector<std::string> FindDollarMultipliers (const AnchorList& financial_anchors)
+{
+    return {};
+}		/* -----  end of function FindDollarMultipliers  ----- */
+
