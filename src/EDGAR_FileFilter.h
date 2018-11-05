@@ -45,6 +45,11 @@
 #include <vector>
 #include <tuple>
 
+namespace Poco
+{
+    class Logger;
+};
+
 using sview = std::experimental::string_view;
 
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -52,15 +57,11 @@ using sview = std::experimental::string_view;
 namespace bg = boost::gregorian;
 
 #include <pugixml.hpp>
+#include "gq/Node.h"
 
 #include "ExtractEDGAR.h"
 
 std::string LoadDataFileForUse(const char* file_name);
-
-namespace Poco
-{
-    class Logger;
-};
 
 // so we can recognize our errors if we want to do something special
 
@@ -209,6 +210,8 @@ sview FindHTML(sview document);
 
 using AnchorData = std::tuple<std::string, std::string, sview>;
 using AnchorList = std::vector<AnchorData>;
+using MultiplierData = std::pair<std::string, const char*>;
+using MultDataList = std::vector<MultiplierData>;
 
 AnchorList CollectAllAnchors(sview html);
 
@@ -218,6 +221,8 @@ AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const Anc
 
 AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
 
-std::vector<std::string> FindDollarMultipliers(const AnchorList& financial_anchors);
+MultDataList FindDollarMultipliers(const AnchorList& financial_anchors, const std::string& real_document);
+
+std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
 
 #endif

@@ -54,7 +54,6 @@
 // gumbo-query
 
 #include "gq/Document.h"
-#include "gq/Node.h"
 #include "gq/Selection.h"
 
 #include "SEC_Header.h"
@@ -930,8 +929,74 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
  * =====================================================================================
  */
 
-std::vector<std::string> FindDollarMultipliers (const AnchorList& financial_anchors)
+MultDataList FindDollarMultipliers (const AnchorList& financial_anchors, const std::string& real_document)
 {
-    return {};
+    // we expect that each section of the financial statements will be a heading
+    // containing data of the form: ( thousands|millions|billions ...dollars ) or maybe
+    // the sdquence will be reversed.
+
+    // each of our anchor tuples contains a string_view whose data() pointer points
+    // into the underlying string data originally read from the data file.
+
+    MultDataList multipliers;
+
+    const boost::regex regex_dollar_mults{R"***(.*?(thousands|millions|billions).*?dollar)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    
+    boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+    for (const auto& a : financial_anchors)
+    {
+        const auto& anchor_view = std::get<2>(a);
+        if (bool found_it = boost::regex_search(anchor_view.data(), &real_document.back(), matches, regex_dollar_mults); found_it)
+        {
+            std::cout << "found it\t" << matches[1].str() << '\t' << (size_t)matches[1].first << '\n'; ;
+            multipliers.emplace_back(MultiplierData{matches[1].str(), matches[1].first});
+        }
+    }
+    return multipliers;
 }		/* -----  end of function FindDollarMultipliers  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFinancialTables
+ *  Description:  
+ * =====================================================================================
+ */
+std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents)
+{
+    // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
+    // and search the documents list to find which document contains it.  Then, search the
+    // rest of that document for tables.  First table found will be assumed to be the desired table.
+    // (this can change later)
+
+    std::vector<CNode> found_tables;
+
+    for(const auto&[_, pointer] : multiplier_data)
+    {
+        auto contains([pointer](sview a_document)
+        {
+            if (a_document.data() < pointer && pointer < a_document.data() + a_document.size())
+            {
+                return true;
+            }
+            return false;
+        });
+
+        if(auto found_it = std::find_if(all_documents.begin(), all_documents.end(), contains); found_it != all_documents.end())
+        {
+            CDocument the_filing;
+            the_filing.parse(std::string{pointer, &found_it->back()});
+            CSelection all_anchors = the_filing.find("table"s);
+
+            if (all_anchors.nodeNum() == 0)
+            {
+                throw std::runtime_error("Can't find financial tables.");
+            }
+            found_tables.push_back(all_anchors.nodeAt(0));
+
+        }
+    }
+    return found_tables;
+}		/* -----  end of function FindFinancialTables  ----- */
