@@ -994,8 +994,11 @@ std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std:
             {
                 throw std::runtime_error("Can't find financial tables.");
             }
-            found_tables.push_back(all_anchors.nodeAt(0));
 
+            CNode the_table = all_anchors.nodeAt(0);
+            found_tables.push_back(the_table);
+
+            std::cout << "\n\n\n" << sview{pointer + the_table.startPosOuter(), the_table.endPosOuter() - the_table.startPosOuter()} << '\n';
         }
     }
     return found_tables;
