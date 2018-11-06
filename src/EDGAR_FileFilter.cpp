@@ -975,7 +975,7 @@ std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std:
 
     for(const auto&[_, pointer] : multiplier_data)
     {
-        auto contains([pointer](sview a_document)
+        auto contains([&pointer](sview a_document)
         {
             if (a_document.data() < pointer && pointer < a_document.data() + a_document.size())
             {
@@ -984,7 +984,8 @@ std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std:
             return false;
         });
 
-        if(auto found_it = std::find_if(all_documents.begin(), all_documents.end(), contains); found_it != all_documents.end())
+        if(auto found_it = std::find_if(all_documents.begin(), all_documents.end(), contains);
+                found_it != all_documents.end())
         {
             CDocument the_filing;
             the_filing.parse(std::string{pointer, &found_it->back()});
