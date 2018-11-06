@@ -67,7 +67,7 @@
 
 #include <pqxx/pqxx>
 
-#include "EDGAR_XML_FileFilter.h"
+#include "EDGAR_FileFilter.h"
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
@@ -699,7 +699,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
 
     try
     {
-        const std::string file_content(LoadXMLDataFileForUse(input_file_name.string().c_str()));
+        const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
 
         auto document_sections{LocateDocumentSections(file_content)};
 
@@ -760,7 +760,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                     }
                 }
                 logger().debug("Scanning file: " + file_name);
-                const std::string file_content(LoadXMLDataFileForUse(file_name.c_str()));
+                const std::string file_content(LoadDataFileForUse(file_name.c_str()));
 
                 SEC_Header SEC_data;
                 SEC_data.UseData(file_content);
@@ -831,7 +831,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                     }
                 }
                 logger().debug("Scanning file: " + dir_ent.path().string());
-                const std::string file_content(LoadXMLDataFileForUse(dir_ent.path().c_str()));
+                const std::string file_content(LoadDataFileForUse(dir_ent.path().c_str()));
 
                 SEC_Header SEC_data;
                 SEC_data.UseData(file_content);
@@ -920,7 +920,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const
     if (filename_has_form_) { if (! FormIsInFileName(form_list_, file_name)) {
         ++skipped_counter; return {success_counter, skipped_counter,
             error_counter}; } } logger().debug("Scanning file: " + file_name);
-    const std::string file_content(LoadXMLDataFileForUse(file_name.c_str()));
+    const std::string file_content(LoadDataFileForUse(file_name.c_str()));
 
     SEC_Header SEC_data; SEC_data.UseData(file_content);
     SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields =
