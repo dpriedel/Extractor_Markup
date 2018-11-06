@@ -527,6 +527,11 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
     //  the user may specify multiple form types in a comma delimited list. We need to parse the entries out
     //  of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
 
+    if (! mode_.empty())
+    {
+        poco_assert_msg(mode_ != "HTML"s && mode_ != "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
+    }
+
     if (! form_.empty())
     {
         form_list_ = split_string(form_, ',');
@@ -636,7 +641,14 @@ void ExtractEDGAR_XBRLApp::BuildFilterList()
 {
     //  we always ned to do this first.
 
-    filters_.push_back(FileHasXBRL{});
+    if (mode_ == "HTML"s)
+    {
+        filters_.push_back(FileHasHTML{});
+    }
+    else
+    {
+        filters_.push_back(FileHasXBRL{});
+    }
 
     if (! form_.empty())
     {

@@ -146,6 +146,7 @@ private:
     // void inline store_login_ID(const std::string& name, const std::string& value) { login_ID_ = value; }
 
     void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
+    void inline store_mode(const std::string& name, const std::string& value) { mode_ = value; }
     void inline store_form(const std::string& name, const std::string& value) { form_ = value; }
     void inline store_CIK(const std::string& name, const std::string& value) { CIK_ = value; }
     void inline store_SIC(const std::string& name, const std::string& value) { SIC_ = value; }
@@ -165,7 +166,7 @@ private:
 	bg::date begin_date_;
 	bg::date end_date_;
 
-	std::string mode_{"daily"};
+	std::string mode_{"HTML"};
 	std::string form_{"10-Q"};
 	std::string CIK_;
 	std::string SIC_;
