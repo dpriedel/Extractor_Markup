@@ -332,6 +332,13 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
 
     options.addOption(
+        Poco::Util::Option("mode", "Must be either 'HTML' or 'XBRL'.")
+            .required(false)
+            .repeatable(false)
+            .argument("value")
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_mode)));
+
+    options.addOption(
         Poco::Util::Option("list", "", "path to file with list of files to process.")
             .required(false)
             .repeatable(false)
