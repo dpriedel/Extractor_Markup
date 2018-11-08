@@ -529,7 +529,7 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
 
     if (! mode_.empty())
     {
-        poco_assert_msg(mode_ != "HTML"s && mode_ != "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
+        poco_assert_msg(mode_ == "HTML"s || mode_ == "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
     }
 
     if (! form_.empty())
@@ -708,6 +708,7 @@ void ExtractEDGAR_XBRLApp::Do_Run ()
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
     bool did_load{false};
+    std::atomic<int> forms_processed{0};
 
     try
     {
@@ -730,6 +731,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
         SEC_data.UseData(file_content);
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
+
+        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+        poco_assert_msg(use_file, "Specified file does not meet other criteria.");
 
         if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
         {
