@@ -964,18 +964,18 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors, const s
  *  Description:  
  * =====================================================================================
  */
-std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents)
+std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents)
 {
     // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
     // and search the documents list to find which document contains it.  Then, search the
     // rest of that document for tables.  First table found will be assumed to be the desired table.
     // (this can change later)
 
-    std::vector<CNode> found_tables;
+    std::vector<sview> found_tables;
 
     for(const auto&[_, pointer] : multiplier_data)
     {
-        auto contains([&pointer](sview a_document)
+        auto contains([pointer](sview a_document)
         {
             if (a_document.data() < pointer && pointer < a_document.data() + a_document.size())
             {
@@ -997,10 +997,51 @@ std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std:
             }
 
             CNode the_table = all_anchors.nodeAt(0);
-            found_tables.push_back(the_table);
+            found_tables.emplace_back(sview{pointer + the_table.startPosOuter(), the_table.endPosOuter() - the_table.startPosOuter()});
 
-            std::cout << "\n\n\n" << sview{pointer + the_table.startPosOuter(), the_table.endPosOuter() - the_table.startPosOuter()} << '\n';
+            std::cout << "\n\n\n" << found_tables.back() << '\n';
         }
     }
     return found_tables;
 }		/* -----  end of function FindFinancialTables  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindBalanceSheet
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindBalanceSheet (const std::vector<sview>& tables)
+{
+    // here are some things we expect to find int the balance sheet section
+    // and not the other sections.
+
+    const boost::regex assets{R"***(assets)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex liabilities{R"***(liabilities)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex equity{R"***((stock|share)holders.*?equity)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    
+    for (const auto& table : tables)
+    {
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+        // at this point, I'm only interested in internal hrefs.
+        
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, assets); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, liabilities); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, equity); ! found_it)
+        {
+            continue;
+        }
+        return table;
+    }
+    return {};
+}		/* -----  end of function FindBalanceSheet  ----- */

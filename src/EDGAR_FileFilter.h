@@ -223,6 +223,8 @@ AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors, const std::string& real_document);
 
-std::vector<CNode> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
+std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
+
+sview FindBalanceSheet(const std::vector<sview>& tables);
 
 #endif
