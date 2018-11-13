@@ -1,0 +1,4 @@
+
+" let's help our file searchs
+
+set path+=/usr/local/include,../ExtractEDGAR_XBRL/src
