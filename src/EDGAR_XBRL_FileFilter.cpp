@@ -40,8 +40,6 @@
 #include "EDGAR_XBRL_FileFilter.h"
 
 #include <algorithm>
-#include <experimental/filesystem>
-#include <fstream>
 
 #include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -54,7 +52,6 @@
 
 #include "SEC_Header.h"
 
-namespace fs = std::experimental::filesystem;
 using namespace std::string_literals;
 
 const auto XBLR_TAG_LEN{7};

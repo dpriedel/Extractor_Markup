@@ -53,13 +53,6 @@ namespace Poco
 
 using sview = std::experimental::string_view;
 
-#include <boost/date_time/gregorian/gregorian.hpp>
-
-namespace bg = boost::gregorian;
-
-#include <pugixml.hpp>
-#include "gq/Node.h"
-
 #include "ExtractEDGAR.h"
 
 std::string LoadDataFileForUse(const char* file_name);

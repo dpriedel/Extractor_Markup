@@ -38,30 +38,12 @@
 
 #include "ExtractEDGAR_Utils.h"
 
-#include <algorithm>
 #include <experimental/filesystem>
 #include <fstream>
 
-#include <boost/algorithm/string/find.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/format.hpp>
 #include <boost/regex.hpp>
 
-#include <Poco/Logger.h>
-
-#include <pqxx/pqxx>
-
-// gumbo-query
-
-#include "gq/Document.h"
-#include "gq/Selection.h"
-
-#include "SEC_Header.h"
-
 namespace fs = std::experimental::filesystem;
-using namespace std::string_literals;
-
-const auto XBLR_TAG_LEN{7};
 
 ExtractException::ExtractException(const char* text)
     : std::runtime_error(text)
