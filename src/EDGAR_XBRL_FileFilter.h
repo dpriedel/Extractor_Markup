@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR__FileFilter.h
+//       Filename:  EDGAR_XBRL_FileFilter.h
 //
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
@@ -32,12 +32,12 @@
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_FileFilter
+//        Class:  EDGAR_XBRL_FileFilter
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#ifndef  _EDGAR_FILEFILTER_
-#define  _EDGAR_FILEFILTER_
+#ifndef  EDGAR_XBRL_FileFilter_INC
+#define  EDGAR_XBRL_FileFilter_INC
 
 #include <exception>
 #include <experimental/string_view>
@@ -60,41 +60,6 @@ namespace bg = boost::gregorian;
 #include "gq/Node.h"
 
 #include "ExtractEDGAR.h"
-
-std::string LoadDataFileForUse(const char* file_name);
-
-// so we can recognize our errors if we want to do something special
-
-class ExtractException : public std::runtime_error
-{
-public:
-
-    explicit ExtractException(const char* what);
-
-    explicit ExtractException(const std::string& what);
-};
-
-// function to split a string on a delimiter and return a vector of string-views
-
-inline std::vector<sview> split_string(sview string_data, char delim)
-{
-    std::vector<sview> results;
-	for (auto it = 0; it != sview::npos; ++it)
-	{
-		auto pos = string_data.find(delim, it);
-        if (pos != sview::npos)
-        {
-    		results.emplace_back(string_data.substr(it, pos - it));
-        }
-        else
-        {
-    		results.emplace_back(string_data.substr(it));
-            break;
-        }
-		it = pos;
-	}
-    return results;
-}
 
 // let's use some function objects for our filters.
 
@@ -144,18 +109,6 @@ struct FileIsWithinDateRange
     const bg::date& end_date_;
 };
 
-// a little helper to run our filters.
-
-template<typename... Ts>
-auto ApplyFilters(const EE::SEC_Header_fields& header_fields, sview file_content, Ts ...ts)
-{
-    // unary left fold
-
-	return (... && (ts(header_fields, file_content)));
-}
-
-bool FormIsInFileName(std::vector<sview>& form_types, const std::string& file_name);
-
 sview LocateInstanceDocument(const std::vector<sview>& document_sections);
 
 sview LocateLabelDocument(const std::vector<sview>& document_sections);
@@ -182,15 +135,9 @@ EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>&
 
 EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
-// std::vector<sview> LocateDocumentSections2(sview file_content);
-
-sview FindFileName(sview document);
-
-sview FindFileType(sview document);
+pugi::xml_document ParseXMLContent(sview document);
 
 sview TrimExcessXML(sview document);
-
-pugi::xml_document ParseXMLContent(sview document);
 
 std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 
@@ -198,33 +145,4 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
 
-
-// HTML content related functions
-
-struct FileHasHTML
-{
-    bool operator()(const EE::SEC_Header_fields&, sview file_content);
-};
-
-sview FindHTML(sview document);
-
-using AnchorData = std::tuple<std::string, std::string, sview>;
-using AnchorList = std::vector<AnchorData>;
-using MultiplierData = std::pair<std::string, const char*>;
-using MultDataList = std::vector<MultiplierData>;
-
-AnchorList CollectAllAnchors(sview html);
-
-AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
-
-AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const AnchorList& all_anchors);
-
-AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
-
-MultDataList FindDollarMultipliers(const AnchorList& financial_anchors, const std::string& real_document);
-
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
-
-sview FindBalanceSheet(const std::vector<sview>& tables);
-
-#endif
+#endif   /* ----- #ifndef EDGAR_XBRL_FileFilter_INC  ----- */

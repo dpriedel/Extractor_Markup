@@ -37,8 +37,8 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#ifndef  _EDGAR_FILEFILTER_
-#define  _EDGAR_FILEFILTER_
+#ifndef  ExtractEDGAR_Utils_INC
+#define  ExtractEDGAR_Utils_INC
 
 #include <exception>
 #include <experimental/string_view>
@@ -97,54 +97,6 @@ inline std::vector<sview> split_string(sview string_data, char delim)
     return results;
 }
 
-// let's use some function objects for our filters.
-
-struct FileHasXBRL
-{
-    bool operator()(const EE::SEC_Header_fields&, sview file_content);
-};
-
-struct FileHasFormType
-{
-    FileHasFormType(const std::vector<sview>& form_list)
-        : form_list_{form_list} {}
-
-    bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& form_list_;
-};
-
-struct FileHasCIK
-{
-    FileHasCIK(const std::vector<sview>& CIK_list)
-        : CIK_list_{CIK_list} {}
-
-    bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& CIK_list_;
-};
-
-struct FileHasSIC
-{
-    FileHasSIC(const std::vector<sview>& SIC_list)
-        : SIC_list_{SIC_list} {}
-
-    bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& SIC_list_;
-};
-
-struct FileIsWithinDateRange
-{
-    FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
-        : begin_date_{begin_date}, end_date_{end_date}   {}
-
-    bool operator()(const EE::SEC_Header_fields& header_fields, sview file_content);
-
-    const bg::date& begin_date_;
-    const bg::date& end_date_;
-};
-
 // a little helper to run our filters.
 
 template<typename... Ts>
@@ -157,75 +109,10 @@ auto ApplyFilters(const EE::SEC_Header_fields& header_fields, sview file_content
 
 bool FormIsInFileName(std::vector<sview>& form_types, const std::string& file_name);
 
-sview LocateInstanceDocument(const std::vector<sview>& document_sections);
-
-sview LocateLabelDocument(const std::vector<sview>& document_sections);
-
 std::vector<sview> LocateDocumentSections(sview file_content);
-
-EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
-
-std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
-
-EE::EDGAR_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
-
-std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& top_level_node,
-        const std::string& label_link_name, const std::string& label_node_name);
-
-std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
-        const std::string& label_link_name, const std::string& loc_node_name);
-
-std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_node,
-        const std::string& label_link_name, const std::string& arc_node_name);
-
-EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
-        const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs);
-
-EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
-
-// std::vector<sview> LocateDocumentSections2(sview file_content);
 
 sview FindFileName(sview document);
 
 sview FindFileType(sview document);
 
-sview TrimExcessXML(sview document);
-
-pugi::xml_document ParseXMLContent(sview document);
-
-std::string ConvertPeriodEndDateToContextName(sview period_end_date);
-
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
-    const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
-    const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
-
-
-// HTML content related functions
-
-struct FileHasHTML
-{
-    bool operator()(const EE::SEC_Header_fields&, sview file_content);
-};
-
-sview FindHTML(sview document);
-
-using AnchorData = std::tuple<std::string, std::string, sview>;
-using AnchorList = std::vector<AnchorData>;
-using MultiplierData = std::pair<std::string, const char*>;
-using MultDataList = std::vector<MultiplierData>;
-
-AnchorList CollectAllAnchors(sview html);
-
-AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
-
-AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const AnchorList& all_anchors);
-
-AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
-
-MultDataList FindDollarMultipliers(const AnchorList& financial_anchors, const std::string& real_document);
-
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
-
-sview FindBalanceSheet(const std::vector<sview>& tables);
-
-#endif
+#endif   /* ----- #ifndef ExtractEDGAR_Utils_INC  ----- */

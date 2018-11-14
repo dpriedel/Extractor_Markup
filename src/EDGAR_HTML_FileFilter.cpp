@@ -5,7 +5,7 @@
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
 //        Version:  1.0
-//        Created:  04/18/2018 16:12:16 AM
+//        Created:  11/14/2018 16:12:16 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -36,19 +36,12 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include "ExtractEDGAR_Utils.h"
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
 
-#include <algorithm>
-#include <experimental/filesystem>
-#include <fstream>
-
-#include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/format.hpp>
 #include <boost/regex.hpp>
-
-#include <Poco/Logger.h>
 
 // gumbo-query
 
@@ -57,22 +50,7 @@
 
 #include "SEC_Header.h"
 
-namespace fs = std::experimental::filesystem;
 using namespace std::string_literals;
-
-const std::string::size_type START_WITH{1000000};
-
-HTMLExtractException::HTMLExtractException(const char* text)
-    : std::runtime_error(text)
-{
-
-}
-
-HTMLExtractException::HTMLExtractException(const std::string& text)
-    : std::runtime_error(text)
-{
-
-}
 
 /* 
  * ===  FUNCTION  ======================================================================

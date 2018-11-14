@@ -5,7 +5,7 @@
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
 //        Version:  1.0
-//        Created:  04/18/2018 09:37:16 AM
+//        Created:  11/14/2018 09:37:16 AM
 //       Revision:  none
 //       Compiler:  g++
 //
@@ -39,7 +39,6 @@
 #ifndef  _EDGAR_HTML_FILEFILTER_
 #define  _EDGAR_HTML_FILEFILTER_
 
-#include <exception>
 #include <experimental/string_view>
 #include <map>
 #include <vector>
@@ -51,26 +50,6 @@ namespace Poco
 };
 
 using sview = std::experimental::string_view;
-
-#include <boost/date_time/gregorian/gregorian.hpp>
-
-namespace bg = boost::gregorian;
-
-#include <pugixml.hpp>
-#include "gq/Node.h"
-
-#include "ExtractEDGAR.h"
-
-// so we can recognize our errors if we want to do something special
-
-class HTMLExtractException : public std::runtime_error
-{
-public:
-
-    explicit HTMLExtractException(const char* what);
-
-    explicit HTMLExtractException(const std::string& what);
-};
 
 // HTML content related functions
 
