@@ -113,8 +113,6 @@ sview FindHTML (sview document)
     auto file_name = FindFileName(document);
     if (boost::algorithm::ends_with(file_name, ".htm"))
     {
-        std::cout << "got htm" << '\n';
-
         // now, we just need to drop the extraneous XMLS surrounding the data we need.
 
         auto x = document.find(R"***(<TEXT>)***");
@@ -151,15 +149,17 @@ AnchorList CollectAllAnchors (sview html)
 {
     AnchorList the_anchors;
 
+    const std::string working_copy{html};
     CDocument the_filing;
-    the_filing.parse(std::string{html});
+    the_filing.parse(working_copy);
     CSelection all_anchors = the_filing.find("a"s);
     for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
     {
         auto an_anchor = all_anchors.nodeAt(indx);
 
         the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s),
-                sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()}});
+                sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()},
+                html});
     }
     return the_anchors;
 }		/* -----  end of function CollectAllAnchors  ----- */
@@ -186,13 +186,13 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 
         // at this point, I'm only interested in internal hrefs.
         
-        decltype(auto) href = std::get<0>(anchor_data);
+        decltype(auto) href = anchor_data.href;
         if (href.empty() || href[0] != '#')
         {
             return false;
         }
 
-        decltype(auto) anchor = std::get<2>(anchor_data);
+        decltype(auto) anchor = anchor_data.anchor_content;
 
         if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet); found_it)
         {
@@ -217,12 +217,6 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
     AnchorList wanted_anchors;
     std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
 
-    std::cout << "Found anchors: \n";
-    for (const auto& a : all_anchors)
-        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
-    std::cout << "Selected anchors: \n";
-    for (const auto& a : wanted_anchors)
-        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
     return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */
 
@@ -238,11 +232,11 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
 
     for (const auto& an_anchor : financial_anchors)
     {
-        decltype(auto) looking_for = std::get<0>(an_anchor);
+        decltype(auto) looking_for = an_anchor.href;
 
         auto compare_it([&looking_for](const auto& anchor)
         {
-            decltype(auto) possible_match = std::get<1>(anchor);
+            decltype(auto) possible_match = anchor.name;
             if (looking_for.compare(1, looking_for.size() - 1, possible_match) == 0)
             {
                 return true;
@@ -251,13 +245,10 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
         });
         auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), compare_it);
         if (found_it == all_anchors.cend())
-            throw std::runtime_error("Can't find destination anchor for: " + std::get<0>(an_anchor));
+            throw std::runtime_error("Can't find destination anchor for: " + an_anchor.href);
 
         destinations.push_back(*found_it);
     }
-    std::cout << "\nDestination anchors: \n";
-    for (const auto& a : destinations)
-        std:: cout << '\t' << std::get<0>(a) << '\t' << std::get<1>(a) << '\t' << std::get<2>(a) << '\n';
     return destinations;
 }		/* -----  end of function FindAnchorDestinations  ----- */
 
@@ -269,13 +260,13 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
  * =====================================================================================
  */
 
-MultDataList FindDollarMultipliers (const AnchorList& financial_anchors, const std::string& real_document)
+MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 {
     // we expect that each section of the financial statements will be a heading
     // containing data of the form: ( thousands|millions|billions ...dollars ) or maybe
     // the sdquence will be reversed.
 
-    // each of our anchor tuples contains a string_view whose data() pointer points
+    // each of our anchor structs contains a string_view whose data() pointer points
     // into the underlying string data originally read from the data file.
 
     MultDataList multipliers;
@@ -287,11 +278,10 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors, const s
 
     for (const auto& a : financial_anchors)
     {
-        const auto& anchor_view = std::get<2>(a);
-        if (bool found_it = boost::regex_search(anchor_view.data(), &real_document.back(), matches, regex_dollar_mults); found_it)
+        if (bool found_it = boost::regex_search(a.anchor_content.data(), a.html_document.end(), matches, regex_dollar_mults); found_it)
         {
-            std::cout << "found it\t" << matches[1].str() << '\t' << (size_t)matches[1].first << '\n'; ;
-            multipliers.emplace_back(MultiplierData{matches[1].str(), matches[1].first});
+            sview multiplier(matches[1].first, matches[1].second - matches[1].first);
+            multipliers.emplace_back(MultiplierData{multiplier, a.html_document});
         }
     }
     return multipliers;
@@ -304,43 +294,31 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors, const s
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents)
+std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data)
 {
     // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
-    // and search the documents list to find which document contains it.  Then, search the
+    // to search the
     // rest of that document for tables.  First table found will be assumed to be the desired table.
     // (this can change later)
 
     std::vector<sview> found_tables;
 
-    for(const auto&[_, pointer] : multiplier_data)
+    for(const auto&[multiplier, html_document] : multiplier_data)
     {
-        auto contains([pointer](sview a_document)
+        CDocument the_filing;
+        const std::string working_copy{multiplier.begin(), html_document.end()};
+        the_filing.parse(working_copy);
+        CSelection all_anchors = the_filing.find("table"s);
+
+        if (all_anchors.nodeNum() == 0)
         {
-            if (a_document.data() < pointer && pointer < a_document.data() + a_document.size())
-            {
-                return true;
-            }
-            return false;
-        });
-
-        if(auto found_it = std::find_if(all_documents.begin(), all_documents.end(), contains);
-                found_it != all_documents.end())
-        {
-            CDocument the_filing;
-            the_filing.parse(std::string{pointer, &found_it->back()});
-            CSelection all_anchors = the_filing.find("table"s);
-
-            if (all_anchors.nodeNum() == 0)
-            {
-                throw std::runtime_error("Can't find financial tables.");
-            }
-
-            CNode the_table = all_anchors.nodeAt(0);
-            found_tables.emplace_back(sview{pointer + the_table.startPosOuter(), the_table.endPosOuter() - the_table.startPosOuter()});
-
-            std::cout << "\n\n\n" << found_tables.back() << '\n';
+            throw std::runtime_error("Can't find financial tables.");
         }
+
+        CNode the_table = all_anchors.nodeAt(0);
+        found_tables.emplace_back(sview{multiplier.data() + the_table.startPosOuter(),
+                the_table.endPosOuter() - the_table.startPosOuter()});
+
     }
     return found_tables;
 }		/* -----  end of function FindFinancialTables  ----- */
@@ -353,7 +331,7 @@ std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std:
  */
 sview FindBalanceSheet (const std::vector<sview>& tables)
 {
-    // here are some things we expect to find int the balance sheet section
+    // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
     const boost::regex assets{R"***(assets)***",
@@ -385,3 +363,44 @@ sview FindBalanceSheet (const std::vector<sview>& tables)
     }
     return {};
 }		/* -----  end of function FindBalanceSheet  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindStatementOfOperations
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindStatementOfOperations (const std::vector<sview>& tables)
+{
+    // here are some things we expect to find in the statement of operations section
+    // and not the other sections.
+
+    const boost::regex income{R"***(income from operations)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex expenses{R"***(operating expenses)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex net_income{R"***(net income)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    
+    for (const auto& table : tables)
+    {
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+        // at this point, I'm only interested in internal hrefs.
+        
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, income); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, expenses); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, net_income); ! found_it)
+        {
+            continue;
+        }
+        return table;
+    }
+    return {};
+}		/* -----  end of function FindStatementOfOperations  ----- */

@@ -113,8 +113,6 @@ sview LocateInstanceDocument(const std::vector<sview>& document_sections);
 
 sview LocateLabelDocument(const std::vector<sview>& document_sections);
 
-std::vector<sview> LocateDocumentSections(sview file_content);
-
 EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
 std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);

@@ -107,23 +107,72 @@
     },
     {
         "arguments": [
-            "c++",
+            "/extra/gcc/gcc-8/bin/g++",
             "-c",
             "-x",
             "c++",
-            "-O3",
+            "-O0",
+            "-g3",
             "-std=c++17",
+            "-D_DEBUG",
             "-fPIC",
-            "-I./src",
+            "-I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/src",
+            "-I/usr/local/include",
             "-I/extra/boost/boost-1.68_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Release/EDGAR_FileFilter.o",
-            "src/EDGAR_FileFilter.cpp"
+            "Debug_e2e/EDGAR_FileFilter.o",
+            "../ExtractEDGAR_XBRL/src/EDGAR_XBRL_FileFilter.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
-        "file": "src/EDGAR_FileFilter.cpp"
+        "file": "src/EDGAR_XBRL_FileFilter.cpp"
+    },
+    {
+        "arguments": [
+            "/extra/gcc/gcc-8/bin/g++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++17",
+            "-D_DEBUG",
+            "-fPIC",
+            "-I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/src",
+            "-I/usr/local/include",
+            "-I/extra/boost/boost-1.68_gcc-8",
+            "-I/extra/gcc/cpp-json/include/",
+            "-march=native",
+            "-o",
+            "Debug_e2e/EDGAR_FileFilter.o",
+            "../ExtractEDGAR_XBRL/src/EDGAR_HTML_FileFilter.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
+        "file": "src/EDGAR_HTML_FileFilter.cpp"
+    },
+    {
+        "arguments": [
+            "/extra/gcc/gcc-8/bin/g++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++17",
+            "-D_DEBUG",
+            "-fPIC",
+            "-I/home/dpriedel/projects/github/ExtractEDGAR_XBRL/src",
+            "-I/usr/local/include",
+            "-I/extra/boost/boost-1.68_gcc-8",
+            "-I/extra/gcc/cpp-json/include/",
+            "-march=native",
+            "-o",
+            "Debug_e2e/EDGAR_FileFilter.o",
+            "../ExtractEDGAR_XBRL/src/ExtractEDGAR_Utils.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
+        "file": "src/ExtractEDGAR_Utils.cpp"
     },
     {
         "arguments": [

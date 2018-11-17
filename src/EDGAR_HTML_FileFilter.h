@@ -44,6 +44,8 @@
 #include <vector>
 #include <tuple>
 
+#include "ExtractEDGAR.h"
+
 namespace Poco
 {
     class Logger;
@@ -60,9 +62,23 @@ struct FileHasHTML
 
 sview FindHTML(sview document);
 
-using AnchorData = std::tuple<std::string, std::string, sview>;
+//using AnchorData = std::tuple<std::string, std::string, sview>;
+struct AnchorData
+{
+    std::string href;
+    std::string name;
+    sview anchor_content;
+    sview html_document;
+};
+
 using AnchorList = std::vector<AnchorData>;
-using MultiplierData = std::pair<std::string, const char*>;
+//using MultiplierData = std::pair<std::string, const char*>;
+struct MultiplierData
+{
+    sview multiplier;
+    sview html_document;
+};
+
 using MultDataList = std::vector<MultiplierData>;
 
 AnchorList CollectAllAnchors(sview html);
@@ -73,10 +89,12 @@ AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const Anc
 
 AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
 
-MultDataList FindDollarMultipliers(const AnchorList& financial_anchors, const std::string& real_document);
+MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data, std::vector<sview>& all_documents);
+std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data);
 
 sview FindBalanceSheet(const std::vector<sview>& tables);
+
+sview FindStatementOfOperations(const std::vector<sview>& tables);
 
 #endif
