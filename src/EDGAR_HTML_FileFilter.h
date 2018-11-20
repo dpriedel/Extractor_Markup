@@ -41,15 +41,13 @@
 
 #include <experimental/string_view>
 #include <map>
-#include <vector>
+#include <experimental/string>
 #include <tuple>
+#include <vector>
 
 #include "ExtractEDGAR.h"
 
-namespace Poco
-{
-    class Logger;
-};
+#include "gq/Node.h"
 
 using sview = std::experimental::string_view;
 
@@ -58,6 +56,33 @@ using sview = std::experimental::string_view;
 struct FileHasHTML
 {
     bool operator()(const EE::SEC_Header_fields&, sview file_content);
+};
+
+// Extracting the desired content from each financial statement section
+// will likely differ for each so let's encapsulate the code.
+
+struct BalanceSheet
+{
+    std::string the_data_;
+    CNode parsed_data_;
+};
+
+struct StatementOfOperations
+{
+    std::string the_data_;
+    CNode parsed_data_;
+};
+
+struct CashFlows
+{
+    std::string the_data_;
+    CNode parsed_data_;
+};
+
+struct StockholdersEquity
+{
+    std::string the_data_;
+    CNode parsed_data_;
 };
 
 sview FindHTML(sview document);
@@ -91,14 +116,14 @@ AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data);
+std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data);
 
-sview FindBalanceSheet(const std::vector<sview>& tables);
+BalanceSheet ExtractBalanceSheet(const std::vector<sview>& tables);
 
-sview FindStatementOfOperations(const std::vector<sview>& tables);
+StatementOfOperations ExtractStatementOfOperations(const std::vector<sview>& tables);
 
-sview FindCashFlowStatement(const std::vector<sview>& tables);
+CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables);
 
-sview FindStatementOfStockholderEquity(const std::vector<sview>& tables);
+StockholdersEquity ExtractStatementOfStockholdersEquity(const std::vector<sview>& tables);
 
 #endif

@@ -294,7 +294,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data)
+std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
 {
     // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
     // to search the
@@ -329,7 +329,7 @@ std::vector<sview> FindFinancialTables(const MultDataList& multiplier_data)
  *  Description:  
  * =====================================================================================
  */
-sview FindBalanceSheet (const std::vector<sview>& tables)
+BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
 {
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
@@ -359,7 +359,7 @@ sview FindBalanceSheet (const std::vector<sview>& tables)
         {
             continue;
         }
-        return table;
+        return BalanceSheet{{table.data(), table.size()}};
     }
     return {};
 }		/* -----  end of function FindBalanceSheet  ----- */
@@ -370,7 +370,7 @@ sview FindBalanceSheet (const std::vector<sview>& tables)
  *  Description:  
  * =====================================================================================
  */
-sview FindStatementOfOperations (const std::vector<sview>& tables)
+StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& tables)
 {
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
@@ -400,7 +400,7 @@ sview FindStatementOfOperations (const std::vector<sview>& tables)
         {
             continue;
         }
-        return table;
+        return StatementOfOperations{{table.data(), table.size()}};
     }
     return {};
 }		/* -----  end of function FindStatementOfOperations  ----- */
@@ -411,7 +411,7 @@ sview FindStatementOfOperations (const std::vector<sview>& tables)
  *  Description:  
  * =====================================================================================
  */
-sview FindCashFlowStatement(const std::vector<sview>& tables)
+CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
 {
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
@@ -441,7 +441,7 @@ sview FindCashFlowStatement(const std::vector<sview>& tables)
         {
             continue;
         }
-        return table;
+        return CashFlows{{table.data(), table.size()}};
     }
     return {};
 }		/* -----  end of function FindCashFlowStatement  ----- */
@@ -452,7 +452,7 @@ sview FindCashFlowStatement(const std::vector<sview>& tables)
  *  Description:  
  * =====================================================================================
  */
-sview FindStatementOfStockholderEquity (const std::vector<sview>& tables)
+StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview>& tables)
 {
     // here are some things we expect to find in the statement of stockholder equity section
     // and not the other sections.
@@ -482,7 +482,7 @@ sview FindStatementOfStockholderEquity (const std::vector<sview>& tables)
         {
             continue;
         }
-        return table;
+        return StockholdersEquity{{table.data(), table.size()}};
     }
     return {};
 }		/* -----  end of function FindStatementOfShareholderEquity  ----- */
