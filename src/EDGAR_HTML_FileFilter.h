@@ -97,4 +97,8 @@ sview FindBalanceSheet(const std::vector<sview>& tables);
 
 sview FindStatementOfOperations(const std::vector<sview>& tables);
 
+sview FindCashFlowStatement(const std::vector<sview>& tables);
+
+sview FindStatementOfStockholderEquity(const std::vector<sview>& tables);
+
 #endif

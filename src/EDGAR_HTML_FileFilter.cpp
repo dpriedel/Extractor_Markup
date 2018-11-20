@@ -375,11 +375,11 @@ sview FindStatementOfOperations (const std::vector<sview>& tables)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    const boost::regex income{R"***(income from operations)***",
+    const boost::regex income{R"***(income tax provision)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***(operating expenses)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex net_income{R"***(net income)***",
+//    const boost::regex expenses{R"***(operating expenses)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex net_income{R"***(net.*?income)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -392,10 +392,10 @@ sview FindStatementOfOperations (const std::vector<sview>& tables)
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, expenses); ! found_it)
-        {
-            continue;
-        }
+//        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, expenses); ! found_it)
+//        {
+//            continue;
+//        }
         if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, net_income); ! found_it)
         {
             continue;
@@ -404,3 +404,85 @@ sview FindStatementOfOperations (const std::vector<sview>& tables)
     }
     return {};
 }		/* -----  end of function FindStatementOfOperations  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindCashFlowStatement
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindCashFlowStatement(const std::vector<sview>& tables)
+{
+    // here are some things we expect to find in the statement of cash flows section
+    // and not the other sections.
+
+    const boost::regex operating{R"***(cash flows from operating)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex investing{R"***(cash flows from investing)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex financing{R"***(cash flows from financing)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    
+    for (const auto& table : tables)
+    {
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+        // at this point, I'm only interested in internal hrefs.
+        
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, operating); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, investing); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, financing); ! found_it)
+        {
+            continue;
+        }
+        return table;
+    }
+    return {};
+}		/* -----  end of function FindCashFlowStatement  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindStatementOfShareholderEquity
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindStatementOfStockholderEquity (const std::vector<sview>& tables)
+{
+    // here are some things we expect to find in the statement of stockholder equity section
+    // and not the other sections.
+
+    const boost::regex shares{R"***(outstanding.+?shares)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex capital{R"***(restricted stock)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex equity{R"***(repurchased stock)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    
+    for (const auto& table : tables)
+    {
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+
+        // at this point, I'm only interested in internal hrefs.
+        
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, shares); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, capital); ! found_it)
+        {
+            continue;
+        }
+        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, equity); ! found_it)
+        {
+            continue;
+        }
+        return table;
+    }
+    return {};
+}		/* -----  end of function FindStatementOfShareholderEquity  ----- */
