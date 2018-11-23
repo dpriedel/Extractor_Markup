@@ -486,3 +486,27 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
     }
     return {};
 }		/* -----  end of function FindStatementOfShareholderEquity  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  ExtractFinancialStatements
+ *  Description:  
+ * =====================================================================================
+ */
+FinancialStatements ExtractFinancialStatements (const std::string& file_content)
+{
+    auto documents = LocateDocumentSections(file_content);
+    auto all_anchors = FindAllDocumentAnchors(documents);
+    auto statement_anchors = FilterFinancialAnchors(all_anchors);
+    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+    auto multipliers = FindDollarMultipliers(destination_anchors);
+    auto financial_tables = LocateFinancialTables(multipliers);
+
+    FinancialStatements the_tables;
+    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+
+    return the_tables;
+}		/* -----  end of function ExtractFinancialStatements  ----- */

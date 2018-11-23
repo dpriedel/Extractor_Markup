@@ -67,7 +67,9 @@
 
 #include <pqxx/pqxx>
 
-#include "EDGAR_FileFilter.h"
+#include "EDGAR_HTML_FileFilter.h"
+#include "EDGAR_XBRL_FileFilter.h"
+#include "ExtractEDGAR_Utils.h"
 #include "SEC_Header.h"
 
 using namespace std::string_literals;

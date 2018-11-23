@@ -90,6 +90,20 @@ inline std::vector<sview> split_string(sview string_data, char delim)
     return results;
 }
 
+// utility function
+
+template<typename ...Ts>
+auto NotAllEmpty(Ts ...ts)
+{
+    return ((! ts.empty()) || ...);
+}
+
+template<typename ...Ts>
+auto AllNotEmpty(Ts ...ts)
+{
+    return ((! ts.empty()) && ...);
+}
+
 // a little helper to run our filters.
 
 template<typename... Ts>

@@ -46,6 +46,7 @@
 #include <vector>
 
 #include "ExtractEDGAR.h"
+#include "ExtractEDGAR_Utils.h"
 
 #include "gq/Node.h"
 
@@ -65,24 +66,45 @@ struct BalanceSheet
 {
     std::string the_data_;
     CNode parsed_data_;
+
+    inline bool empty() const { return the_data_.empty(); }
 };
 
 struct StatementOfOperations
 {
     std::string the_data_;
     CNode parsed_data_;
+
+    inline bool empty() const { return the_data_.empty(); }
 };
 
 struct CashFlows
 {
     std::string the_data_;
     CNode parsed_data_;
+
+    inline bool empty() const { return the_data_.empty(); }
 };
 
 struct StockholdersEquity
 {
     std::string the_data_;
     CNode parsed_data_;
+
+    inline bool empty() const { return the_data_.empty(); }
+};
+
+struct FinancialStatements
+{
+    BalanceSheet balance_sheet_;
+    StatementOfOperations statement_of_operations_;
+    CashFlows cash_flows_;
+    StockholdersEquity stockholders_equity_;
+
+    bool is_complete() const
+    {
+        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+    }
 };
 
 sview FindHTML(sview document);
@@ -125,5 +147,7 @@ StatementOfOperations ExtractStatementOfOperations(const std::vector<sview>& tab
 CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables);
 
 StockholdersEquity ExtractStatementOfStockholdersEquity(const std::vector<sview>& tables);
+
+FinancialStatements ExtractFinancialStatements(const std::string& file_content);
 
 #endif
