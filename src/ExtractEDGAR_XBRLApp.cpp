@@ -708,12 +708,29 @@ void ExtractEDGAR_XBRLApp::Do_Run ()
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
+    if (mode_ == "XBRL")
+    {
+        return LoadSingleFileToDB_XBRL(input_file_name);
+    }
+    return LoadSingleFileToDB_HTML(input_file_name);
+}
+
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs::path& input_file_name)
+{
     bool did_load{false};
     std::atomic<int> forms_processed{0};
 
     try
     {
         const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
+
+        SEC_Header SEC_data;
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
+        decltype(auto) SEC_fields = SEC_data.GetFields();
+
+        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+        poco_assert_msg(use_file, "Specified file does not meet other criteria.");
 
         auto document_sections{LocateDocumentSections(file_content)};
 
@@ -727,14 +744,6 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
         auto gaap_data = ExtractGAAPFields(instance_xml);
         auto context_data = ExtractContextDefinitions(instance_xml);
         auto label_data = ExtractFieldLabels(labels_xml);
-
-        SEC_Header SEC_data;
-        SEC_data.UseData(file_content);
-        SEC_data.ExtractHeaderFields();
-        decltype(auto) SEC_fields = SEC_data.GetFields();
-
-        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-        poco_assert_msg(use_file, "Specified file does not meet other criteria.");
 
         if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
         {
@@ -754,6 +763,55 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
     return {0, 1, 0};
 }
 
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs::path& input_file_name)
+{
+    bool did_load{false};
+    std::atomic<int> forms_processed{0};
+
+    try
+    {
+        const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
+
+        SEC_Header SEC_data;
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
+        decltype(auto) SEC_fields = SEC_data.GetFields();
+
+        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+        poco_assert_msg(use_file, "Specified file does not meet other criteria.");
+
+        auto documents = LocateDocumentSections(file_content);
+        auto all_anchors = FindAllDocumentAnchors(documents);
+        auto statement_anchors = FilterFinancialAnchors(all_anchors);
+        auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+        auto multipliers = FindDollarMultipliers(destination_anchors);
+        auto financial_tables = LocateFinancialTables(multipliers);
+
+        FinancialStatements the_tables;
+        the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+        the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+        the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+        the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+
+        poco_assert_msg(the_tables.is_complete(), "Can't find all HTML financial tables.");
+
+//        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
+//        {
+//            did_load = true;
+//        }
+    }
+    catch(const std::exception& e)
+    {
+        poco_error(logger(), "Problem processing file: " + input_file_name.string() + ". " + e.what());
+        return {0, 0, 1};
+    }
+
+    if (did_load)
+    {
+        return {1, 0, 0};
+    }
+    return {0, 1, 0};
+}
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
 {
     int success_counter{0};
@@ -930,21 +988,29 @@ void ExtractEDGAR_XBRLApp::LogLevelValidator::validate(const Poco::Util::Option&
     }
 }
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const
-        std::string& file_name, std::atomic<int>& forms_processed) { int
-    success_counter{0}; int skipped_counter{0}; int error_counter{0};
+std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+{
+    int success_counter{0};
+    int skipped_counter{0};
+    int error_counter{0};
 
-    if (filename_has_form_) { if (! FormIsInFileName(form_list_, file_name)) {
-        ++skipped_counter; return {success_counter, skipped_counter,
-            error_counter}; } } logger().debug("Scanning file: " + file_name);
+    if (filename_has_form_)
+    {
+        if (! FormIsInFileName(form_list_, file_name))
+        {
+            ++skipped_counter;
+            return {success_counter, skipped_counter, error_counter};
+        }
+    }
+    
+    logger().debug("Scanning file: " + file_name);
     const std::string file_content(LoadDataFileForUse(file_name.c_str()));
 
     SEC_Header SEC_data; SEC_data.UseData(file_content);
-    SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields =
-        SEC_data.GetFields();
+    SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields = SEC_data.GetFields();
 
-    bool use_file = this->ApplyFilters(SEC_fields, file_content,
-            forms_processed); if (use_file)
+    bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+    if (use_file)
     {
         try
         {
@@ -1057,8 +1123,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
             poco_error(logger(), e.what());
             auto ec = e.code();
-            poco_error(logger(), "Category: "s + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
-                + ec.message());
+            poco_error(logger(), "Category: "s + ec.category().name() + ". Value: " + std::to_string(ec.value())
+                   + ". Message: " + ec.message());
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -1155,15 +1221,17 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     if (ep)
     {
-        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
-            + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
+        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: "
+                + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+                + ". Errors: " + std::to_string(error_counter) + ".");
         std::rethrow_exception(ep);
     }
 
     if (ExtractEDGAR_XBRLApp::had_signal_)
     {
-        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
-            + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
+        poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: "
+               + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+               + ". Errors: " + std::to_string(error_counter) + ".");
         throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated after loading: "
             + std::to_string(success_counter) + " files.");
     }

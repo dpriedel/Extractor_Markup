@@ -114,6 +114,8 @@ protected:
     bool LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_HTML(const fs::path& input_file_name);
     std::tuple<int, int, int> ProcessDirectory(void);
     std::tuple<int, int, int> LoadFilesFromListToDB(void);
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
