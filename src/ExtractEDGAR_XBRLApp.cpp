@@ -74,14 +74,6 @@
 
 using namespace std::string_literals;
 
-// utility function
-
-template<typename ...Ts>
-auto NotAllEmpty(Ts ...ts)
-{
-    return ((! ts.empty()) || ...);
-}
-
 // This ctype facet does NOT classify spaces and tabs as whitespace
 // from cppreference example
 
