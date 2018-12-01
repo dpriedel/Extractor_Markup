@@ -268,7 +268,8 @@ void  ExtractEDGAR_XBRLApp::reinitialize(Application& self)
     decltype(auto) the_logger = Poco::Logger::root();
     the_logger.setChannel(logger_file_);
 
-    the_logger.information("\n\n*** Restarting run " + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+    the_logger.information("\n\n*** Restarting run " +
+            boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
 
     setLogger(the_logger);
 }
@@ -309,7 +310,8 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .required(false)
             .repeatable(false)
             .noArgument()
-            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_replace_DB_content)));
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this,
+                    &ExtractEDGAR_XBRLApp::store_replace_DB_content)));
 
     options.addOption(
         Poco::Util::Option("form-dir", "", "directory of form files to be processed.")
@@ -323,7 +325,8 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .required(false)
             .repeatable(false)
             .argument("value")
-            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this,
+                    &ExtractEDGAR_XBRLApp::store_single_file_to_process)));
 
     options.addOption(
         Poco::Util::Option("mode", "Must be either 'HTML' or 'XBRL'.")
@@ -337,7 +340,8 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .required(false)
             .repeatable(false)
             .argument("value")
-            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_list_of_files_to_process_path)));
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this,
+                    &ExtractEDGAR_XBRLApp::store_list_of_files_to_process_path)));
 
     options.addOption(
         Poco::Util::Option("form", "", "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
@@ -347,7 +351,8 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_form)));
 
     options.addOption(
-        Poco::Util::Option("CIK", "", "Zero-padded-on-left 10 digit CIK[s] we are processing. <CIK>,<CIK> for range of CIKS. Default is all.")
+        Poco::Util::Option("CIK", "",
+            "Zero-padded-on-left 10 digit CIK[s] we are processing. <CIK>,<CIK> for range of CIKS. Default is all.")
             .required(false)
             .repeatable(false)
             .argument("value")
@@ -368,14 +373,16 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_log_path)));
 
     options.addOption(
-        Poco::Util::Option("max", "", "Maximun number of forms to process -- mainly for testing. Default of -1 means no limit.")
+        Poco::Util::Option("max", "",
+            "Maximun number of forms to process -- mainly for testing. Default of -1 means no limit.")
             .required(false)
             .repeatable(false)
             .argument("value")
             .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_max)));
 
     options.addOption(
-        Poco::Util::Option("log-level", "l", "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
+        Poco::Util::Option("log-level", "l",
+            "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
             .required(false)
             .repeatable(false)
             .argument("value")
@@ -400,7 +407,8 @@ void  ExtractEDGAR_XBRLApp::defineOptions(Poco::Util::OptionSet& options)
             .required(false)
             .repeatable(false)
             .argument("value")
-            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this, &ExtractEDGAR_XBRLApp::store_resume_at_filename)));
+            .callback(Poco::Util::OptionCallback<ExtractEDGAR_XBRLApp>(this,
+                    &ExtractEDGAR_XBRLApp::store_resume_at_filename)));
 
 }
 
@@ -489,8 +497,8 @@ void ExtractEDGAR_XBRLApp::Do_Main()
 
         poco_error(logger(), e.what());
         auto ec = e.code();
-        poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: " + std::to_string(ec.value()) + ". Message: "
-            + ec.message());
+        poco_error(logger(), std::string{"Category: "} + ec.category().name() + ". Value: "
+                + std::to_string(ec.value()) + ". Message: " + ec.message());
     }
     catch (std::exception& e)
     {
@@ -507,7 +515,8 @@ void ExtractEDGAR_XBRLApp::Do_Main()
 
 void ExtractEDGAR_XBRLApp::Do_StartUp ()
 {
-    logger().information("\n\n*** Begin run " + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+    logger().information("\n\n*** Begin run "
+           + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_StartUp  -----
 
 void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
@@ -541,7 +550,8 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
     if (! CIK_.empty())
     {
         CIK_list_ = split_string(CIK_, ',');
-        poco_assert_msg(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }), "All CIKs must be 10 digits in length.");
+        poco_assert_msg(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }),
+                "All CIKs must be 10 digits in length.");
     }
 
     if (! SIC_.empty())
@@ -552,29 +562,35 @@ void ExtractEDGAR_XBRLApp::Do_CheckArgs ()
     if (! single_file_to_process_.empty())
     {
         poco_assert_msg(fs::exists(single_file_to_process_), ("Can't find file: " + single_file_to_process_.string()).c_str());
-        poco_assert_msg(fs::is_regular_file(single_file_to_process_), ("Path :"s + single_file_to_process_.string() + " is not a regular file.").c_str());
+        poco_assert_msg(fs::is_regular_file(single_file_to_process_), ("Path :"s + single_file_to_process_.string()
+                    + " is not a regular file.").c_str());
     }
 
     if (! local_form_file_directory_.empty())
     {
-        poco_assert_msg(fs::exists(local_form_file_directory_), ("Can't find EDGAR file directory: " + local_form_file_directory_.string()).c_str());
-        poco_assert_msg(fs::is_directory(local_form_file_directory_), ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
+        poco_assert_msg(fs::exists(local_form_file_directory_), ("Can't find EDGAR file directory: "
+                    + local_form_file_directory_.string()).c_str());
+        poco_assert_msg(fs::is_directory(local_form_file_directory_),
+                ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
     }
     
     if (! resume_at_this_filename_.empty())
     {
-        poco_assert_msg(list_of_files_to_process_.empty(), "You must provide a list of files to process when specifying file to resume at.");
+        poco_assert_msg(list_of_files_to_process_.empty(),
+                "You must provide a list of files to process when specifying file to resume at.");
     }
 
     if (! list_of_files_to_process_path_.empty())
     {
-        poco_assert_msg(fs::exists(list_of_files_to_process_path_), ("Can't find file: " + list_of_files_to_process_path_.string()).c_str());
-        poco_assert_msg(fs::is_regular_file(list_of_files_to_process_path_), ("Path :"s + list_of_files_to_process_path_.string()
-            + " is not a regular file.").c_str());
+        poco_assert_msg(fs::exists(list_of_files_to_process_path_),
+                ("Can't find file: " + list_of_files_to_process_path_.string()).c_str());
+        poco_assert_msg(fs::is_regular_file(list_of_files_to_process_path_),
+                ("Path :"s + list_of_files_to_process_path_.string() + " is not a regular file.").c_str());
         BuildListOfFilesToProcess();
     }
 
-    poco_assert_msg(NotAllEmpty(single_file_to_process_, local_form_file_directory_, list_of_files_to_process_), "No files to process found.");
+    poco_assert_msg(NotAllEmpty(single_file_to_process_, local_form_file_directory_, list_of_files_to_process_),
+            "No files to process found.");
 
     BuildFilterList();
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_CheckArgs  -----
@@ -616,7 +632,8 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
     logger().information("Resuming with: " + std::to_string(list_of_files_to_process_.size()) + " files in list.");
 }
 
-bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed)
+bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content,
+        std::atomic<int>& forms_processed)
 {
     bool use_file{true};
     for (const auto& filter : filters_)
@@ -702,8 +719,9 @@ void ExtractEDGAR_XBRLApp::Do_Run ()
 
     auto [success_counter, skipped_counter, error_counter] = counters;
 
-    poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: " + std::to_string(success_counter)
-        + ". Skips: " + std::to_string(skipped_counter) + ". Errors: " + std::to_string(error_counter) + ".");
+    poco_error(logger(), "Processed: "s + std::to_string(SumT(counters)) + " files. Successes: "
+            + std::to_string(success_counter) + ". Skips: " + std::to_string(skipped_counter)
+            + ". Errors: " + std::to_string(error_counter) + ".");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_Run  -----
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
@@ -793,7 +811,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
         the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
 
-        poco_assert_msg(the_tables.is_complete(), "Can't find all HTML financial tables.");
+        poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables: "
+                    + input_file_name.string()).c_str());
 
 //        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
 //        {
@@ -954,11 +973,21 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
     return {success_counter, skipped_counter, error_counter};
 }
 
-bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content)
+bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+        sview file_content)
 {
-
     logger().debug("Loading contents from file: " + file_name);
 
+    if (mode_ == "XBRL")
+    {
+        return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, file_content);
+    }
+    return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
+}
+
+bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+        sview file_content)
+{
     auto document_sections{LocateDocumentSections(file_content)};
 
     auto labels_document = LocateLabelDocument(document_sections);
@@ -975,9 +1004,32 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, 
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
 }
 
+bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+        sview file_content)
+{
+    auto documents = LocateDocumentSections(file_content);
+    auto all_anchors = FindAllDocumentAnchors(documents);
+    auto statement_anchors = FilterFinancialAnchors(all_anchors);
+    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+    auto multipliers = FindDollarMultipliers(destination_anchors);
+    auto financial_tables = LocateFinancialTables(multipliers);
+
+    FinancialStatements the_tables;
+    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+
+    poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables." + file_name).c_str());
+
+//    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
+    return the_tables.is_complete();
+}
+
 void ExtractEDGAR_XBRLApp::Do_Quit ()
 {
-    logger().information("\n\n*** End run " + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+    logger().information("\n\n*** End run "
+            + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Do_Quit  -----
 
 void ExtractEDGAR_XBRLApp::LogLevelValidator::validate(const Poco::Util::Option& option, const std::string& value)
@@ -1093,7 +1145,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         // queue up our tasks up to the limit.
 
         // for some strange reason, this does not compile (but it should)
-        // tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this, list_of_files_to_process_[i], forms_processed));
+        // tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this,
+        // list_of_files_to_process_[i], forms_processed));
 
         // so, use this instead.
         tasks.emplace_back(std::async(std::launch::async, do_work, current_file));

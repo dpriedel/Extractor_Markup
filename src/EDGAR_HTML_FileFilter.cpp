@@ -40,6 +40,9 @@
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
 
+#include <tidy.h>
+#include <tidybuffio.h>
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
@@ -145,25 +148,164 @@ sview FindHTML (sview document)
  *  Description:  
  * =====================================================================================
  */
+//AnchorList CollectAllAnchors (sview html)
+//{
+//    AnchorList the_anchors;
+//
+//    const std::string working_copy{TidyHTML(html)};
+//    CDocument the_filing;
+//    the_filing.parse(working_copy);
+//    CSelection all_anchors = the_filing.find("a"s);
+//
+//    CNode parent;
+//    std::string all_text;
+//
+//    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+//    {
+//        auto an_anchor = all_anchors.nodeAt(indx);
+////        if (parent.valid() && an_anchor.startPosOuter() == parent.startPosOuter())
+////        {
+//            all_text += an_anchor.text();
+////        }
+////        else
+////        {
+//            the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s), all_text,
+//                    std::string{working_copy.data() + an_anchor.startPosOuter(),
+//                    an_anchor.endPosOuter() - an_anchor.startPosOuter()}, working_copy});
+////            parent = {};
+////            all_text = {};
+////        }
+//    }
+//    return the_anchors;
+//}		/* -----  end of function CollectAllAnchors  ----- */
+
 AnchorList CollectAllAnchors (sview html)
 {
+    // let's try a different approach that might be easier to use in files which have 
+    // crappy HTML -- nested anchors for one...
+
     AnchorList the_anchors;
 
-    const std::string working_copy{html};
-    CDocument the_filing;
-    the_filing.parse(working_copy);
-    CSelection all_anchors = the_filing.find("a"s);
-    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+    static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex re_anchor_end{R"***(</a>)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    boost::cmatch anchor_begin_match;
+    auto begin_pos = html.data();
+    bool found_it = boost::regex_search(begin_pos, html.cend(), anchor_begin_match, re_anchor_begin);
+    if (! found_it)
     {
-        auto an_anchor = all_anchors.nodeAt(indx);
-
-        the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s),
-                sview{html.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()},
-                html});
+        return {};
     }
-    return the_anchors;
-}		/* -----  end of function CollectAllAnchors  ----- */
 
+    while(found_it)
+    {
+        found_it = boost::regex_search(anchor_begin_match[1].second, html.cend(), anchor_begin_match, re_anchor_begin);
+        if (found_it)
+        {
+            auto end = FindAnchorEnd(anchor_begin_match[1].second, html.cend(), 1);
+            if (! end)
+                break;
+
+		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor_begin_match[1].first, end - anchor_begin_match[1].first), html});
+
+        }
+    }
+
+//    for (auto anchor = boost::cregex_token_iterator(html.cbegin(), html.cend(), regex_anchor);
+//        anchor != boost::cregex_token_iterator{}; ++anchor)
+//    {
+//		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor->first, anchor->length()), html});
+//    }
+
+    std::cout << "Found: " << the_anchors.size() << " anchors.\n";
+    return the_anchors;
+}
+
+const char* FindAnchorEnd(const char* start, const char* end, int level)
+{
+    static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex re_anchor_begin{R"***(</a>|<a>)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex re_anchor_end{R"***(</a>)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+
+    boost::cmatch anchor_next_match;
+    bool found_next = boost::regex_search(start, end, anchor_next_match, re_anchor_end_or_begin);
+    if (found_next)
+    {
+        boost::cmatch xx1;
+        if (boost::regex_match(anchor_next_match[0].first, anchor_next_match[0].second, xx1, re_anchor_begin))
+        {
+            // found a nested anchor start
+            return FindAnchorEnd(anchor_next_match[0].second, end, ++level);
+        }
+        else
+        {
+            // found an anchor end. let's see if we're done
+
+            --level;
+            if (level > 0)
+            {
+                // not finished but we have completed a nested anchor
+
+                return FindAnchorEnd(anchor_next_match[0].second, end, level);
+            }
+            return anchor_next_match[0].second;
+        }
+    }
+    return nullptr;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  TidyHTML
+ *  Description:  
+ * =====================================================================================
+ */
+std::string TidyHTML (sview original_HTML)
+{
+    // copied from sample code in documentation.
+
+    TidyBuffer output = {0};
+    TidyBuffer errbuf = {0};
+    int rc = -1;
+    bool ok;
+
+    TidyDoc tdoc = tidyCreate();                     // Initialize "document"
+
+    ok = tidyOptSetBool(tdoc, TidyHtmlOut, yes);  // write as HTML
+    if (ok)
+        rc = tidySetErrorBuffer(tdoc, &errbuf);      // Capture diagnostics
+    if (rc >= 0)
+        rc = tidyParseString(tdoc, original_HTML.data());           // Parse the input
+    if (rc >= 0)
+    rc = tidyCleanAndRepair(tdoc);               // Tidy it up!
+    //  if (rc >= 0)
+    //    rc = tidyRunDiagnostics(tdoc);               // Kvetch
+    //  if (rc > 1)                                    // If error, force output.
+    rc = (tidyOptSetBool(tdoc, TidyForceOutput, yes) ? rc : -1);
+    if (rc >= 0)
+        rc = tidySaveBuffer(tdoc, &output);          // Pretty Print
+
+    //  if (rc >= 0)
+    //  {
+    //    if (rc > 0)
+    //      printf("\nDiagnostics:\n\n%s", errbuf.bp);
+    //    printf("\nAnd here is the result:\n\n%s", output.bp);
+    //  }
+    else
+        throw ExtractException{"Unable to 'Tidy' the HTML. Result: " + std::to_string(rc)};
+
+    std::string result((char*)output.bp, output.size);
+    tidyBufFree(&output);
+    tidyBufFree(&errbuf);
+    tidyRelease(tdoc);
+    return result;
+}		/* -----  end of function TidyHTML  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FilterAnchors
@@ -175,24 +317,27 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    const boost::regex regex_balance_sheet{R"***(consol.*bal)***", boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_operations{R"***(consol.*oper)***", boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_cash_flow{R"***(consol.*flow)***", boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_equity{R"***(consol.*equi)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_balance_sheet{R"***(consol.*bal|balance sheet)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_operations{R"***(consol.*oper|state.*?of.*?oper)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_cash_flow{R"***(consol.*flow|cash flow)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_equity{R"***(consol.*equi|stockh.*?equit|shareh.*?equit)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
     auto filter([&](const auto& anchor_data)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
+        boost::smatch matches;              // using string_view so it's cmatch instead of smatch
 
         // at this point, I'm only interested in internal hrefs.
         
-        decltype(auto) href = anchor_data.href;
-        if (href.empty() || href[0] != '#')
+        if (anchor_data.href.empty() || anchor_data.href[0] != '#')
         {
             return false;
         }
 
-        decltype(auto) anchor = anchor_data.anchor_content;
+        const auto& anchor = anchor_data.text;
 
         if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet); found_it)
         {
@@ -245,8 +390,9 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
         });
         auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), compare_it);
         if (found_it == all_anchors.cend())
+        {
             throw std::runtime_error("Can't find destination anchor for: " + an_anchor.href);
-
+        }
         destinations.push_back(*found_it);
     }
     return destinations;
@@ -280,7 +426,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
     {
         if (bool found_it = boost::regex_search(a.anchor_content.data(), a.html_document.end(), matches, regex_dollar_mults); found_it)
         {
-            sview multiplier(matches[1].first, matches[1].second - matches[1].first);
+            sview multiplier(matches[1].str());
             multipliers.emplace_back(MultiplierData{multiplier, a.html_document});
         }
     }

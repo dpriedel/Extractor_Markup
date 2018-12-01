@@ -112,6 +112,8 @@ protected:
 	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
 
     bool LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);

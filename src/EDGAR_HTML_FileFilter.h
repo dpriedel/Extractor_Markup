@@ -103,7 +103,8 @@ struct FinancialStatements
 
     bool is_complete() const
     {
-        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+//        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
 };
 
@@ -114,6 +115,7 @@ struct AnchorData
 {
     std::string href;
     std::string name;
+    std::string text;
     sview anchor_content;
     sview html_document;
 };
@@ -129,6 +131,10 @@ struct MultiplierData
 using MultDataList = std::vector<MultiplierData>;
 
 AnchorList CollectAllAnchors(sview html);
+
+const char* FindAnchorEnd(const char* start, const char* end, int level);
+
+std::string TidyHTML (sview original_HTML);
 
 AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
 
