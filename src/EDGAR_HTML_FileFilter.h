@@ -134,6 +134,8 @@ AnchorList CollectAllAnchors(sview html);
 
 const char* FindAnchorEnd(const char* start, const char* end, int level);
 
+AnchorData ExtractDataFromAnchor(sview whole_anchor, sview html);
+
 std::string TidyHTML (sview original_HTML);
 
 AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);

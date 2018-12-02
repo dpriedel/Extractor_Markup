@@ -148,36 +148,6 @@ sview FindHTML (sview document)
  *  Description:  
  * =====================================================================================
  */
-//AnchorList CollectAllAnchors (sview html)
-//{
-//    AnchorList the_anchors;
-//
-//    const std::string working_copy{TidyHTML(html)};
-//    CDocument the_filing;
-//    the_filing.parse(working_copy);
-//    CSelection all_anchors = the_filing.find("a"s);
-//
-//    CNode parent;
-//    std::string all_text;
-//
-//    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
-//    {
-//        auto an_anchor = all_anchors.nodeAt(indx);
-////        if (parent.valid() && an_anchor.startPosOuter() == parent.startPosOuter())
-////        {
-//            all_text += an_anchor.text();
-////        }
-////        else
-////        {
-//            the_anchors.emplace_back(AnchorData{an_anchor.attribute("href"s), an_anchor.attribute("name"s), all_text,
-//                    std::string{working_copy.data() + an_anchor.startPosOuter(),
-//                    an_anchor.endPosOuter() - an_anchor.startPosOuter()}, working_copy});
-////            parent = {};
-////            all_text = {};
-////        }
-//    }
-//    return the_anchors;
-//}		/* -----  end of function CollectAllAnchors  ----- */
 
 AnchorList CollectAllAnchors (sview html)
 {
@@ -209,7 +179,7 @@ AnchorList CollectAllAnchors (sview html)
         }
 
         std::cout << "FOUND ANCHOR: \n\n" << sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first) << "\n\n";
-		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first), html});
+		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first), html));
 
         found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
     }
@@ -263,6 +233,33 @@ const char* FindAnchorEnd(const char* start, const char* end, int level)
     return nullptr;
 }
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  ExtractDataFromAnchor
+ *  Description:  
+ * =====================================================================================
+ */
+AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
+{
+    CDocument the_anchor;
+    const std::string working_copy{whole_anchor.begin(), whole_anchor.end()};
+    the_anchor.parse(working_copy);
+    CSelection all_anchors = the_anchor.find("a"s);
+
+    // I just need to collect all the text from the anchor and any nested anchors
+
+    std::string anchor_text;
+    for (int i = 0; i < all_anchors.nodeNum(); ++i)
+    {
+        auto a = all_anchors.nodeAt(i);
+        anchor_text += a.text();
+    }
+    
+    AnchorData result{{all_anchors.nodeAt(0).attribute("href")},
+        {all_anchors.nodeAt(0).attribute("name")},
+        anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
+    return result;
+}		/* -----  end of function ExtractDataFromAnchor  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  TidyHTML
