@@ -186,31 +186,32 @@ AnchorList CollectAllAnchors (sview html)
 
     AnchorList the_anchors;
 
-    static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_end{R"***(</a>)***",
+    const boost::regex re_anchor_begin{R"***(<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
+    // we need to prime the pump by finding the beginning of the first anchor.
+
     boost::cmatch anchor_begin_match;
-    auto begin_pos = html.data();
-    bool found_it = boost::regex_search(begin_pos, html.cend(), anchor_begin_match, re_anchor_begin);
+    bool found_it = boost::regex_search(html.cbegin(), html.cend(), anchor_begin_match, re_anchor_begin);
     if (! found_it)
     {
+        // we have no anchors in this document
         return {};
     }
 
     while(found_it)
     {
-        found_it = boost::regex_search(anchor_begin_match[1].second, html.cend(), anchor_begin_match, re_anchor_begin);
-        if (found_it)
+        auto end = FindAnchorEnd(anchor_begin_match[0].first,  html.cend(), 1);
+        if (! end)
         {
-            auto end = FindAnchorEnd(anchor_begin_match[1].second, html.cend(), 1);
-            if (! end)
-                break;
-
-		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor_begin_match[1].first, end - anchor_begin_match[1].first), html});
-
+            // maybe this should throw an exception since we are not finding the end of an anchor
+            break;
         }
+
+        std::cout << "FOUND ANCHOR: \n\n" << sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first) << "\n\n";
+		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first), html});
+
+        found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
     }
 
 //    for (auto anchor = boost::cregex_token_iterator(html.cbegin(), html.cend(), regex_anchor);
@@ -225,37 +226,39 @@ AnchorList CollectAllAnchors (sview html)
 
 const char* FindAnchorEnd(const char* start, const char* end, int level)
 {
-    static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
+    const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_begin{R"***(</a>|<a>)***",
+    const boost::regex re_anchor_begin{R"***(<a |<a>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_end{R"***(</a>)***",
+    const boost::regex re_anchor_end{R"***(</a>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-
-    boost::cmatch anchor_next_match;
-    bool found_next = boost::regex_search(start, end, anchor_next_match, re_anchor_end_or_begin);
-    if (found_next)
+    boost::cmatch anchor_end_or_begin;
+    bool found_it = boost::regex_search(start + 1, end, anchor_end_or_begin, re_anchor_end_or_begin);
+    if (found_it)
     {
-        boost::cmatch xx1;
-        if (boost::regex_match(anchor_next_match[0].first, anchor_next_match[0].second, xx1, re_anchor_begin))
+        // we have either an end anchor or begin anchor
+
+        if (boost::regex_match(anchor_end_or_begin[0].first, anchor_end_or_begin[0].second, re_anchor_begin))
         {
             // found a nested anchor start
-            return FindAnchorEnd(anchor_next_match[0].second, end, ++level);
+
+            return FindAnchorEnd(anchor_end_or_begin[0].first, end, ++level);
         }
-        else
+
+        // at this point, we are working with an anchor end. let's see if we're done
+
+        --level;
+        if (level > 0)
         {
-            // found an anchor end. let's see if we're done
+            // not finished but we have completed a nested anchor
 
-            --level;
-            if (level > 0)
-            {
-                // not finished but we have completed a nested anchor
-
-                return FindAnchorEnd(anchor_next_match[0].second, end, level);
-            }
-            return anchor_next_match[0].second;
+            return FindAnchorEnd(anchor_end_or_begin[0].first, end, level);
         }
+
+        // now I should be looking for the end of the top-level anchor.
+
+        return anchor_end_or_begin[0].second;
     }
     return nullptr;
 }
