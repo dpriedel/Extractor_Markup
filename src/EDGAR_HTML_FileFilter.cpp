@@ -40,9 +40,6 @@
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
 
-#include <tidy.h>
-#include <tidybuffio.h>
-
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
@@ -178,17 +175,12 @@ AnchorList CollectAllAnchors (sview html)
             break;
         }
 
-        std::cout << "FOUND ANCHOR: \n\n" << sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first) << "\n\n";
-		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first), html));
+//        std::cout << "FOUND ANCHOR: \n\n" << sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first) << "\n\n";
+		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first),
+                    html));
 
         found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
     }
-
-//    for (auto anchor = boost::cregex_token_iterator(html.cbegin(), html.cend(), regex_anchor);
-//        anchor != boost::cregex_token_iterator{}; ++anchor)
-//    {
-//		the_anchors.emplace_back(AnchorData{{}, {}, {}, sview(anchor->first, anchor->length()), html});
-//    }
 
     std::cout << "Found: " << the_anchors.size() << " anchors.\n";
     return the_anchors;
@@ -255,57 +247,10 @@ AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
         anchor_text += a.text();
     }
     
-    AnchorData result{{all_anchors.nodeAt(0).attribute("href")},
-        {all_anchors.nodeAt(0).attribute("name")},
+    AnchorData result{{all_anchors.nodeAt(0).attribute("href")}, {all_anchors.nodeAt(0).attribute("name")},
         anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
     return result;
 }		/* -----  end of function ExtractDataFromAnchor  ----- */
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  TidyHTML
- *  Description:  
- * =====================================================================================
- */
-std::string TidyHTML (sview original_HTML)
-{
-    // copied from sample code in documentation.
-
-    TidyBuffer output = {0};
-    TidyBuffer errbuf = {0};
-    int rc = -1;
-    bool ok;
-
-    TidyDoc tdoc = tidyCreate();                     // Initialize "document"
-
-    ok = tidyOptSetBool(tdoc, TidyHtmlOut, yes);  // write as HTML
-    if (ok)
-        rc = tidySetErrorBuffer(tdoc, &errbuf);      // Capture diagnostics
-    if (rc >= 0)
-        rc = tidyParseString(tdoc, original_HTML.data());           // Parse the input
-    if (rc >= 0)
-    rc = tidyCleanAndRepair(tdoc);               // Tidy it up!
-    //  if (rc >= 0)
-    //    rc = tidyRunDiagnostics(tdoc);               // Kvetch
-    //  if (rc > 1)                                    // If error, force output.
-    rc = (tidyOptSetBool(tdoc, TidyForceOutput, yes) ? rc : -1);
-    if (rc >= 0)
-        rc = tidySaveBuffer(tdoc, &output);          // Pretty Print
-
-    //  if (rc >= 0)
-    //  {
-    //    if (rc > 0)
-    //      printf("\nDiagnostics:\n\n%s", errbuf.bp);
-    //    printf("\nAnd here is the result:\n\n%s", output.bp);
-    //  }
-    else
-        throw ExtractException{"Unable to 'Tidy' the HTML. Result: " + std::to_string(rc)};
-
-    std::string result((char*)output.bp, output.size);
-    tidyBufFree(&output);
-    tidyBufFree(&errbuf);
-    tidyRelease(tdoc);
-    return result;
-}		/* -----  end of function TidyHTML  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FilterAnchors
@@ -317,18 +262,18 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    const boost::regex regex_balance_sheet{R"***(consol.*bal|balance sheet)***",
+    const boost::regex regex_balance_sheet{R"***(balance sheet)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_operations{R"***(consol.*oper|state.*?of.*?oper)***",
+    const boost::regex regex_operations{R"***(state.*?of.*?oper)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_cash_flow{R"***(consol.*flow|cash flow)***",
+    const boost::regex regex_cash_flow{R"***(cash flow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_equity{R"***(consol.*equi|stockh.*?equit|shareh.*?equit)***",
+    const boost::regex regex_equity{R"***(stockh.*?equit|shareh.*?equit)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     auto filter([&](const auto& anchor_data)
     {
-        boost::smatch matches;              // using string_view so it's cmatch instead of smatch
+        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
 
         // at this point, I'm only interested in internal hrefs.
         
@@ -337,7 +282,7 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
             return false;
         }
 
-        const auto& anchor = anchor_data.text;
+        const auto& anchor = anchor_data.anchor_content;
 
         if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet); found_it)
         {
@@ -424,9 +369,10 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     for (const auto& a : financial_anchors)
     {
-        if (bool found_it = boost::regex_search(a.anchor_content.data(), a.html_document.end(), matches, regex_dollar_mults); found_it)
+        if (bool found_it = boost::regex_search(a.anchor_content.data(), a.html_document.end(), matches, regex_dollar_mults);
+                found_it)
         {
-            sview multiplier(matches[1].str());
+            sview multiplier(matches[1].first, matches[1].length());
             multipliers.emplace_back(MultiplierData{multiplier, a.html_document});
         }
     }
