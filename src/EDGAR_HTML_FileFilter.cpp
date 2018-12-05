@@ -52,6 +52,8 @@
 
 using namespace std::string_literals;
 
+static const char* NONE = "none";
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FileHasHTML::operator()
@@ -153,7 +155,7 @@ AnchorList CollectAllAnchors (sview html)
 
     AnchorList the_anchors;
 
-    const boost::regex re_anchor_begin{R"***(<a>|<a )***",
+    static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // we need to prime the pump by finding the beginning of the first anchor.
@@ -188,11 +190,11 @@ AnchorList CollectAllAnchors (sview html)
 
 const char* FindAnchorEnd(const char* start, const char* end, int level)
 {
-    const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
+    static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex re_anchor_begin{R"***(<a |<a>)***",
+    static const boost::regex re_anchor_begin{R"***(<a |<a>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex re_anchor_end{R"***(</a>)***",
+    static const boost::regex re_anchor_end{R"***(</a>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     boost::cmatch anchor_end_or_begin;
@@ -262,19 +264,17 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    const boost::regex regex_balance_sheet{R"***(balance sheet)***",
+    static const boost::regex regex_balance_sheet{R"***(balance sheet)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_operations{R"***(state.*?of.*?oper)***",
+    static const boost::regex regex_operations{R"***(state.*?of.*?oper)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_cash_flow{R"***(cash flow)***",
+    static const boost::regex regex_cash_flow{R"***(cash flow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_equity{R"***(stockh.*?equit|shareh.*?equit)***",
+    static const boost::regex regex_equity{R"***(stockh.*?equit|shareh.*?equit)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     auto filter([&](const auto& anchor_data)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
-
         // at this point, I'm only interested in internal hrefs.
         
         if (anchor_data.href.empty() || anchor_data.href[0] != '#')
@@ -284,19 +284,19 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
 
         const auto& anchor = anchor_data.anchor_content;
 
-        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_balance_sheet); found_it)
+        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_balance_sheet))
         {
             return true;
         }
-        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_operations); found_it)
+        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_operations))
         {
             return true;
         }
-        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_equity); found_it)
+        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_equity))
         {
             return true;
         }
-        if (bool found_it = boost::regex_search(anchor.cbegin(), anchor.cend(), matches, regex_cash_flow); found_it)
+        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_cash_flow))
         {
             return true;
         }
@@ -362,18 +362,24 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    const boost::regex regex_dollar_mults{R"***(.*?(thousands|millions|billions).*?dollar)***",
+    static const boost::regex regex_dollar_mults{R"***(.*?(thousands|millions|billions).*?dollar)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
 
     for (const auto& a : financial_anchors)
     {
-        if (bool found_it = boost::regex_search(a.anchor_content.data(), a.html_document.end(), matches, regex_dollar_mults);
+        if (bool found_it = boost::regex_search(a.anchor_content.begin(), a.html_document.end(), matches, regex_dollar_mults);
                 found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
             multipliers.emplace_back(MultiplierData{multiplier, a.html_document});
+        }
+        else
+        {
+            // no multiplier specified so assume 'none'
+
+            multipliers.emplace_back(MultiplierData{{}, a.html_document});
         }
     }
     return multipliers;
@@ -392,13 +398,15 @@ std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
     // to search the
     // rest of that document for tables.  First table found will be assumed to be the desired table.
     // (this can change later)
+    // OK, we need to change this now.
+    // first, let's try to grab a bunch of tables and so we can look thru them to find what we need.
 
     std::vector<sview> found_tables;
 
     for(const auto&[multiplier, html_document] : multiplier_data)
     {
         CDocument the_filing;
-        const std::string working_copy{multiplier.begin(), html_document.end()};
+        const std::string working_copy{html_document.begin(), html_document.end()};
         the_filing.parse(working_copy);
         CSelection all_anchors = the_filing.find("table"s);
 
@@ -407,12 +415,20 @@ std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
             throw std::runtime_error("Can't find financial tables.");
         }
 
-        CNode the_table = all_anchors.nodeAt(0);
-        found_tables.emplace_back(sview{multiplier.data() + the_table.startPosOuter(),
-                the_table.endPosOuter() - the_table.startPosOuter()});
-
+        for (int indx = 0; indx < all_anchors.nodeNum(); ++indx)
+        {
+            CNode the_table = all_anchors.nodeAt(indx);
+            found_tables.emplace_back(sview{html_document.data() + the_table.startPosOuter(),
+                    the_table.endPosOuter() - the_table.startPosOuter()});
+        }
     }
-    return found_tables;
+
+    // a little cleanup
+
+    std::sort(found_tables.begin(), found_tables.end());
+    std::vector<sview> result_tables;
+    std::unique_copy(found_tables.begin(), found_tables.end(), std::back_inserter(result_tables));
+    return result_tables;
 }		/* -----  end of function FindFinancialTables  ----- */
 
 /* 
@@ -426,32 +442,30 @@ BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
-    const boost::regex assets{R"***(assets)***",
+    static const boost::regex assets{R"***(current assets)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex liabilities{R"***(liabilities)***",
+    static const boost::regex liabilities{R"***(current liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex equity{R"***((stock|share)holders.*?equity)***",
+    static const boost::regex equity{R"***((stock|share)holders.*?equity)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
-
         // at this point, I'm only interested in internal hrefs.
         
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, assets); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), assets))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, liabilities); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), liabilities))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, equity); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), equity))
         {
             continue;
         }
-        return BalanceSheet{{table.data(), table.size()}};
+        return BalanceSheet{{table.data(), table.size()}, {}};
     }
     return {};
 }		/* -----  end of function FindBalanceSheet  ----- */
@@ -467,20 +481,18 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    const boost::regex income{R"***(income tax provision)***",
+    static const boost::regex income{R"***(income tax provision)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(operating expenses)***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex net_income{R"***(net.*?income)***",
+    static const boost::regex net_income{R"***(net.*?income)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
-
         // at this point, I'm only interested in internal hrefs.
         
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, income); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), income))
         {
             continue;
         }
@@ -488,7 +500,7 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
 //        {
 //            continue;
 //        }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, net_income); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), net_income))
         {
             continue;
         }
@@ -508,28 +520,26 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    const boost::regex operating{R"***(cash flows from operating)***",
+    static const boost::regex operating{R"***(cash flows from operating)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex investing{R"***(cash flows from investing)***",
+    static const boost::regex investing{R"***(cash flows from investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex financing{R"***(cash flows from financing)***",
+    static const boost::regex financing{R"***(cash flows from financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
-
         // at this point, I'm only interested in internal hrefs.
         
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, operating); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), operating))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, investing); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, financing); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), financing))
         {
             continue;
         }
@@ -549,28 +559,26 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
     // here are some things we expect to find in the statement of stockholder equity section
     // and not the other sections.
 
-    const boost::regex shares{R"***(outstanding.+?shares)***",
+    static const boost::regex shares{R"***(outstanding.+?shares)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex capital{R"***(restricted stock)***",
+    static const boost::regex capital{R"***(restricted stock)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex equity{R"***(repurchased stock)***",
+    static const boost::regex equity{R"***(repurchased stock)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
     {
-        boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
-
         // at this point, I'm only interested in internal hrefs.
         
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, shares); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), shares))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, capital); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), capital))
         {
             continue;
         }
-        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, equity); ! found_it)
+        if (! boost::regex_search(table.cbegin(), table.cend(), equity))
         {
             continue;
         }
