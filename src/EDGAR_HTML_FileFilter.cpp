@@ -115,7 +115,7 @@ sview FindHTML (sview document)
     auto file_name = FindFileName(document);
     if (boost::algorithm::ends_with(file_name, ".htm"))
     {
-        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+        // now, we just need to drop the extraneous XML surrounding the data we need.
 
         auto x = document.find(R"***(<TEXT>)***");
 
@@ -171,7 +171,7 @@ AnchorList CollectAllAnchors (sview html)
     while(found_it)
     {
         auto end = FindAnchorEnd(anchor_begin_match[0].first,  html.cend(), 1);
-        if (! end)
+        if (end == nullptr)
         {
             // maybe this should throw an exception since we are not finding the end of an anchor
             break;
@@ -198,7 +198,7 @@ const char* FindAnchorEnd(const char* start, const char* end, int level)
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     boost::cmatch anchor_end_or_begin;
-    bool found_it = boost::regex_search(start + 1, end, anchor_end_or_begin, re_anchor_end_or_begin);
+    bool found_it = boost::regex_search(++start, end, anchor_end_or_begin, re_anchor_end_or_begin);
     if (found_it)
     {
         // we have either an end anchor or begin anchor
@@ -249,7 +249,7 @@ AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
         anchor_text += a.text();
     }
     
-    AnchorData result{{all_anchors.nodeAt(0).attribute("href")}, {all_anchors.nodeAt(0).attribute("name")},
+    AnchorData result{all_anchors.nodeAt(0).attribute("href"), all_anchors.nodeAt(0).attribute("name"),
         anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
     return result;
 }		/* -----  end of function ExtractDataFromAnchor  ----- */
@@ -270,7 +270,7 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_cash_flow{R"***(cash flow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_equity{R"***(stockh.*?equit|shareh.*?equit)***",
+    static const boost::regex regex_equity{R"***((stockh|shareh).*?equit)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     auto filter([&](const auto& anchor_data)
@@ -307,6 +307,10 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
     AnchorList wanted_anchors;
     std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
 
+    if(wanted_anchors.size() < 3)
+    {
+        throw ExtractException("Must have at least 3 anchors to process file.");
+    }
     return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */
 
@@ -322,18 +326,22 @@ AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const An
 
     for (const auto& an_anchor : financial_anchors)
     {
-        decltype(auto) looking_for = an_anchor.href;
+        sview looking_for = an_anchor.href;
+        looking_for.remove_prefix(1);               // need to skip '#'
 
-        auto compare_it([&looking_for](const auto& anchor)
+        auto do_compare([&looking_for](const auto& anchor)
         {
-            decltype(auto) possible_match = anchor.name;
-            if (looking_for.compare(1, looking_for.size() - 1, possible_match) == 0)
-            {
-                return true;
-            }
-            return false;    
+            // need case insensitive compare
+            // found this on StackOverflow (but modified for my use)
+            // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+
+            return std::equal(
+                    looking_for.begin(), looking_for.end(),
+                    anchor.name.begin(), anchor.name.end(),
+                    [](char a, char b) { return tolower(a) == tolower(b); }
+                    );
         });
-        auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), compare_it);
+        auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), do_compare);
         if (found_it == all_anchors.cend())
         {
             throw std::runtime_error("Can't find destination anchor for: " + an_anchor.href);
@@ -408,16 +416,16 @@ std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
         CDocument the_filing;
         const std::string working_copy{html_document.begin(), html_document.end()};
         the_filing.parse(working_copy);
-        CSelection all_anchors = the_filing.find("table"s);
+        CSelection all_tables = the_filing.find("table"s);
 
-        if (all_anchors.nodeNum() == 0)
+        if (all_tables.nodeNum() == 0)
         {
             throw std::runtime_error("Can't find financial tables.");
         }
 
-        for (int indx = 0; indx < all_anchors.nodeNum(); ++indx)
+        for (int indx = 0; indx < all_tables.nodeNum(); ++indx)
         {
-            CNode the_table = all_anchors.nodeAt(indx);
+            CNode the_table = all_tables.nodeAt(indx);
             found_tables.emplace_back(sview{html_document.data() + the_table.startPosOuter(),
                     the_table.endPosOuter() - the_table.startPosOuter()});
         }
@@ -442,11 +450,11 @@ BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
-    static const boost::regex assets{R"***(current assets)***",
+    static const boost::regex assets{R"***((current|total).*?assets)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex liabilities{R"***(current liabilities)***",
+    static const boost::regex liabilities{R"***((current|total).*?liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((stock|share)holders.*?equity)***",
+    static const boost::regex equity{R"***(((stock|share)holders)|members.*?equity)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -481,11 +489,11 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***(income tax provision)***",
+    static const boost::regex income{R"***((total|net).*?(income|revenue))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-//    const boost::regex expenses{R"***(operating expenses)***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex net_income{R"***(net.*?income)***",
+    const boost::regex expenses{R"***((operating|total).*?(expense|costs))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex net_income{R"***(net.*?(income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -496,15 +504,15 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
         {
             continue;
         }
-//        if (bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches, expenses); ! found_it)
-//        {
-//            continue;
-//        }
+        if (! boost::regex_search(table.cbegin(), table.cend(), expenses))
+        {
+            continue;
+        }
         if (! boost::regex_search(table.cbegin(), table.cend(), net_income))
         {
             continue;
         }
-        return StatementOfOperations{{table.data(), table.size()}};
+        return StatementOfOperations{{table.data(), table.size()}, {}};
     }
     return {};
 }		/* -----  end of function FindStatementOfOperations  ----- */
@@ -520,11 +528,11 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(cash flows from operating)***",
+    static const boost::regex operating{R"***(cash.*?flow[s]?.*?from.*?operating)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash flows from investing)***",
+    static const boost::regex investing{R"***(cash.*?flow[s]?.*?from.*?investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(cash flows from financing)***",
+    static const boost::regex financing{R"***(cash.*?flow[s]?.*?from.*?financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -535,15 +543,15 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
         {
             continue;
         }
-        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
-        {
-            continue;
-        }
+//        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
+//        {
+//            continue;
+//        }
         if (! boost::regex_search(table.cbegin(), table.cend(), financing))
         {
             continue;
         }
-        return CashFlows{{table.data(), table.size()}};
+        return CashFlows{{table.data(), table.size()}, {}};
     }
     return {};
 }		/* -----  end of function FindCashFlowStatement  ----- */
@@ -582,7 +590,7 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
         {
             continue;
         }
-        return StockholdersEquity{{table.data(), table.size()}};
+        return StockholdersEquity{{table.data(), table.size()}, {}};
     }
     return {};
 }		/* -----  end of function FindStatementOfShareholderEquity  ----- */

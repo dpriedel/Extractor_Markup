@@ -112,10 +112,10 @@ sview FindFileType(sview document)
 bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_name)
 {
     auto check_for_form_in_name([&file_name](auto form_type)
-        {
-            auto pos = file_name.find("/" + form_type.to_string() + "/");
-            return (pos != std::string::npos);
-        }
+    {
+        auto pos = file_name.find("/" + form_type.to_string() + "/");
+        return (pos != std::string::npos);
+    }
     );
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
