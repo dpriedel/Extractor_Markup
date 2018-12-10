@@ -176,20 +176,19 @@ AnchorList CollectAllAnchors (sview html)
             // maybe this should throw an exception since we are not finding the end of an anchor
             break;
         }
-
-//        std::cout << "FOUND ANCHOR: \n\n" << sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first) << "\n\n";
 		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first),
                     html));
 
         found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
     }
 
-    std::cout << "Found: " << the_anchors.size() << " anchors.\n";
     return the_anchors;
 }
 
 const char* FindAnchorEnd(const char* start, const char* end, int level)
 {
+    // handle 'nested' anchors.
+
     static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex re_anchor_begin{R"***(<a |<a>)***",
@@ -307,10 +306,6 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
     AnchorList wanted_anchors;
     std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
 
-    if(wanted_anchors.size() < 3)
-    {
-        throw ExtractException("Must have at least 3 anchors to process file.");
-    }
     return wanted_anchors;
 }		/* -----  end of function FilterAnchors  ----- */
 
@@ -431,6 +426,11 @@ std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
         }
     }
 
+    if (found_tables.empty())
+    {
+        return found_tables;
+    }
+
     // a little cleanup
 
     std::sort(found_tables.begin(), found_tables.end());
@@ -454,7 +454,7 @@ BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex liabilities{R"***((current|total).*?liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***(((stock|share)holders)|members.*?equity)***",
+    static const boost::regex equity{R"***(equity|common.*?share)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -528,11 +528,11 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(cash.*?flow[s]?.*?from.*?operating)***",
+    static const boost::regex operating{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?operating)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash.*?flow[s]?.*?from.*?investing)***",
+    static const boost::regex investing{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(cash.*?flow[s]?.*?from.*?financing)***",
+    static const boost::regex financing{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     for (const auto& table : tables)
@@ -543,10 +543,10 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
         {
             continue;
         }
-//        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
-//        {
-//            continue;
-//        }
+        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
+        {
+            continue;
+        }
         if (! boost::regex_search(table.cbegin(), table.cend(), financing))
         {
             continue;
@@ -618,3 +618,30 @@ FinancialStatements ExtractFinancialStatements (const std::string& file_content)
 
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatements  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CreateMultiplierListWhenNoAnchors
+ *  Description:  
+ * =====================================================================================
+ */
+MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
+{
+    static const boost::regex table{R"***(<table)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    MultDataList results;
+    auto documents = LocateDocumentSections(file_content);
+    for (auto document : documents)
+    {
+        auto html = FindHTML(document);
+        if (! html.empty())
+        {
+            if (boost::regex_search(html.begin(), html.end(), table))
+            {
+                results.emplace_back(MultiplierData{{}, html});
+            }
+        }
+    }
+    return results;
+}		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */

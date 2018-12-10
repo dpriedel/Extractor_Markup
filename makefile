@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.67_gcc-8
+BOOSTDIR := /extra/boost/boost-1.68_gcc-8
 GCCDIR := /extra/gcc/gcc-8
 CPP := $(GCCDIR)/bin/g++
 
@@ -39,9 +39,11 @@ RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/u
 SDIR1 := .
 SRCS1 := $(SDIR1)/Main.cpp
 
-SDIR2 := ../ExtractEDGAR_XBRL/src
+SDIR2 := ./src
 SRCS2 := $(SDIR2)/ExtractEDGAR_XBRLApp.cpp \
-		$(SDIR2)/EDGAR_XML_FileFilter.cpp \
+		$(SDIR2)/EDGAR_HTML_FileFilter.cpp \
+		$(SDIR2)/EDGAR_XBRL_FileFilter.cpp \
+		$(SDIR2)/ExtractEDGAR_Utils.cpp \
 		$(SDIR2)/SEC_Header.cpp
 
 SRCS := $(SRCS1) $(SRCS2)
@@ -59,6 +61,8 @@ CFG_LIB := -lpthread -lstdc++fs \
    		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-d -lboost_iostreams-mt-d -lboost_regex-mt-d \
 		-L/usr/local/lib -lPocoFoundationd -lPocoUtild \
+		-lgumbo \
+		-lgq \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml
@@ -86,6 +90,8 @@ CFG_LIB := -lpthread -lstdc++fs \
    		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt -lboost_iostreams-mt -lboost_regex-mt \
 		-L/usr/local/lib -lPocoFoundation -lPocoUtil \
+		-lgumbo \
+		-lgq \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml

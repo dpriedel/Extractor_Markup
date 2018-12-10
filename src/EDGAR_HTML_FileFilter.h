@@ -128,6 +128,16 @@ struct MultiplierData
     sview html_document;
 };
 
+inline bool operator==(const MultiplierData& lhs, const MultiplierData& rhs)
+{
+    return lhs.multiplier == rhs.multiplier && lhs.html_document == rhs.html_document;
+}
+
+inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
+{
+    return lhs.multiplier < rhs.multiplier || lhs.html_document < rhs.html_document;
+}
+
 using MultDataList = std::vector<MultiplierData>;
 
 AnchorList CollectAllAnchors(sview html);
@@ -155,5 +165,7 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables);
 StockholdersEquity ExtractStatementOfStockholdersEquity(const std::vector<sview>& tables);
 
 FinancialStatements ExtractFinancialStatements(const std::string& file_content);
+
+MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
 #endif

@@ -1007,12 +1007,23 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_n
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
-    auto documents = LocateDocumentSections(file_content);
-    auto all_anchors = FindAllDocumentAnchors(documents);
-    auto statement_anchors = FilterFinancialAnchors(all_anchors);
-    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
-    auto multipliers = FindDollarMultipliers(destination_anchors);
-    auto financial_tables = LocateFinancialTables(multipliers);
+    const auto documents = LocateDocumentSections(file_content);
+    const auto all_anchors = FindAllDocumentAnchors(documents);
+    const auto statement_anchors = FilterFinancialAnchors(all_anchors);
+
+    std::vector<sview> financial_tables;
+
+    if (statement_anchors.size() < 3)
+    {
+        const auto empty_multipliers = CreateMultiplierListWhenNoAnchors(file_content);
+        financial_tables = LocateFinancialTables(empty_multipliers);
+    }
+    else
+    {
+        const auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+        const auto multipliers = FindDollarMultipliers(destination_anchors);
+        financial_tables = LocateFinancialTables(multipliers);
+    }
 
     FinancialStatements the_tables;
     the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
