@@ -64,13 +64,28 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
 {
     // for now, let's assume we will not use any file which also has XBRL content.
     
-    FileHasXBRL xbrl_filter;
-    if (xbrl_filter(header_fields, file_content))
-    {
-        return false;
-    }
+//    FileHasXBRL xbrl_filter;
+//    if (xbrl_filter(header_fields, file_content))
+//    {
+//        return false;
+//    }
     return (file_content.find(".htm\n") != sview::npos);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
+
+void AnchorData::CleanData()
+{
+    // for now, just get rid of quotes on href and name.
+
+    if (href.front() == '"' and href.back() == '"')
+    {
+        href = href.substr(1, href.size() -1);
+    }
+    if (name.front() == '"' and name.back() == '"')
+    {
+        name = name.substr(1, name.size() -1);
+    }
+    return ;
+}		/* -----  end of method AnchorData::CleanData  ----- */
 
 
 /* 
@@ -250,6 +265,7 @@ AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
     
     AnchorData result{all_anchors.nodeAt(0).attribute("href"), all_anchors.nodeAt(0).attribute("name"),
         anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
+    result.CleanData();
     return result;
 }		/* -----  end of function ExtractDataFromAnchor  ----- */
 /* 
@@ -489,9 +505,9 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***((total|net).*?(income|revenue))***",
+    static const boost::regex income{R"***(revenue|((total|net).*?(income|revenue)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((operating|total).*?(expense|costs))***",
+    const boost::regex expenses{R"***(other income|((operating|total).*?(expense|costs)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net.*?(income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};

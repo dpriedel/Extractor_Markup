@@ -118,6 +118,10 @@ struct AnchorData
     std::string text;
     sview anchor_content;
     sview html_document;
+
+    // get rid of unwanted content in our collected fields.
+
+    void CleanData();
 };
 
 using AnchorList = std::vector<AnchorData>;
