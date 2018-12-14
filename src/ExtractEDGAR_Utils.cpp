@@ -41,6 +41,7 @@
 #include <experimental/filesystem>
 #include <fstream>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 namespace fs = std::experimental::filesystem;
@@ -108,6 +109,43 @@ sview FindFileType(sview document)
     }
     throw ExtractException("Can't find file type in document.\n");
 }
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindHTML
+ *  Description:
+ * =====================================================================================
+ */
+
+sview FindHTML (sview document)
+{
+    auto file_name = FindFileName(document);
+    if (boost::algorithm::ends_with(file_name, ".htm"))
+    {
+        // now, we just need to drop the extraneous XML surrounding the data we need.
+
+        auto x = document.find(R"***(<TEXT>)***");
+
+        // skip 1 more line.
+
+        x = document.find('\n', x + 1);
+
+        document.remove_prefix(x);
+
+        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        if (xbrl_end_loc != sview::npos)
+        {
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        }
+        else
+        {
+            throw std::runtime_error("Can't find end of HTML in document.\n");
+        }
+
+        return document;
+    }
+    return {};
+}		/* -----  end of function FindHTML  ----- */
 
 bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_name)
 {

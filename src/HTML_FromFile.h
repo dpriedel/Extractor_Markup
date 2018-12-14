@@ -20,33 +20,76 @@
 #ifndef  _HTML_FROMFILE_INC_
 #define  _HTML_FROMFILE_INC_
 
+#include <experimental/string>
+#include <experimental/string_view>
+#include <iterator>
+
+using sview = std::experimental::string_view;
+
+#include <boost/regex.hpp>
+
 /*
  * =====================================================================================
  *        Class:  HTML_FromFile
  *  Description:  make HTML content available via iterators.
+ *
+ *  I'm using iterators for now because I'm not ready to jump fully into ranges.
  * =====================================================================================
  */
 class HTML_FromFile
 {
+public:
+
+    class iterator: public std::iterator<
+                    std::forward_iterator_tag,      // iterator_category
+                    sview                           // value_type
+                    >
+    {
+        const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+        boost::cregex_token_iterator doc_;
+        boost::cregex_token_iterator end_;
+
+        sview file_content_;
+        mutable sview html_;
+
     public:
-        /* ====================  LIFECYCLE     ======================================= */
-        HTML_FromFile ();                             /* constructor */
 
-        /* ====================  ACCESSORS     ======================================= */
+        iterator();
+        explicit iterator(sview file_content);
 
-        /* ====================  MUTATORS      ======================================= */
+        iterator& operator++();
+        iterator operator++(int) { iterator retval = *this; ++(*this); return retval; }
 
-        /* ====================  OPERATORS     ======================================= */
+        bool operator==(iterator other) const { return doc_ == other.doc_; }
+        bool operator!=(iterator other) const { return !(*this == other); }
 
-    protected:
-        /* ====================  METHODS       ======================================= */
+        reference operator*() const { return html_; }
+    };
 
-        /* ====================  DATA MEMBERS  ======================================= */
+public:
+    /* ====================  LIFECYCLE     ======================================= */
+    HTML_FromFile (const std::string& file_content);                /* constructor */
 
-    private:
-        /* ====================  METHODS       ======================================= */
+    /* ====================  ACCESSORS     ======================================= */
 
-        /* ====================  DATA MEMBERS  ======================================= */
+    iterator begin();
+    iterator end();
+
+    /* ====================  MUTATORS      ======================================= */
+
+    /* ====================  OPERATORS     ======================================= */
+
+protected:
+    /* ====================  METHODS       ======================================= */
+
+    /* ====================  DATA MEMBERS  ======================================= */
+
+private:
+    /* ====================  METHODS       ======================================= */
+
+    /* ====================  DATA MEMBERS  ======================================= */
+
+    const std::string file_content_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 

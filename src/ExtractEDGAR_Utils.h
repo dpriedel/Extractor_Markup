@@ -122,4 +122,6 @@ sview FindFileName(sview document);
 
 sview FindFileType(sview document);
 
+sview FindHTML(sview document);
+
 #endif   /* ----- #ifndef ExtractEDGAR_Utils_INC  ----- */

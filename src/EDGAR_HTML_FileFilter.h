@@ -39,9 +39,9 @@
 #ifndef  _EDGAR_HTML_FILEFILTER_
 #define  _EDGAR_HTML_FILEFILTER_
 
+#include <experimental/string>
 #include <experimental/string_view>
 #include <map>
-#include <experimental/string>
 #include <tuple>
 #include <vector>
 
@@ -107,8 +107,6 @@ struct FinancialStatements
         return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
 };
-
-sview FindHTML(sview document);
 
 //using AnchorData = std::tuple<std::string, std::string, sview>;
 struct AnchorData

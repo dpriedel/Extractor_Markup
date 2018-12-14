@@ -18,7 +18,9 @@
  */
 
 #include "HTML_FromFile.h"
+#include "ExtractEDGAR_Utils.h"
 
+#include <boost/algorithm/string/predicate.hpp>
 /*
  *--------------------------------------------------------------------------------------
  *       Class:  HTML_FromFile
@@ -27,9 +29,63 @@
  *--------------------------------------------------------------------------------------
  */
 
-
-HTML_FromFile::HTML_FromFile ()
+HTML_FromFile::HTML_FromFile (const std::string& file_content)
+    : file_content_{file_content}
 {
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
+
+HTML_FromFile::iterator HTML_FromFile::begin ()
+{
+    iterator it{file_content_};
+    return it;
+}		/* -----  end of method HTML_FromFile::begin  ----- */
+
+HTML_FromFile::iterator HTML_FromFile::end ()
+{
+    iterator it;
+    return it;
+}		/* -----  end of method HTML_FromFile::end  ----- */
+
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  HTML_FromFile::iterator
+ *      Method:  HTML_FromFile::iterator
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+HTML_FromFile::iterator::iterator ()
+{
+}  /* -----  end of method HTML_FromFile::iterator::HTML_FromFile::iterator  (constructor)  ----- */
+
+HTML_FromFile::iterator::iterator (sview file_content)
+    : file_content_{file_content},
+    doc_{boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc)}
+{
+    while(doc_ != end_)
+    {
+        sview document(doc_->first, doc_->length());
+        html_ = FindHTML(document);
+        if (html_.empty())
+        {
+            ++doc_;
+            continue;
+        }
+        break;
+    }
+}  /* -----  end of method HTML_FromFile::iterator::HTML_FromFile::iterator  (constructor)  ----- */
+
+HTML_FromFile::iterator& HTML_FromFile::iterator::operator++ ()
+{
+    for (++doc_; doc_ != end_; ++doc_)
+    {
+        sview document(doc_->first, doc_->length());
+        html_ = FindHTML(document);
+        if (! html_.empty())
+        {
+            break;
+        }
+    }
+    return *this;
+}		/* -----  end of method HTML_FromFile::iterator::operator++  ----- */
 
