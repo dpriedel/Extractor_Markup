@@ -82,7 +82,7 @@ void AnchorData::CleanData()
     }
     if (name.front() == '"' and name.back() == '"')
     {
-        name = name.substr(1, name.size() -1);
+        name = name.substr(1, name.size() - 2);
     }
     return ;
 }		/* -----  end of method AnchorData::CleanData  ----- */
