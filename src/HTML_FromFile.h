@@ -45,7 +45,7 @@ public:
                     sview                           // value_type
                     >
     {
-        const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+        const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
         boost::cregex_token_iterator doc_;
         boost::cregex_token_iterator end_;
 
@@ -68,7 +68,7 @@ public:
 
 public:
     /* ====================  LIFECYCLE     ======================================= */
-    HTML_FromFile (const std::string& file_content);                /* constructor */
+    HTML_FromFile (sview file_content);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -89,7 +89,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    const std::string file_content_;
+    sview file_content_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 
