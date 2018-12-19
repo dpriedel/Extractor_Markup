@@ -46,6 +46,8 @@
 
 namespace fs = std::experimental::filesystem;
 
+using namespace std::string_literals;
+
 ExtractException::ExtractException(const char* text)
     : std::runtime_error(text)
 {
@@ -151,7 +153,7 @@ bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_n
 {
     auto check_for_form_in_name([&file_name](auto form_type)
     {
-        auto pos = file_name.find("/" + form_type.to_string() + "/");
+        auto pos = file_name.find(("/"s += form_type) += "/");
         return (pos != std::string::npos);
     }
     );

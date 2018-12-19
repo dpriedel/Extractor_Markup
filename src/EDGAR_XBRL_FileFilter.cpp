@@ -159,7 +159,8 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
-    return EE::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding.empty() ? "0" : shares_outstanding.to_string()};
+    return EE::FilingData{trading_symbol, period_end_date, context_ID,
+        shares_outstanding.empty() ? "0" : std::string{shares_outstanding}};
 }
 
 std::string ConvertPeriodEndDateToContextName(sview period_end_date)

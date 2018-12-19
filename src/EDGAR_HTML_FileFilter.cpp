@@ -39,6 +39,7 @@
 #include "ExtractEDGAR_Utils.h"
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
+#include "HTML_FromFile.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
@@ -72,21 +73,21 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
     return (file_content.find(".htm\n") != sview::npos);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
-void AnchorData::CleanData()
-{
-    // for now, just get rid of quotes on href and name.
-
-    if (href.front() == '"' and href.back() == '"')
-    {
-        href = href.substr(1, href.size() -1);
-    }
-    if (name.front() == '"' and name.back() == '"')
-    {
-        name = name.substr(1, name.size() - 2);
-    }
-    return ;
-}		/* -----  end of method AnchorData::CleanData  ----- */
-
+//void AnchorData::CleanData()
+//{
+//    // for now, just get rid of quotes on href and name.
+//
+//    if (href.front() == '"' and href.back() == '"')
+//    {
+//        href = href.substr(1, href.size() -1);
+//    }
+//    if (name.front() == '"' and name.back() == '"')
+//    {
+//        name = name.substr(1, name.size() - 2);
+//    }
+//    return ;
+//}		/* -----  end of method AnchorData::CleanData  ----- */
+//
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -98,138 +99,138 @@ void AnchorData::CleanData()
  *      - Shareholder equity (not always there ?? )
  * =====================================================================================
  */
-AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents)
-{
-    AnchorList anchors;
-
-    for(auto document : documents)
-    {
-        auto html = FindHTML(document);
-        if (html.empty())
-        {
-            continue;
-        }
-        auto new_anchors = CollectAllAnchors(html);
-        std::move(new_anchors.begin(),
-                new_anchors.end(),
-                std::back_inserter(anchors)
-                );
-    }
-    return anchors;
-}		/* -----  end of function FindAllDocumentAnchors ----- */
-
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  CollectAllAnchors
- *  Description:  
- * =====================================================================================
- */
-
-AnchorList CollectAllAnchors (sview html)
-{
-    // let's try a different approach that might be easier to use in files which have 
-    // crappy HTML -- nested anchors for one...
-
-    AnchorList the_anchors;
-
-    static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    // we need to prime the pump by finding the beginning of the first anchor.
-
-    boost::cmatch anchor_begin_match;
-    bool found_it = boost::regex_search(html.cbegin(), html.cend(), anchor_begin_match, re_anchor_begin);
-    if (! found_it)
-    {
-        // we have no anchors in this document
-        return {};
-    }
-
-    while(found_it)
-    {
-        auto end = FindAnchorEnd(anchor_begin_match[0].first,  html.cend(), 1);
-        if (end == nullptr)
-        {
-            // maybe this should throw an exception since we are not finding the end of an anchor
-            break;
-        }
-		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first),
-                    html));
-
-        found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
-    }
-
-    return the_anchors;
-}
-
-const char* FindAnchorEnd(const char* start, const char* end, int level)
-{
-    // handle 'nested' anchors.
-
-    static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_begin{R"***(<a |<a>)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_end{R"***(</a>)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    boost::cmatch anchor_end_or_begin;
-    bool found_it = boost::regex_search(++start, end, anchor_end_or_begin, re_anchor_end_or_begin);
-    if (found_it)
-    {
-        // we have either an end anchor or begin anchor
-
-        if (boost::regex_match(anchor_end_or_begin[0].first, anchor_end_or_begin[0].second, re_anchor_begin))
-        {
-            // found a nested anchor start
-
-            return FindAnchorEnd(anchor_end_or_begin[0].first, end, ++level);
-        }
-
-        // at this point, we are working with an anchor end. let's see if we're done
-
-        --level;
-        if (level > 0)
-        {
-            // not finished but we have completed a nested anchor
-
-            return FindAnchorEnd(anchor_end_or_begin[0].first, end, level);
-        }
-
-        // now I should be looking for the end of the top-level anchor.
-
-        return anchor_end_or_begin[0].second;
-    }
-    return nullptr;
-}
-
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  ExtractDataFromAnchor
- *  Description:  
- * =====================================================================================
- */
-AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
-{
-    CDocument the_anchor;
-    const std::string working_copy{whole_anchor.begin(), whole_anchor.end()};
-    the_anchor.parse(working_copy);
-    CSelection all_anchors = the_anchor.find("a"s);
-
-    // I just need to collect all the text from the anchor and any nested anchors
-
-    std::string anchor_text;
-    for (int i = 0; i < all_anchors.nodeNum(); ++i)
-    {
-        auto a = all_anchors.nodeAt(i);
-        anchor_text += a.text();
-    }
-    
-    AnchorData result{all_anchors.nodeAt(0).attribute("href"), all_anchors.nodeAt(0).attribute("name"),
-        anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
-    result.CleanData();
-    return result;
-}		/* -----  end of function ExtractDataFromAnchor  ----- */
+//AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents)
+//{
+//    AnchorList anchors;
+//
+//    for(auto document : documents)
+//    {
+//        auto html = FindHTML(document);
+//        if (html.empty())
+//        {
+//            continue;
+//        }
+//        auto new_anchors = CollectAllAnchors(html);
+//        std::move(new_anchors.begin(),
+//                new_anchors.end(),
+//                std::back_inserter(anchors)
+//                );
+//    }
+//    return anchors;
+//}		/* -----  end of function FindAllDocumentAnchors ----- */
+//
+///* 
+// * ===  FUNCTION  ======================================================================
+// *         Name:  CollectAllAnchors
+// *  Description:  
+// * =====================================================================================
+// */
+//
+//AnchorList CollectAllAnchors (sview html)
+//{
+//    // let's try a different approach that might be easier to use in files which have 
+//    // crappy HTML -- nested anchors for one...
+//
+//    AnchorList the_anchors;
+//
+//    static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//
+//    // we need to prime the pump by finding the beginning of the first anchor.
+//
+//    boost::cmatch anchor_begin_match;
+//    bool found_it = boost::regex_search(html.cbegin(), html.cend(), anchor_begin_match, re_anchor_begin);
+//    if (! found_it)
+//    {
+//        // we have no anchors in this document
+//        return {};
+//    }
+//
+//    while(found_it)
+//    {
+//        auto end = FindAnchorEnd(anchor_begin_match[0].first,  html.cend(), 1);
+//        if (end == nullptr)
+//        {
+//            // maybe this should throw an exception since we are not finding the end of an anchor
+//            break;
+//        }
+//		the_anchors.emplace_back(ExtractDataFromAnchor(sview(anchor_begin_match[0].first, end - anchor_begin_match[0].first),
+//                    html));
+//
+//        found_it = boost::regex_search(end, html.cend(), anchor_begin_match, re_anchor_begin);
+//    }
+//
+//    return the_anchors;
+//}
+//
+//const char* FindAnchorEnd(const char* start, const char* end, int level)
+//{
+//    // handle 'nested' anchors.
+//
+//    static const boost::regex re_anchor_end_or_begin{R"***(</a>|<a>|<a )***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex re_anchor_begin{R"***(<a |<a>)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex re_anchor_end{R"***(</a>)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//
+//    boost::cmatch anchor_end_or_begin;
+//    bool found_it = boost::regex_search(++start, end, anchor_end_or_begin, re_anchor_end_or_begin);
+//    if (found_it)
+//    {
+//        // we have either an end anchor or begin anchor
+//
+//        if (boost::regex_match(anchor_end_or_begin[0].first, anchor_end_or_begin[0].second, re_anchor_begin))
+//        {
+//            // found a nested anchor start
+//
+//            return FindAnchorEnd(anchor_end_or_begin[0].first, end, ++level);
+//        }
+//
+//        // at this point, we are working with an anchor end. let's see if we're done
+//
+//        --level;
+//        if (level > 0)
+//        {
+//            // not finished but we have completed a nested anchor
+//
+//            return FindAnchorEnd(anchor_end_or_begin[0].first, end, level);
+//        }
+//
+//        // now I should be looking for the end of the top-level anchor.
+//
+//        return anchor_end_or_begin[0].second;
+//    }
+//    return nullptr;
+//}
+//
+///* 
+// * ===  FUNCTION  ======================================================================
+// *         Name:  ExtractDataFromAnchor
+// *  Description:  
+// * =====================================================================================
+// */
+//AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
+//{
+//    CDocument the_anchor;
+//    const std::string working_copy{whole_anchor.begin(), whole_anchor.end()};
+//    the_anchor.parse(working_copy);
+//    CSelection all_anchors = the_anchor.find("a"s);
+//
+//    // I just need to collect all the text from the anchor and any nested anchors
+//
+//    std::string anchor_text;
+//    for (int i = 0; i < all_anchors.nodeNum(); ++i)
+//    {
+//        auto a = all_anchors.nodeAt(i);
+//        anchor_text += a.text();
+//    }
+//    
+//    AnchorData result{all_anchors.nodeAt(0).attribute("href"), all_anchors.nodeAt(0).attribute("name"),
+//        anchor_text + all_anchors.nodeAt(0).ownText(), whole_anchor, html};
+//    result.CleanData();
+//    return result;
+//}		/* -----  end of function ExtractDataFromAnchor  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FilterAnchors
@@ -237,7 +238,93 @@ AnchorData ExtractDataFromAnchor (sview whole_anchor, sview html)
  * =====================================================================================
  */
 
-AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
+//AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
+//{
+//    // we need to just keep the anchors related to the 4 sections we are interested in
+//
+//    static const boost::regex regex_balance_sheet{R"***(balance sheet)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex regex_operations{R"***(state.*?of.*?oper)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex regex_cash_flow{R"***(cash flow)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex regex_equity{R"***((stockh|shareh).*?equit)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//
+//    auto filter([&](const auto& anchor_data)
+//    {
+//        // at this point, I'm only interested in internal hrefs.
+//        
+//        if (anchor_data.href.empty() || anchor_data.href[0] != '#')
+//        {
+//            return false;
+//        }
+//
+//        const auto& anchor = anchor_data.anchor_content;
+//
+//        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_balance_sheet))
+//        {
+//            return true;
+//        }
+//        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_operations))
+//        {
+//            return true;
+//        }
+//        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_equity))
+//        {
+//            return true;
+//        }
+//        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_cash_flow))
+//        {
+//            return true;
+//        }
+//
+//        return false;        // no match so do not copy this element
+//    });
+//
+//    AnchorList wanted_anchors;
+//    std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
+//
+//    return wanted_anchors;
+//}		/* -----  end of function FilterAnchors  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FinancialStatementFilter
+ *  Description:  
+ * =====================================================================================
+ */
+bool FinancialStatementFilter (const AnchorData& an_anchor)
+{
+    // we need to just keep the anchors related to the 4 sections we are interested in
+
+    static const boost::regex regex_finance_statements{R"***(financial\s+statements<)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    // at this point, I'm only interested in internal hrefs.
+    
+    if (an_anchor.href.empty() || an_anchor.href[0] != '#')
+    {
+        return false;
+    }
+
+    const auto& anchor = an_anchor.anchor_content;
+
+    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_finance_statements))
+    {
+        return true;
+    }
+
+    return false;        // no match so do not copy this element
+}		/* -----  end of function FinancialStatementFilter  ----- */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FinancialAnchorFilter
+ *  Description:  
+ * =====================================================================================
+ */
+
+bool FinancialAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
@@ -250,42 +337,34 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
     static const boost::regex regex_equity{R"***((stockh|shareh).*?equit)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    auto filter([&](const auto& anchor_data)
+    // at this point, I'm only interested in internal hrefs.
+    
+    if (an_anchor.href.empty() || an_anchor.href[0] != '#')
     {
-        // at this point, I'm only interested in internal hrefs.
-        
-        if (anchor_data.href.empty() || anchor_data.href[0] != '#')
-        {
-            return false;
-        }
+        return false;
+    }
 
-        const auto& anchor = anchor_data.anchor_content;
+    const auto& anchor = an_anchor.anchor_content;
 
-        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_balance_sheet))
-        {
-            return true;
-        }
-        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_operations))
-        {
-            return true;
-        }
-        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_equity))
-        {
-            return true;
-        }
-        if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_cash_flow))
-        {
-            return true;
-        }
+    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_balance_sheet))
+    {
+        return true;
+    }
+    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_operations))
+    {
+        return true;
+    }
+    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_equity))
+    {
+        return true;
+    }
+    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_cash_flow))
+    {
+        return true;
+    }
 
-        return false;        // no match so do not copy this element
-    });
-
-    AnchorList wanted_anchors;
-    std::copy_if(all_anchors.begin(), all_anchors.end(), std::back_inserter(wanted_anchors), filter);
-
-    return wanted_anchors;
-}		/* -----  end of function FilterAnchors  ----- */
+    return false;        // no match so do not copy this element
+}		/* -----  end of function FinancialAnchorFilter  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -293,35 +372,96 @@ AnchorList FilterFinancialAnchors(const AnchorList& all_anchors)
  *  Description:  
  * =====================================================================================
  */
-AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const AnchorList& all_anchors)
+//AnchorList FindAnchorDestinations (const AnchorList& financial_anchors, const AnchorList& all_anchors)
+//{
+//    AnchorList destinations;
+//
+//    for (const auto& an_anchor : financial_anchors)
+//    {
+//        sview looking_for = an_anchor.href;
+//        looking_for.remove_prefix(1);               // need to skip '#'
+//
+//        auto do_compare([&looking_for](const auto& anchor)
+//        {
+//            // need case insensitive compare
+//            // found this on StackOverflow (but modified for my use)
+//            // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+//
+//            return std::equal(
+//                    looking_for.begin(), looking_for.end(),
+//                    anchor.name.begin(), anchor.name.end(),
+//                    [](char a, char b) { return tolower(a) == tolower(b); }
+//                    );
+//        });
+//        auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), do_compare);
+//        if (found_it == all_anchors.cend())
+//        {
+//            throw std::runtime_error("Can't find destination anchor for: " + an_anchor.href);
+//        }
+//        destinations.push_back(*found_it);
+//    }
+//    return destinations;
+//}		/* -----  end of function FindAnchorDestinations  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFinancialContent
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindFinancialContent (sview file_content)
 {
-    AnchorList destinations;
+    HTML_FromFile htmls{file_content};
 
-    for (const auto& an_anchor : financial_anchors)
+    auto look_for_top_level([] (auto html)
     {
-        sview looking_for = an_anchor.href;
-        looking_for.remove_prefix(1);               // need to skip '#'
+        AnchorsFromHTML anchors(html);
+        auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialStatementFilter);
+        return financial_anchor != anchors.end();
+    });
 
-        auto do_compare([&looking_for](const auto& anchor)
-        {
-            // need case insensitive compare
-            // found this on StackOverflow (but modified for my use)
-            // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+    auto financial_content = std::find_if(htmls.begin(),
+            htmls.end(),
+            look_for_top_level
+            );
 
-            return std::equal(
-                    looking_for.begin(), looking_for.end(),
-                    anchor.name.begin(), anchor.name.end(),
-                    [](char a, char b) { return tolower(a) == tolower(b); }
-                    );
-        });
-        auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), do_compare);
-        if (found_it == all_anchors.cend())
-        {
-            throw std::runtime_error("Can't find destination anchor for: " + an_anchor.href);
-        }
-        destinations.push_back(*found_it);
+    if (financial_content != htmls.end())
+    {
+        return (*financial_content);
     }
-    return destinations;
+    return {};
+}		/* -----  end of function FindFinancialContent  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindAnchorDestinations
+ *  Description:  
+ * =====================================================================================
+ */
+AnchorData FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorList& all_anchors)
+{
+    sview looking_for = financial_anchor.href;
+    looking_for.remove_prefix(1);               // need to skip '#'
+
+    auto do_compare([&looking_for](const auto& anchor)
+    {
+        // need case insensitive compare
+        // found this on StackOverflow (but modified for my use)
+        // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+
+        return std::equal(
+                looking_for.begin(), looking_for.end(),
+                anchor.name.begin(), anchor.name.end(),
+                [](char a, char b) { return tolower(a) == tolower(b); }
+                );
+    });
+    auto found_it = std::find_if(all_anchors.cbegin(), all_anchors.cend(), do_compare);
+    if (found_it == all_anchors.cend())
+    {
+        throw std::runtime_error("Can't find destination anchor for: " + financial_anchor.href);
+    }
+    return *found_it;
 }		/* -----  end of function FindAnchorDestinations  ----- */
 
 
@@ -579,23 +719,23 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements ExtractFinancialStatements (const std::string& file_content)
-{
-    auto documents = LocateDocumentSections(file_content);
-    auto all_anchors = FindAllDocumentAnchors(documents);
-    auto statement_anchors = FilterFinancialAnchors(all_anchors);
-    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
-    auto multipliers = FindDollarMultipliers(destination_anchors);
-    auto financial_tables = LocateFinancialTables(multipliers);
-
-    FinancialStatements the_tables;
-    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
-    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
-    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
-    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
-
-    return the_tables;
-}		/* -----  end of function ExtractFinancialStatements  ----- */
+//FinancialStatements ExtractFinancialStatements (const std::string& file_content)
+//{
+//    auto documents = LocateDocumentSections(file_content);
+//    auto all_anchors = FindAllDocumentAnchors(documents);
+//    auto statement_anchors = FilterFinancialAnchors(all_anchors);
+//    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+//    auto multipliers = FindDollarMultipliers(destination_anchors);
+//    auto financial_tables = LocateFinancialTables(multipliers);
+//
+//    FinancialStatements the_tables;
+//    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+//    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+//    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+//    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+//
+//    return the_tables;
+//}		/* -----  end of function ExtractFinancialStatements  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================

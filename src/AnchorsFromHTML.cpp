@@ -89,7 +89,7 @@ AnchorsFromHTML::iterator& AnchorsFromHTML::iterator::operator++ ()
     return *this;
 }		/* -----  end of method AnchorsFromHTML::iterator::operator++  ----- */
 
-std::optional<AnchorData2> AnchorsFromHTML::iterator::FindNextAnchor (const char* begin, const char* end)
+std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char* begin, const char* end)
 {
     static const boost::regex re_anchor_begin{R"***(<a>|<a )***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -112,7 +112,7 @@ std::optional<AnchorData2> AnchorsFromHTML::iterator::FindNextAnchor (const char
         throw std::domain_error("Missing anchor end.");
     }
     auto anchor{ExtractDataFromAnchor(anchor_begin_match[0].first, anchor_end , html_)};
-    return std::optional<AnchorData2>{anchor};
+    return std::optional<AnchorData>{anchor};
 }		/* -----  end of method AnchorsFromHTML::iterator::FindNextAnchor  ----- */
 
 const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const char* end, int level)
@@ -154,14 +154,14 @@ const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const c
     return nullptr;
 }		/* -----  end of method AnchorsFromHTML::iterator::FindAnchorEnd  ----- */
 
-AnchorData2 AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, sview html)
+AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, sview html)
 {
     CDocument whole_anchor;
     const std::string working_copy{start, end};
     whole_anchor.parse(working_copy);
     auto the_anchor = whole_anchor.find("a"s);
 
-    AnchorData2 result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
+    AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
         the_anchor.nodeAt(0).text(), sview(start, end - start), html};
 //    result.CleanData();
     return result;

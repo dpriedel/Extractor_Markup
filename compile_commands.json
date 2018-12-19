@@ -122,7 +122,7 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Debug_e2e/EDGAR_FileFilter.o",
+            "Debug_e2e/EDGAR_XBRL_FileFilter.o
             "../ExtractEDGAR_XBRL/src/EDGAR_XBRL_FileFilter.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
@@ -145,7 +145,7 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Debug_e2e/EDGAR_FileFilter.o",
+            "Debug_e2e/EDGAR_HTML_FileFilter.o",
             "../ExtractEDGAR_XBRL/src/EDGAR_HTML_FileFilter.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
@@ -168,7 +168,7 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Debug_e2e/EDGAR_FileFilter.o",
+            "Debug_e2e/ExtractEDGAR_Utils.o",
             "../ExtractEDGAR_XBRL/src/ExtractEDGAR_Utils.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
@@ -191,7 +191,7 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Debug_e2e/EDGAR_FileFilter.o",
+            "Debug_e2e/HTML_FromFile.o",
             "../ExtractEDGAR_XBRL/src/HTML_FromFile.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
@@ -214,7 +214,7 @@
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
-            "Debug_e2e/EDGAR_FileFilter.o",
+            "Debug_e2e/AnchorsFromHTML.o",
             "../ExtractEDGAR_XBRL/src/AnchorsFromHTML.cpp"
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",

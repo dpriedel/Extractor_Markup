@@ -40,17 +40,17 @@
 #define  EDGAR_XBRL_FileFilter_INC
 
 #include <exception>
-#include <experimental/string_view>
 #include <map>
-#include <vector>
+#include <string_view>
 #include <tuple>
+#include <vector>
 
 namespace Poco
 {
     class Logger;
 };
 
-using sview = std::experimental::string_view;
+using sview = std::string_view;
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 

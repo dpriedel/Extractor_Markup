@@ -39,18 +39,19 @@
 #ifndef  _EDGAR_HTML_FILEFILTER_
 #define  _EDGAR_HTML_FILEFILTER_
 
-#include <experimental/string>
-#include <experimental/string_view>
 #include <map>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
 #include "ExtractEDGAR.h"
 #include "ExtractEDGAR_Utils.h"
+#include "AnchorsFromHTML.h"
 
 #include "gq/Node.h"
 
-using sview = std::experimental::string_view;
+using sview = std::string_view;
 
 // HTML content related functions
 
@@ -108,21 +109,21 @@ struct FinancialStatements
     }
 };
 
-//using AnchorData = std::tuple<std::string, std::string, sview>;
-struct AnchorData
-{
-    std::string href;
-    std::string name;
-    std::string text;
-    sview anchor_content;
-    sview html_document;
-
-    // get rid of unwanted content in our collected fields.
-
-    void CleanData();
-};
-
-using AnchorList = std::vector<AnchorData>;
+////using AnchorData = std::tuple<std::string, std::string, sview>;
+//struct AnchorData
+//{
+//    std::string href;
+//    std::string name;
+//    std::string text;
+//    sview anchor_content;
+//    sview html_document;
+//
+//    // get rid of unwanted content in our collected fields.
+//
+//    void CleanData();
+//};
+//
+//using AnchorList = std::vector<AnchorData>;
 //using MultiplierData = std::pair<std::string, const char*>;
 struct MultiplierData
 {
@@ -142,17 +143,24 @@ inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
 
 using MultDataList = std::vector<MultiplierData>;
 
-AnchorList CollectAllAnchors(sview html);
+//AnchorList CollectAllAnchors(sview html);
+//
+//const char* FindAnchorEnd(const char* start, const char* end, int level);
+//
+//AnchorData ExtractDataFromAnchor(sview whole_anchor, sview html);
+//
+//AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
 
-const char* FindAnchorEnd(const char* start, const char* end, int level);
+bool FinancialStatementFilter (const AnchorData& an_anchor);
 
-AnchorData ExtractDataFromAnchor(sview whole_anchor, sview html);
+bool FinancialAnchorFilter(const AnchorData& an_anchor);
 
-AnchorList FilterFinancialAnchors(const AnchorList& all_anchors);
+sview FindFinancialContent (sview file_content);
 
-AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const AnchorList& all_anchors);
-
-AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
+//AnchorList FindAnchorDestinations(const AnchorList& financial_anchors, const AnchorList& all_anchors);
+AnchorData FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorList& all_anchors);
+//
+//AnchorList FindAllDocumentAnchors(const std::vector<sview>& documents);
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
@@ -166,7 +174,7 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables);
 
 StockholdersEquity ExtractStatementOfStockholdersEquity(const std::vector<sview>& tables);
 
-FinancialStatements ExtractFinancialStatements(const std::string& file_content);
+//FinancialStatements ExtractFinancialStatements(const std::string& file_content);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
