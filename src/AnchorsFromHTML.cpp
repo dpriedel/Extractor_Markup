@@ -12,6 +12,7 @@
  *       Compiler:  gcc
  *
  *         Author:  David P. Riedel (), driedel@cox.net
+ *        License:  GNU General Public License v3
  *   Organization:  
  *
  * =====================================================================================
@@ -48,7 +49,7 @@ AnchorsFromHTML::iterator AnchorsFromHTML::begin ()
 
 AnchorsFromHTML::iterator AnchorsFromHTML::end ()
 {
-    return iterator();
+    return {};
 }		/* -----  end of method AnchorsFromHTML::end  ----- */
 
 /*

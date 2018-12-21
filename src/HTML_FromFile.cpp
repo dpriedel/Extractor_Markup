@@ -12,6 +12,7 @@
  *       Compiler:  gcc
  *
  *         Author:  David P. Riedel (), driedel@cox.net
+ *        License:  GNU General Public License v3
  *   Organization:  
  *
  * =====================================================================================
@@ -43,8 +44,7 @@ HTML_FromFile::iterator HTML_FromFile::begin ()
 
 HTML_FromFile::iterator HTML_FromFile::end ()
 {
-    iterator it;
-    return it;
+    return {};
 }		/* -----  end of method HTML_FromFile::end  ----- */
 
 /*

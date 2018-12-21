@@ -798,21 +798,21 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
         poco_assert_msg(use_file, "Specified file does not meet other criteria.");
 
-        auto documents = LocateDocumentSections(file_content);
-        auto all_anchors = FindAllDocumentAnchors(documents);
-        auto statement_anchors = FilterFinancialAnchors(all_anchors);
-        auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
-        auto multipliers = FindDollarMultipliers(destination_anchors);
-        auto financial_tables = LocateFinancialTables(multipliers);
-
-        FinancialStatements the_tables;
-        the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
-        the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
-        the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
-        the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
-
-        poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables: "
-                    + input_file_name.string()).c_str());
+//        auto documents = LocateDocumentSections(file_content);
+//        auto all_anchors = FindAllDocumentAnchors(documents);
+//        auto statement_anchors = FilterFinancialAnchors(all_anchors);
+//        auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+//        auto multipliers = FindDollarMultipliers(destination_anchors);
+//        auto financial_tables = LocateFinancialTables(multipliers);
+//
+//        FinancialStatements the_tables;
+//        the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+//        the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+//        the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+//        the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+//
+//        poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables: "
+//                    + input_file_name.string()).c_str());
 
 //        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger()))
 //        {
@@ -1007,31 +1007,31 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_n
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
-    const auto documents = LocateDocumentSections(file_content);
-    const auto all_anchors = FindAllDocumentAnchors(documents);
-    const auto statement_anchors = FilterFinancialAnchors(all_anchors);
-
-    std::vector<sview> financial_tables;
-
-    if (statement_anchors.size() < 3)
-    {
-        const auto empty_multipliers = CreateMultiplierListWhenNoAnchors(file_content);
-        financial_tables = LocateFinancialTables(empty_multipliers);
-    }
-    else
-    {
-        const auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
-        const auto multipliers = FindDollarMultipliers(destination_anchors);
-        financial_tables = LocateFinancialTables(multipliers);
-    }
+//    const auto documents = LocateDocumentSections(file_content);
+//    const auto all_anchors = FindAllDocumentAnchors(documents);
+//    const auto statement_anchors = FilterFinancialAnchors(all_anchors);
+//
+//    std::vector<sview> financial_tables;
+//
+//    if (statement_anchors.size() < 3)
+//    {
+//        const auto empty_multipliers = CreateMultiplierListWhenNoAnchors(file_content);
+//        financial_tables = LocateFinancialTables(empty_multipliers);
+//    }
+//    else
+//    {
+//        const auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
+//        const auto multipliers = FindDollarMultipliers(destination_anchors);
+//        financial_tables = LocateFinancialTables(multipliers);
+//    }
 
     FinancialStatements the_tables;
-    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
-    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
-    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
-    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
-
-    poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables." + file_name).c_str());
+//    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
+//    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
+//    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
+//    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
+//
+//    poco_assert_msg(the_tables.is_complete(), ("Can't find all HTML financial tables." + file_name).c_str());
 
 //    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
     return the_tables.is_complete();
