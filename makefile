@@ -44,7 +44,9 @@ SRCS2 := $(SDIR2)/ExtractEDGAR_XBRLApp.cpp \
 		$(SDIR2)/EDGAR_HTML_FileFilter.cpp \
 		$(SDIR2)/EDGAR_XBRL_FileFilter.cpp \
 		$(SDIR2)/ExtractEDGAR_Utils.cpp \
-		$(SDIR2)/SEC_Header.cpp
+		$(SDIR2)/SEC_Header.cpp \
+		$(SDIR2)/HTML_FromFile.cpp \
+		$(SDIR2)/AnchorsFromHTML.cpp
 
 SRCS := $(SRCS1) $(SRCS2)
 
