@@ -26,10 +26,7 @@
 
 using sview = std::string_view;
 
-// gumbo-query
-
-#include "gq/Document.h"
-#include "gq/Selection.h"
+#include <boost/regex.hpp>
 
 /*
  * =====================================================================================
@@ -46,21 +43,23 @@ public:
                     sview                           // value_type
                     >
     {
-        GumboNode* dummy_ = nullptr;
+        const boost::regex regex_table_{R"***(table( |>).*?</table>)***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
+        boost::cregex_token_iterator doc_;
+        boost::cregex_token_iterator end_;
+
         sview html_;
         mutable sview current_table_;
-        CSelection all_tables_;
-        int index_ = -1;
 
     public:
 
         iterator();
-        explicit iterator(sview file_content);
+        explicit iterator(sview html);
 
         iterator& operator++();
         iterator operator++(int) { iterator retval = *this; ++(*this); return retval; }
 
-        bool operator==(iterator other) const { return html_ == other.html_ && index_ == other.index_; }
+        bool operator==(iterator other) const { return doc_ == other.doc_; }
         bool operator!=(iterator other) const { return !(*this == other); }
 
         reference operator*() const { return current_table_; };
@@ -72,8 +71,8 @@ public:
 
         /* ====================  ACCESSORS     ======================================= */
 
-    iterator begin();
-    iterator end();
+    iterator begin() const;
+    iterator end() const;
 
         /* ====================  MUTATORS      ======================================= */
 

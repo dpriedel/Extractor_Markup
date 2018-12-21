@@ -19,8 +19,6 @@
 
 #include "TablesFromFile.h"
 
-#include "gq/Node.h"
-
 using namespace std::string_literals;
 
 /*
@@ -35,13 +33,13 @@ TablesFromHTML::TablesFromHTML (sview html)
 {
 }  /* -----  end of method TablesFromHTML::TablesFromHTML  (constructor)  ----- */
 
-TablesFromHTML::iterator TablesFromHTML::begin ()
+TablesFromHTML::iterator TablesFromHTML::begin () const
 {
     iterator it{html_};
     return it;
 }		/* -----  end of method TablesFromHTML::begin  ----- */
 
-TablesFromHTML::iterator TablesFromHTML::end ()
+TablesFromHTML::iterator TablesFromHTML::end () const
 {
     return {};
 }		/* -----  end of method TablesFromHTML::end  ----- */
@@ -54,35 +52,28 @@ TablesFromHTML::iterator TablesFromHTML::end ()
  *--------------------------------------------------------------------------------------
  */
 TablesFromHTML::iterator::iterator()
-    : all_tables_{dummy_}
 {
 }  /* -----  end of method TablesFromHTML::iterator::iterator  (constructor)  ----- */
 
 TablesFromHTML::iterator::iterator(sview html)
-    : html_{html}, all_tables_{dummy_}
-//    : html_{html}, working_copy_{html_.begin(), html_.end()}, all_tables_{dummy_}
+    : html_{html}
 {
-
-    std::string working_copy_{html_.begin(), html_.end()};
-    CDocument the_filing_;
-    the_filing_.parse(working_copy_);
-    all_tables_ = the_filing_.find("table"s);
-    operator++();
+    doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), regex_table_);
+    if (doc_ != end_)
+    {
+        current_table_ = sview(doc_->first, doc_->length());
+    }
 }  /* -----  end of method TablesFromHTML::iterator::iterator  (constructor)  ----- */
 
 TablesFromHTML::iterator& TablesFromHTML::iterator::operator++ ()
 {
-    if (++index_ >= all_tables_.nodeNum())
+    if (++doc_ != end_)
     {
-        html_ = {};
-        index_ = -1;
-        current_table_ = {};
+        current_table_ = sview(doc_->first, doc_->length());
     }
     else
     {
-        CNode the_table = all_tables_.nodeAt(index_);
-        current_table_ = sview{html_.data() + the_table.startPosOuter(),
-                    the_table.endPosOuter() - the_table.startPosOuter()};
+        current_table_ = {};
     }
     return *this;
 }		/* -----  end of method TablesFromHTML::iterator::operator++  ----- */
