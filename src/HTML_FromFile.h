@@ -73,8 +73,8 @@ public:
 
     /* ====================  ACCESSORS     ======================================= */
 
-    iterator begin();
-    iterator end();
+    iterator begin() const;
+    iterator end() const;
 
     /* ====================  MUTATORS      ======================================= */
 

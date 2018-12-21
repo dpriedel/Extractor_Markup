@@ -42,12 +42,12 @@ AnchorsFromHTML::AnchorsFromHTML (sview html)
 {
 }  /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::begin ()
+AnchorsFromHTML::iterator AnchorsFromHTML::begin () const
 {
     return iterator(html_);
 }		/* -----  end of method AnchorsFromHTML::begin  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::end ()
+AnchorsFromHTML::iterator AnchorsFromHTML::end () const
 {
     return {};
 }		/* -----  end of method AnchorsFromHTML::end  ----- */

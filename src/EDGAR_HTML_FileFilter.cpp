@@ -261,49 +261,49 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
-{
-    // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
-    // to search the
-    // rest of that document for tables.  First table found will be assumed to be the desired table.
-    // (this can change later)
-    // OK, we need to change this now.
-    // first, let's try to grab a bunch of tables and so we can look thru them to find what we need.
-
-    std::vector<sview> found_tables;
-
-    for(const auto&[multiplier, html_document] : multiplier_data)
-    {
-        CDocument the_filing;
-        const std::string working_copy{html_document.begin(), html_document.end()};
-        the_filing.parse(working_copy);
-        CSelection all_tables = the_filing.find("table"s);
-
-        if (all_tables.nodeNum() == 0)
-        {
-            throw std::runtime_error("Can't find financial tables.");
-        }
-
-        for (int indx = 0; indx < all_tables.nodeNum(); ++indx)
-        {
-            CNode the_table = all_tables.nodeAt(indx);
-            found_tables.emplace_back(sview{html_document.data() + the_table.startPosOuter(),
-                    the_table.endPosOuter() - the_table.startPosOuter()});
-        }
-    }
-
-    if (found_tables.empty())
-    {
-        return found_tables;
-    }
-
-    // a little cleanup
-
-    std::sort(found_tables.begin(), found_tables.end());
-    std::vector<sview> result_tables;
-    std::unique_copy(found_tables.begin(), found_tables.end(), std::back_inserter(result_tables));
-    return result_tables;
-}		/* -----  end of function FindFinancialTables  ----- */
+//std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
+//{
+//    // our approach here is to use the pointer to the dollar multiplier supplied in the multiplier_data
+//    // to search the
+//    // rest of that document for tables.  First table found will be assumed to be the desired table.
+//    // (this can change later)
+//    // OK, we need to change this now.
+//    // first, let's try to grab a bunch of tables and so we can look thru them to find what we need.
+//
+//    std::vector<sview> found_tables;
+//
+//    for(const auto&[multiplier, html_document] : multiplier_data)
+//    {
+//        CDocument the_filing;
+//        const std::string working_copy{html_document.begin(), html_document.end()};
+//        the_filing.parse(working_copy);
+//        CSelection all_tables = the_filing.find("table"s);
+//
+//        if (all_tables.nodeNum() == 0)
+//        {
+//            throw std::runtime_error("Can't find financial tables.");
+//        }
+//
+//        for (int indx = 0; indx < all_tables.nodeNum(); ++indx)
+//        {
+//            CNode the_table = all_tables.nodeAt(indx);
+//            found_tables.emplace_back(sview{html_document.data() + the_table.startPosOuter(),
+//                    the_table.endPosOuter() - the_table.startPosOuter()});
+//        }
+//    }
+//
+//    if (found_tables.empty())
+//    {
+//        return found_tables;
+//    }
+//
+//    // a little cleanup
+//
+//    std::sort(found_tables.begin(), found_tables.end());
+//    std::vector<sview> result_tables;
+//    std::unique_copy(found_tables.begin(), found_tables.end(), std::back_inserter(result_tables));
+//    return result_tables;
+//}		/* -----  end of function FindFinancialTables  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -311,7 +311,7 @@ std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data)
  *  Description:  
  * =====================================================================================
  */
-BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
+bool BalanceSheetFilter(sview table)
 {
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
@@ -323,25 +323,21 @@ BalanceSheet ExtractBalanceSheet (const std::vector<sview>& tables)
     static const boost::regex equity{R"***(equity|common.*?share)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
-    for (const auto& table : tables)
+    // at this point, I'm only interested in internal hrefs.
+    
+    if (! boost::regex_search(table.cbegin(), table.cend(), assets))
     {
-        // at this point, I'm only interested in internal hrefs.
-        
-        if (! boost::regex_search(table.cbegin(), table.cend(), assets))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), liabilities))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), equity))
-        {
-            continue;
-        }
-        return BalanceSheet{{table.data(), table.size()}, {}};
+        return false;
     }
-    return {};
+    if (! boost::regex_search(table.cbegin(), table.cend(), liabilities))
+    {
+        return false;
+    }
+    if (! boost::regex_search(table.cbegin(), table.cend(), equity))
+    {
+        return false;
+    }
+    return true;
 }		/* -----  end of function FindBalanceSheet  ----- */
 
 /* 

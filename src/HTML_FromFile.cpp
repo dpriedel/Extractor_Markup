@@ -36,13 +36,13 @@ HTML_FromFile::HTML_FromFile (sview file_content)
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
 
-HTML_FromFile::iterator HTML_FromFile::begin ()
+HTML_FromFile::iterator HTML_FromFile::begin () const
 {
     iterator it{file_content_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
-HTML_FromFile::iterator HTML_FromFile::end ()
+HTML_FromFile::iterator HTML_FromFile::end () const
 {
     return {};
 }		/* -----  end of method HTML_FromFile::end  ----- */

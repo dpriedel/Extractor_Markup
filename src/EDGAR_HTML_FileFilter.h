@@ -137,9 +137,9 @@ AnchorData FindDestinationAnchor (const AnchorData& financial_anchor, const Anch
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
-std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data);
+//std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data);
 
-BalanceSheet ExtractBalanceSheet(const std::vector<sview>& tables);
+bool BalanceSheetFilter(sview table);
 
 StatementOfOperations ExtractStatementOfOperations(const std::vector<sview>& tables);
 
