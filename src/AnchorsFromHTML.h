@@ -12,6 +12,7 @@
  *       Compiler:  gcc
  *
  *         Author:  David P. Riedel (), driedel@cox.net
+ *        License:  GNU General Public License v3
  *   Organization:  
  *
  * =====================================================================================

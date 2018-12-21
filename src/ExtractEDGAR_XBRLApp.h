@@ -42,12 +42,12 @@
 // #include <fstream>
 #include <atomic>
 #include <experimental/filesystem>
-#include <experimental/string_view>
+#include <string_view>
 #include <functional>
 #include <tuple>
 #include <vector>
 
-using sview = std::experimental::string_view;
+using sview = std::string_view;
 
 // #include <boost/filesystem.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
