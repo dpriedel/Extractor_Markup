@@ -40,6 +40,7 @@
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
+#include "TablesFromFile.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
@@ -307,7 +308,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindBalanceSheet
+ *         Name:  BalanceSheetFilter
  *  Description:  
  * =====================================================================================
  */
@@ -338,15 +339,15 @@ bool BalanceSheetFilter(sview table)
         return false;
     }
     return true;
-}		/* -----  end of function FindBalanceSheet  ----- */
+}		/* -----  end of function BalanceSheetFilter  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindStatementOfOperations
+ *         Name:  StatementOfOperationsFilter
  *  Description:  
  * =====================================================================================
  */
-StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& tables)
+bool StatementOfOperationsFilter(sview table)
 {
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
@@ -358,34 +359,30 @@ StatementOfOperations ExtractStatementOfOperations (const std::vector<sview>& ta
     static const boost::regex net_income{R"***(net.*?(income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
-    for (const auto& table : tables)
+    // at this point, I'm only interested in internal hrefs.
+    
+    if (! boost::regex_search(table.cbegin(), table.cend(), income))
     {
-        // at this point, I'm only interested in internal hrefs.
-        
-        if (! boost::regex_search(table.cbegin(), table.cend(), income))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), expenses))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), net_income))
-        {
-            continue;
-        }
-        return StatementOfOperations{{table.data(), table.size()}, {}};
+        return false;
     }
-    return {};
-}		/* -----  end of function FindStatementOfOperations  ----- */
+    if (! boost::regex_search(table.cbegin(), table.cend(), expenses))
+    {
+        return false;
+    }
+    if (! boost::regex_search(table.cbegin(), table.cend(), net_income))
+    {
+        return false;
+    }
+    return true;
+}		/* -----  end of function StatementOfOperationsFilter  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindCashFlowStatement
+ *         Name:  CashFlowsFilter
  *  Description:  
  * =====================================================================================
  */
-CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
+bool CashFlowsFilter(sview table)
 {
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
@@ -397,34 +394,30 @@ CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables)
     static const boost::regex financing{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
-    for (const auto& table : tables)
+    // at this point, I'm only interested in internal hrefs.
+    
+    if (! boost::regex_search(table.cbegin(), table.cend(), operating))
     {
-        // at this point, I'm only interested in internal hrefs.
-        
-        if (! boost::regex_search(table.cbegin(), table.cend(), operating))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), investing))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), financing))
-        {
-            continue;
-        }
-        return CashFlows{{table.data(), table.size()}, {}};
+        return false;
     }
-    return {};
-}		/* -----  end of function FindCashFlowStatement  ----- */
+    if (! boost::regex_search(table.cbegin(), table.cend(), investing))
+    {
+        return false;
+    }
+    if (! boost::regex_search(table.cbegin(), table.cend(), financing))
+    {
+        return false;
+    }
+    return true;
+}		/* -----  end of function CashFlowsFilter  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindStatementOfShareholderEquity
+ *         Name:  StockholdersEquityFilter
  *  Description:  
  * =====================================================================================
  */
-StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview>& tables)
+bool StockholdersEquityFilter(sview table)
 {
     // here are some things we expect to find in the statement of stockholder equity section
     // and not the other sections.
@@ -436,26 +429,20 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
     static const boost::regex equity{R"***(repurchased stock)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
-    for (const auto& table : tables)
+    if (! boost::regex_search(table.cbegin(), table.cend(), shares))
     {
-        // at this point, I'm only interested in internal hrefs.
-        
-        if (! boost::regex_search(table.cbegin(), table.cend(), shares))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), capital))
-        {
-            continue;
-        }
-        if (! boost::regex_search(table.cbegin(), table.cend(), equity))
-        {
-            continue;
-        }
-        return StockholdersEquity{{table.data(), table.size()}, {}};
+        return false;
     }
-    return {};
-}		/* -----  end of function FindStatementOfShareholderEquity  ----- */
+    if (! boost::regex_search(table.cbegin(), table.cend(), capital))
+    {
+        return false;
+    }
+    if (! boost::regex_search(table.cbegin(), table.cend(), equity))
+    {
+        return false;
+    }
+    return true;
+}		/* -----  end of function StockholdersEquityFilter  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -463,23 +450,36 @@ StockholdersEquity ExtractStatementOfStockholdersEquity (const std::vector<sview
  *  Description:  
  * =====================================================================================
  */
-//FinancialStatements ExtractFinancialStatements (const std::string& file_content)
-//{
-//    auto documents = LocateDocumentSections(file_content);
-//    auto all_anchors = FindAllDocumentAnchors(documents);
-//    auto statement_anchors = FilterFinancialAnchors(all_anchors);
-//    auto destination_anchors = FindAnchorDestinations(statement_anchors, all_anchors);
-//    auto multipliers = FindDollarMultipliers(destination_anchors);
-//    auto financial_tables = LocateFinancialTables(multipliers);
-//
-//    FinancialStatements the_tables;
-//    the_tables.balance_sheet_ = ExtractBalanceSheet(financial_tables);
-//    the_tables.statement_of_operations_ = ExtractStatementOfOperations(financial_tables);
-//    the_tables.cash_flows_ = ExtractCashFlowStatement(financial_tables);
-//    the_tables.stockholders_equity_ = ExtractStatementOfStockholdersEquity(financial_tables);
-//
-//    return the_tables;
-//}		/* -----  end of function ExtractFinancialStatements  ----- */
+FinancialStatements ExtractFinancialStatements (sview document)
+{
+    auto financial_content = FindFinancialContent(document);
+    TablesFromHTML tables{financial_content};
+
+    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
+    auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
+    auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
+    auto stockholder_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
+
+    FinancialStatements the_tables;
+    if (balance_sheet != tables.end())
+    {
+        the_tables.balance_sheet_.the_data_ = *balance_sheet;
+    }
+    if (statement_of_ops != tables.end())
+    {
+        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
+    }
+    if (cash_flows != tables.end())
+    {
+        the_tables.cash_flows_.the_data_ = *cash_flows;
+    }
+    if (stockholder_equity != tables.end())
+    {
+        the_tables.stockholders_equity_.the_data_ = *stockholder_equity;
+    }
+
+    return the_tables;
+}		/* -----  end of function ExtractFinancialStatements  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================

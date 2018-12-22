@@ -102,10 +102,10 @@ struct FinancialStatements
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
 
-    bool is_complete() const
+    bool has_data() const
     {
-//        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
-        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
+        return NotAllEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+//        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
 };
 
@@ -141,13 +141,13 @@ MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
 bool BalanceSheetFilter(sview table);
 
-StatementOfOperations ExtractStatementOfOperations(const std::vector<sview>& tables);
+bool StatementOfOperationsFilter(sview table);
 
-CashFlows ExtractCashFlowStatement(const std::vector<sview>& tables);
+bool CashFlowsFilter(sview table);
 
-StockholdersEquity ExtractStatementOfStockholdersEquity(const std::vector<sview>& tables);
+bool StockholdersEquityFilter(sview table);
 
-//FinancialStatements ExtractFinancialStatements(const std::string& file_content);
+FinancialStatements ExtractFinancialStatements(sview document);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
