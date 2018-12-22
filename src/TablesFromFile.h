@@ -53,7 +53,7 @@ public:
 
     public:
 
-        iterator();
+        iterator() = default;
         explicit iterator(sview html);
 
         iterator& operator++();

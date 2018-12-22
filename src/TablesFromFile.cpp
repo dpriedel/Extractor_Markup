@@ -51,10 +51,6 @@ TablesFromHTML::iterator TablesFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::iterator::iterator()
-{
-}  /* -----  end of method TablesFromHTML::iterator::iterator  (constructor)  ----- */
-
 TablesFromHTML::iterator::iterator(sview html)
     : html_{html}
 {
