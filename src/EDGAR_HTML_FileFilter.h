@@ -147,7 +147,7 @@ bool CashFlowsFilter(sview table);
 
 bool StockholdersEquityFilter(sview table);
 
-FinancialStatements ExtractFinancialStatements(sview document);
+FinancialStatements ExtractFinancialStatements(sview financial_content);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
