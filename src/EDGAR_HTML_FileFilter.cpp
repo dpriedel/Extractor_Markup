@@ -232,7 +232,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***(.*?(thousands|millions|billions).*?dollar)***",
+    static const boost::regex regex_dollar_mults{R"***(.*?(?:thousands|millions|billions).*?dollar)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
@@ -266,11 +266,11 @@ bool BalanceSheetFilter(sview table)
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
-    static const boost::regex assets{R"***((current|total).*?assets)***",
+    static const boost::regex assets{R"***((?:current|total).*?assets)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex liabilities{R"***((current|total).*?liabilities)***",
+    static const boost::regex liabilities{R"***((?:current|total).*?liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((holders.*?equity)|(equity|common.*?share))***",
+    static const boost::regex equity{R"***((?:holders.*?equity)|(?:equity|common.*?share))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -301,11 +301,11 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***(revenue|((total|net).*?(income|revenue)))***",
+    static const boost::regex income{R"***(revenue|(?:(?:total|net).*?(?:income|revenue)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***(other income|((operating|total).*?(expense|costs)))***",
+    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex net_income{R"***(net.*?(income|loss))***",
+    static const boost::regex net_income{R"***(net.*?(?:income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -336,11 +336,11 @@ bool CashFlowsFilter(sview table)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?operating)***",
+    static const boost::regex operating{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?operating)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?investing)***",
+    static const boost::regex investing{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(cash.*?(flow[s]?|used|provided).*?from|in|by.*?financing)***",
+    static const boost::regex financing{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
