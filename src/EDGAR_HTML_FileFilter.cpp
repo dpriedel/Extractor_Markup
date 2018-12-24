@@ -55,6 +55,7 @@
 using namespace std::string_literals;
 
 static const char* NONE = "none";
+static int START_WITH = 5000;
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -73,6 +74,27 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
 //    }
     return (file_content.find(".htm\n") != sview::npos);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
+
+void FinancialStatements::ExtractTableContent ()
+{
+    if (! balance_sheet_.the_data_.empty())
+    {
+        balance_sheet_.parsed_data_ = CollectTableContent(balance_sheet_.the_data_);
+    }
+    if (! statement_of_operations_.the_data_.empty())
+    {
+        statement_of_operations_.parsed_data_ = CollectTableContent(statement_of_operations_.the_data_);
+    }
+    if (! cash_flows_.the_data_.empty())
+    {
+        cash_flows_.parsed_data_ = CollectTableContent(cash_flows_.the_data_);
+    }
+    if (! stockholders_equity_.the_data_.empty())
+    {
+        stockholders_equity_.parsed_data_ = CollectTableContent(stockholders_equity_.the_data_);
+    }
+    return ;
+}		/* -----  end of method FinancialStatements::ExtractTableContent  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -456,3 +478,94 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
 
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectTableContent
+ *  Description:
+ * =====================================================================================
+ */
+std::string CollectTableContent (const std::string& html)
+{
+    std::string table_data;
+    table_data.reserve(START_WITH);
+    CDocument the_filing;
+    the_filing.parse(html);
+    CSelection all_tables = the_filing.find("table");
+
+    // loop through all tables in the document.
+
+    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
+    {
+        // now, for each table, extract all the text
+
+        CNode a_table = all_tables.nodeAt(indx);
+        table_data += ExtractTextDataFromTable(a_table);
+
+    }
+    std::cout << table_data.size() << '\n';
+    return table_data;
+}		/* -----  end of function CollectTableContent  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  ExtractTextDataFromTable
+ *  Description:  
+ * =====================================================================================
+ */
+
+std::string ExtractTextDataFromTable (CNode& a_table)
+{
+    std::string table_text;
+    table_text.reserve(START_WITH);
+
+    // now, the each table, find all rows in the table.
+
+    CSelection a_table_rows = a_table.find("tr");
+
+    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+    {
+        CNode a_table_row = a_table_rows.nodeAt(indx);
+
+        // for each row in the table, find all the fields.
+
+        CSelection a_table_row_cells = a_table_row.find("td");
+
+        std::string new_row_data;
+        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+        {
+            CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
+            new_row_data += a_table_row_cell.text() += '\t';
+        }
+        auto new_data = FilterFoundHTML(new_row_data);
+        if (! new_data.empty())
+        {
+            table_text += new_data;
+            table_text += '\n';
+        }
+    }
+    table_text.shrink_to_fit();
+    return table_text;
+}		/* -----  end of function ExtractTextDataFromTable  ----- */
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FilterFoundHTML
+ *  Description:  Apply various filters to cut down on amount of undesired data
+ * =====================================================================================
+ */
+std::string FilterFoundHTML (const std::string& new_row_data)
+{
+    // let's start by looking for rows with at least 1 word followed by at least 1 number.
+
+        return new_row_data;
+//    const boost::regex regex_word_number{R"***([a-zA-Z]+.*?\t\(?[-+.,0-9]+\t)***"};
+//
+//    boost::smatch matches;
+//    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_word_number);
+//    if (found_it)
+//    {
+//        return new_row_data;
+//    }
+//    return {};
+}		/* -----  end of function FilterFoundHTML  ----- */

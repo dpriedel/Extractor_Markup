@@ -66,7 +66,7 @@ struct FileHasHTML
 struct BalanceSheet
 {
     std::string the_data_;
-    CNode parsed_data_;
+    std::string parsed_data_;
 
     inline bool empty() const { return the_data_.empty(); }
 };
@@ -74,7 +74,7 @@ struct BalanceSheet
 struct StatementOfOperations
 {
     std::string the_data_;
-    CNode parsed_data_;
+    std::string parsed_data_;
 
     inline bool empty() const { return the_data_.empty(); }
 };
@@ -82,7 +82,7 @@ struct StatementOfOperations
 struct CashFlows
 {
     std::string the_data_;
-    CNode parsed_data_;
+    std::string parsed_data_;
 
     inline bool empty() const { return the_data_.empty(); }
 };
@@ -90,7 +90,7 @@ struct CashFlows
 struct StockholdersEquity
 {
     std::string the_data_;
-    CNode parsed_data_;
+    std::string parsed_data_;
 
     inline bool empty() const { return the_data_.empty(); }
 };
@@ -107,6 +107,8 @@ struct FinancialStatements
         return NotAllEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
 //        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
+
+    void ExtractTableContent();
 };
 
 struct MultiplierData
@@ -150,5 +152,11 @@ bool StockholdersEquityFilter(sview table);
 FinancialStatements ExtractFinancialStatements(sview financial_content);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
+
+std::string CollectTableContent(const std::string& html);
+
+std::string ExtractTextDataFromTable (CNode& a_table);
+
+std::string FilterFoundHTML (const std::string& new_row_data);
 
 #endif
