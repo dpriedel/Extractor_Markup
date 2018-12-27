@@ -798,7 +798,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
         poco_assert_msg(use_file, "Specified file does not meet other criteria.");
 
-        auto financial_content = FindFinancialContent(file_content);
+        auto financial_content = FindFinancialContentUsingAnchors(file_content);
         // let's see if we can find our data anyways
 
         if (financial_content.empty())
@@ -1005,7 +1005,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_n
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
-    auto financial_content = FindFinancialContent(file_content);
+    auto financial_content = FindFinancialContentUsingAnchors(file_content);
     // let's see if we can find our data anyways
 
     if (financial_content.empty())
