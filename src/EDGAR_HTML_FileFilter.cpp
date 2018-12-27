@@ -36,7 +36,6 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#include "ExtractEDGAR_Utils.h"
 #include "EDGAR_HTML_FileFilter.h"
 #include "EDGAR_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
@@ -80,20 +79,23 @@ void FinancialStatements::ExtractTableContent ()
     if (! balance_sheet_.the_data_.empty())
     {
         balance_sheet_.parsed_data_ = CollectTableContent(balance_sheet_.the_data_);
+        balance_sheet_.lines_ = split_string(balance_sheet_.parsed_data_, '\n');
     }
     if (! statement_of_operations_.the_data_.empty())
     {
         statement_of_operations_.parsed_data_ = CollectTableContent(statement_of_operations_.the_data_);
+        statement_of_operations_.lines_ = split_string(statement_of_operations_.parsed_data_, '\n');
     }
     if (! cash_flows_.the_data_.empty())
     {
         cash_flows_.parsed_data_ = CollectTableContent(cash_flows_.the_data_);
+        cash_flows_.lines_ = split_string(cash_flows_.parsed_data_, '\n');
     }
     if (! stockholders_equity_.the_data_.empty())
     {
         stockholders_equity_.parsed_data_ = CollectTableContent(stockholders_equity_.the_data_);
+        stockholders_equity_.lines_ = split_string(stockholders_equity_.parsed_data_, '\n');
     }
-    return ;
 }		/* -----  end of method FinancialStatements::ExtractTableContent  ----- */
 
 /* 
@@ -142,7 +144,7 @@ bool FinancialAnchorFilter(const AnchorData& an_anchor)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_cash_flow{R"***(cash flow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_equity{R"***((stockh|shareh).*?equit)***",
+    static const boost::regex regex_equity{R"***((?:stockh|shareh).*?equit)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -176,11 +178,11 @@ bool FinancialAnchorFilter(const AnchorData& an_anchor)
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindFinancialContent
+ *         Name:  FindFinancialContentUsingAnchors
  *  Description:  
  * =====================================================================================
  */
-sview FindFinancialContent (sview file_content)
+sview FindFinancialContentUsingAnchors (sview file_content)
 {
     HTML_FromFile htmls{file_content};
 
@@ -201,7 +203,7 @@ sview FindFinancialContent (sview file_content)
         return (*financial_content);
     }
     return {};
-}		/* -----  end of function FindFinancialContent  ----- */
+}		/* -----  end of function FindFinancialContentUsingAnchors  ----- */
 
 
 /* 
@@ -254,7 +256,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***(.*?(?:thousands|millions|billions).*?dollar)***",
+    static const boost::regex regex_dollar_mults{R"***((thousands|millions|billions).*?dollar)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
@@ -502,7 +504,6 @@ std::string CollectTableContent (const std::string& html)
         table_data += ExtractTextDataFromTable(a_table);
 
     }
-    std::cout << table_data.size() << '\n';
     return table_data;
 }		/* -----  end of function CollectTableContent  ----- */
 
@@ -532,10 +533,12 @@ std::string ExtractTextDataFromTable (CNode& a_table)
         CSelection a_table_row_cells = a_table_row.find("td");
 
         std::string new_row_data;
+        new_row_data.reserve(1000);
         for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
         {
             CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
-            new_row_data += a_table_row_cell.text() += '\t';
+            new_row_data += a_table_row_cell.text();
+            new_row_data += '\t';
         }
         auto new_data = FilterFoundHTML(new_row_data);
         if (! new_data.empty())
@@ -569,3 +572,92 @@ std::string FilterFoundHTML (const std::string& new_row_data)
 //    }
 //    return {};
 }		/* -----  end of function FilterFoundHTML  ----- */
+
+EE::EDGAR_Labels FinancialStatements::CollectValues ()
+{
+    EE::EDGAR_Labels results;
+
+    if (! balance_sheet_.parsed_data_.empty())
+    {
+        auto new_data = balance_sheet_.CollectValues();
+//        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
+        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+    }
+    if (! statement_of_operations_.parsed_data_.empty())
+    {
+        auto new_data = statement_of_operations_.CollectValues();
+//        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
+        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+    }
+    if (! cash_flows_.parsed_data_.empty())
+    {
+        auto new_data = cash_flows_.CollectValues();
+//        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
+        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+    }
+    if (! stockholders_equity_.parsed_data_.empty())
+    {
+        auto new_data = stockholders_equity_.CollectValues();
+//        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
+        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+    }
+    return results;
+}		/* -----  end of method FinancialStatements::CollectValues  ----- */
+
+EE::EDGAR_Labels BalanceSheet::CollectValues ()
+{
+    // first off, let's try to find total assets
+    // and, since we're trying to figure out stuff, we will throw if we don't find our data !!
+
+    EE::EDGAR_Labels results;
+
+    // first, find our label.
+
+    static const boost::regex assets{R"***(^.*?((?:current|total).*?assets).*?\t)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    boost::cmatch match_label;
+    auto matcher([&assets, &match_label](auto line)
+    {
+        return boost::regex_match(line.cbegin(), line.cend(), match_label, assets);
+    });
+    auto the_line = std::find_if(lines_.begin(), lines_.end(), matcher);
+
+    if (the_line == lines_.end())
+    {
+        throw ExtractException("Can't find total assets in balance sheet.");
+    }
+    std::string the_label = match_label[1].str();
+
+    // now, we need to find our value.  there could be multiple numbers on the line
+    // and we will need to determine (elsewhere) which to use.
+    // for now, pick the first.
+
+    const boost::regex regex_number{R"***(\t([(-+]?[,0-9]+\.?[0-9]*[)]*)\t)***"};
+    boost::cmatch match_values;
+    bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
+    if (! found_it)
+    {
+        throw ExtractException("Can't find values in balance sheet.");
+    }
+    std::string the_value = match_values[1].str();
+    results[the_label] = the_value;
+
+    return results;
+}		/* -----  end of method BalanceSheet::CollectValues  ----- */
+
+EE::EDGAR_Labels StatementOfOperations::CollectValues ()
+{
+    return {};
+}		/* -----  end of method StatementOfOperations::CollectValues  ----- */
+
+EE::EDGAR_Labels CashFlows::CollectValues ()
+{
+    return {};
+}		/* -----  end of method CashFlows::CollectValues  ----- */
+
+EE::EDGAR_Labels StockholdersEquity::CollectValues ()
+{
+    return {};
+}		/* -----  end of method StockholdersEquity::CollectValues  ----- */
+

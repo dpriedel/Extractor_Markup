@@ -67,32 +67,40 @@ struct BalanceSheet
 {
     std::string the_data_;
     std::string parsed_data_;
+    std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
+    EE::EDGAR_Labels CollectValues();
 };
 
 struct StatementOfOperations
 {
     std::string the_data_;
     std::string parsed_data_;
+    std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
+    EE::EDGAR_Labels CollectValues();
 };
 
 struct CashFlows
 {
     std::string the_data_;
     std::string parsed_data_;
+    std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
+    EE::EDGAR_Labels CollectValues();
 };
 
 struct StockholdersEquity
 {
     std::string the_data_;
     std::string parsed_data_;
+    std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
+    EE::EDGAR_Labels CollectValues();
 };
 
 struct FinancialStatements
@@ -109,6 +117,8 @@ struct FinancialStatements
     }
 
     void ExtractTableContent();
+
+    EE::EDGAR_Labels CollectValues();
 };
 
 struct MultiplierData
@@ -133,7 +143,7 @@ bool FinancialStatementFilter (const AnchorData& an_anchor);
 
 bool FinancialAnchorFilter(const AnchorData& an_anchor);
 
-sview FindFinancialContent (sview file_content);
+sview FindFinancialContentUsingAnchors (sview file_content);
 
 AnchorData FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorList& all_anchors);
 
