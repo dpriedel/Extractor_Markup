@@ -116,7 +116,7 @@ struct FinancialStatements
 //        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
 
-    void ExtractTableContent();
+    void PrepareTableContent();
 
     EE::EDGAR_Labels CollectValues();
 };

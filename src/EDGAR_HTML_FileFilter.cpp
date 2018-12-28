@@ -74,7 +74,7 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
     return (file_content.find(".htm\n") != sview::npos);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
-void FinancialStatements::ExtractTableContent ()
+void FinancialStatements::PrepareTableContent ()
 {
     if (! balance_sheet_.the_data_.empty())
     {
@@ -96,7 +96,7 @@ void FinancialStatements::ExtractTableContent ()
         stockholders_equity_.parsed_data_ = CollectTableContent(stockholders_equity_.the_data_);
         stockholders_equity_.lines_ = split_string(stockholders_equity_.parsed_data_, '\n');
     }
-}		/* -----  end of method FinancialStatements::ExtractTableContent  ----- */
+}		/* -----  end of method FinancialStatements::PrepareTableContent  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -360,11 +360,11 @@ bool CashFlowsFilter(sview table)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?operating)***",
+    static const boost::regex operating{R"***(cash\s+(?:flow(?:s?)|used|provided)\s+(?:from|in|by).*?operating)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?investing)***",
+    static const boost::regex investing{R"***(cash\s+(?:flow(?:s?)|used|provided)\s+(?:from|in|by).*?investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(cash.*?(?:flow[s]?|used|provided).*?from|in|by.*?financing)***",
+    static const boost::regex financing{R"***(cash\s+(?:flow(?:s?)|used|provided)\s+(?:from|in|by).*?financing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -373,10 +373,10 @@ bool CashFlowsFilter(sview table)
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), investing))
-    {
-        return false;
-    }
+//    if (! boost::regex_search(table.cbegin(), table.cend(), investing))
+//    {
+//        return false;
+//    }
     if (! boost::regex_search(table.cbegin(), table.cend(), financing))
     {
         return false;
