@@ -807,8 +807,12 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         }
 
         auto the_tables = ExtractFinancialStatements(financial_content);
-
         poco_assert_msg(the_tables.has_data(), ("Can't find any HTML financial tables: "
+                    + input_file_name.string()).c_str());
+
+        the_tables.PrepareTableContent();
+        auto values = the_tables.CollectValues();
+        poco_assert_msg(! values.empty(), ("Can't find any data fields in tables: "
                     + input_file_name.string()).c_str());
 
         did_load = true;
@@ -1014,8 +1018,13 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
     }
 
     auto the_tables = ExtractFinancialStatements(financial_content);
+    poco_assert_msg(the_tables.has_data(), ("Can't find any HTML financial tables: " + file_name).c_str());
+
+    the_tables.PrepareTableContent();
+    auto values = the_tables.CollectValues();
+    poco_assert_msg(! values.empty(), ("Can't find any data fields in tables: " + file_name).c_str());
 //    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
-    return the_tables.has_data();
+    return true;
 }
 
 void ExtractEDGAR_XBRLApp::Do_Quit ()

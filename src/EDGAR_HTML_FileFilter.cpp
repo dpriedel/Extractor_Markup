@@ -638,7 +638,7 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
     bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
     if (! found_it)
     {
-        throw ExtractException("Can't find values in balance sheet.");
+        throw ExtractException("Can't find values in balance sheet.\n" + std::string{*the_line});
     }
     std::string the_value = match_values[1].str();
     results[the_label] = the_value;
