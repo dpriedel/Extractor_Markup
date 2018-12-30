@@ -151,6 +151,8 @@ MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
 //std::vector<sview> LocateFinancialTables(const MultDataList& multiplier_data);
 
+std::vector<sview> Find_HTML_Documents (sview file_content);
+
 bool BalanceSheetFilter(sview table);
 
 bool StatementOfOperationsFilter(sview table);
