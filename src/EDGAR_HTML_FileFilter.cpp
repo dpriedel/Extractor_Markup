@@ -74,6 +74,21 @@ bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview 
     return (file_content.find(".htm\n") != sview::npos);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  Find_HTML_Documents
+ *  Description:  
+ * =====================================================================================
+ */
+std::vector<sview> Find_HTML_Documents (sview file_content)
+{
+    std::vector<sview> results;
+
+    HTML_FromFile htmls{file_content};
+    std::copy(htmls.begin(), htmls.end(), std::back_inserter(results));
+
+    return results;
+}		/* -----  end of function Find_HTML_Documents  ----- */
 void FinancialStatements::PrepareTableContent ()
 {
     if (! balance_sheet_.the_data_.empty())
@@ -106,8 +121,6 @@ void FinancialStatements::PrepareTableContent ()
  */
 bool FinancialStatementFilter (const AnchorData& an_anchor)
 {
-    // we need to just keep the anchors related to the 4 sections we are interested in
-
     static const boost::regex regex_finance_statements{R"***(financial\s+statements<)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -125,7 +138,7 @@ bool FinancialStatementFilter (const AnchorData& an_anchor)
         return true;
     }
 
-    return false;        // no match so do not copy this element
+    return false;
 }		/* -----  end of function FinancialStatementFilter  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
