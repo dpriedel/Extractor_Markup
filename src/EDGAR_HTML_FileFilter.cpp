@@ -464,29 +464,52 @@ bool StockholdersEquityFilter(sview table)
  */
 FinancialStatements ExtractFinancialStatements (sview financial_content)
 {
+    static const boost::regex regex_repl{R"***(&.*?;)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
     TablesFromHTML tables{financial_content};
 
     auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
     auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
     auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
-    auto stockholder_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
+    auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
 
     FinancialStatements the_tables;
     if (balance_sheet != tables.end())
     {
-        the_tables.balance_sheet_.the_data_ = *balance_sheet;
+//        the_tables.balance_sheet_.the_data_ = *balance_sheet;
+        boost::regex_replace(std::back_inserter(the_tables.balance_sheet_.the_data_),
+                    balance_sheet->begin(), balance_sheet->end(),
+                    regex_repl,
+                    " ",
+                    boost::match_default | boost::format_all);
     }
     if (statement_of_ops != tables.end())
     {
-        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
+//        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
+        boost::regex_replace(std::back_inserter(the_tables.statement_of_operations_.the_data_),
+                    statement_of_ops->begin(), statement_of_ops->end(),
+                    regex_repl,
+                    " ",
+                    boost::match_default | boost::format_all);
     }
     if (cash_flows != tables.end())
     {
-        the_tables.cash_flows_.the_data_ = *cash_flows;
+//        the_tables.cash_flows_.the_data_ = *cash_flows;
+        boost::regex_replace(std::back_inserter(the_tables.cash_flows_.the_data_),
+                    cash_flows->begin(), cash_flows->end(),
+                    regex_repl,
+                    " ",
+                    boost::match_default | boost::format_all);
     }
-    if (stockholder_equity != tables.end())
+    if (stockholders_equity != tables.end())
     {
-        the_tables.stockholders_equity_.the_data_ = *stockholder_equity;
+//        the_tables.stockholders_equity_.the_data_ = *stockholder_equity;
+        boost::regex_replace(std::back_inserter(the_tables.stockholders_equity_.the_data_),
+                    stockholders_equity->begin(), stockholders_equity->end(),
+                    regex_repl,
+                    " ",
+                    boost::match_default | boost::format_all);
     }
 
     return the_tables;
