@@ -94,6 +94,7 @@ public:
         bool operator!=(anchor_itor other) const { return !(*this == other); }
 
         reference operator*() const { return the_anchor_; }
+        pointer operator->() const { return &the_anchor_; }
     };
 
       typedef sview					value_type;

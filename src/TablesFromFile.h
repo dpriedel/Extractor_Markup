@@ -79,6 +79,7 @@ public:
         bool operator!=(table_itor other) const { return !(*this == other); }
 
         reference operator*() const { return current_table_; };
+        pointer operator->() const { return &current_table_; }
     };
 
       typedef sview					value_type;
