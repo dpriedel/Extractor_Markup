@@ -54,7 +54,7 @@ class TablesFromHTML
 {
 public:
 
-    class iterator: public std::iterator<
+    class table_itor: public std::iterator<
                     std::forward_iterator_tag,      // iterator_category
                     sview                           // value_type
                     >
@@ -69,17 +69,27 @@ public:
 
     public:
 
-        iterator() = default;
-        explicit iterator(sview html);
+        table_itor() = default;
+        explicit table_itor(sview html);
 
-        iterator& operator++();
-        iterator operator++(int) { iterator retval = *this; ++(*this); return retval; }
+        table_itor& operator++();
+        table_itor operator++(int) { table_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(iterator other) const { return doc_ == other.doc_; }
-        bool operator!=(iterator other) const { return !(*this == other); }
+        bool operator==(table_itor other) const { return doc_ == other.doc_; }
+        bool operator!=(table_itor other) const { return !(*this == other); }
 
         reference operator*() const { return current_table_; };
     };
+
+      typedef sview					value_type;
+      typedef typename table_itor::pointer			pointer;
+      typedef typename table_itor::pointer	const_pointer;
+      typedef typename table_itor::reference		reference;
+      typedef typename table_itor::reference	const_reference;
+      typedef table_itor                          iterator;
+      typedef table_itor                    const_iterator;
+      typedef size_t					size_type;
+      typedef ptrdiff_t					difference_type;
 
     public:
         /* ====================  LIFECYCLE     ======================================= */
@@ -87,8 +97,8 @@ public:
 
         /* ====================  ACCESSORS     ======================================= */
 
-    iterator begin() const;
-    iterator end() const;
+    const_iterator begin() const;
+    const_iterator end() const;
 
         /* ====================  MUTATORS      ======================================= */
 

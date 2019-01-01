@@ -139,7 +139,11 @@ inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
 
 using MultDataList = std::vector<MultiplierData>;
 
-bool FinancialStatementFilter (const AnchorData& an_anchor);
+bool FinancialDocumentFilter (sview html);
+
+sview FindFinancialDocument (sview file_content);
+
+bool FinancialStatementFilterUsingAnchors (const AnchorData& an_anchor);
 
 bool FinancialAnchorFilter(const AnchorData& an_anchor);
 

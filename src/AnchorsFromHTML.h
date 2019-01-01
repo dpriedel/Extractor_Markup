@@ -67,10 +67,10 @@ class AnchorsFromHTML
 {
 public:
 
-    class iterator: public std::iterator<
-                    std::forward_iterator_tag,      // iterator_category
-                    AnchorData                      // value_type
-                    >
+    class anchor_itor: public std::iterator<
+                       std::forward_iterator_tag,      // iterator_category
+                       AnchorData                      // value_type
+                       >
     {
         sview html_;
         const char* anchor_begin_ = nullptr;
@@ -83,18 +83,28 @@ public:
         
     public:
 
-        iterator() = default;
-        explicit iterator(sview html);
+        anchor_itor() = default;
+        explicit anchor_itor(sview html);
 
-        iterator& operator++();
-        iterator operator++(int) { iterator retval = *this; ++(*this); return retval; }
+        anchor_itor& operator++();
+        anchor_itor operator++(int) { anchor_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(iterator other) const
+        bool operator==(anchor_itor other) const
             { return anchor_begin_ == other.anchor_begin_ && anchor_end_ == other.anchor_end_; }
-        bool operator!=(iterator other) const { return !(*this == other); }
+        bool operator!=(anchor_itor other) const { return !(*this == other); }
 
         reference operator*() const { return the_anchor_; }
     };
+
+      typedef sview					value_type;
+      typedef typename anchor_itor::pointer			pointer;
+      typedef typename anchor_itor::pointer	const_pointer;
+      typedef typename anchor_itor::reference		reference;
+      typedef typename anchor_itor::reference	const_reference;
+      typedef anchor_itor                          iterator;
+      typedef anchor_itor                    const_iterator;
+      typedef size_t					size_type;
+      typedef ptrdiff_t					difference_type;
 
     public:
         /* ====================  LIFECYCLE     ======================================= */
@@ -102,8 +112,11 @@ public:
 
         /* ====================  ACCESSORS     ======================================= */
 
-    iterator begin() const;
-    iterator end() const;
+    const_iterator begin() const;
+    const_iterator end() const;
+
+    size_type size() const { return std::distance(begin(), end()); }
+    bool empty() const { return html_.empty(); }
 
         /* ====================  MUTATORS      ======================================= */
 

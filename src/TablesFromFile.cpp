@@ -49,25 +49,25 @@ TablesFromHTML::TablesFromHTML (sview html)
 {
 }  /* -----  end of method TablesFromHTML::TablesFromHTML  (constructor)  ----- */
 
-TablesFromHTML::iterator TablesFromHTML::begin () const
+TablesFromHTML::const_iterator TablesFromHTML::begin () const
 {
     iterator it{html_};
     return it;
 }		/* -----  end of method TablesFromHTML::begin  ----- */
 
-TablesFromHTML::iterator TablesFromHTML::end () const
+TablesFromHTML::const_iterator TablesFromHTML::end () const
 {
     return {};
 }		/* -----  end of method TablesFromHTML::end  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
- *       Class:  TablesFromHTML::iterator
- *      Method:  TablesFromHTML::iterator
+ *       Class:  TablesFromHTML::table_itor
+ *      Method:  TablesFromHTML::table_itor
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::iterator::iterator(sview html)
+TablesFromHTML::table_itor::table_itor(sview html)
     : html_{html}
 {
     doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), regex_table_);
@@ -75,9 +75,9 @@ TablesFromHTML::iterator::iterator(sview html)
     {
         current_table_ = sview(doc_->first, doc_->length());
     }
-}  /* -----  end of method TablesFromHTML::iterator::iterator  (constructor)  ----- */
+}  /* -----  end of method TablesFromHTML::table_itor::table_itor  (constructor)  ----- */
 
-TablesFromHTML::iterator& TablesFromHTML::iterator::operator++ ()
+TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
 {
     if (++doc_ != end_)
     {
@@ -88,5 +88,5 @@ TablesFromHTML::iterator& TablesFromHTML::iterator::operator++ ()
         current_table_ = {};
     }
     return *this;
-}		/* -----  end of method TablesFromHTML::iterator::operator++  ----- */
+}		/* -----  end of method TablesFromHTML::table_itor::operator++  ----- */
 

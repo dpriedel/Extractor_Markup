@@ -58,12 +58,12 @@ AnchorsFromHTML::AnchorsFromHTML (sview html)
 {
 }  /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::begin () const
+AnchorsFromHTML::const_iterator AnchorsFromHTML::begin () const
 {
     return iterator(html_);
 }		/* -----  end of method AnchorsFromHTML::begin  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::end () const
+AnchorsFromHTML::const_iterator AnchorsFromHTML::end () const
 {
     return {};
 }		/* -----  end of method AnchorsFromHTML::end  ----- */
@@ -75,7 +75,7 @@ AnchorsFromHTML::iterator AnchorsFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::iterator::iterator (sview html)
+AnchorsFromHTML::anchor_itor::anchor_itor (sview html)
     : html_{html}
 {
     if (html_.empty())
@@ -89,7 +89,7 @@ AnchorsFromHTML::iterator::iterator (sview html)
 
 }  /* -----  end of method AnchorsFromHTML::iterator::AnchorsFromHTML::iterator  (constructor)  ----- */
 
-AnchorsFromHTML::iterator& AnchorsFromHTML::iterator::operator++ ()
+AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
 {
     auto next_anchor = FindNextAnchor(anchor_begin_, anchor_end_);
 

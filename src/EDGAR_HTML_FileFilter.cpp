@@ -115,11 +115,42 @@ void FinancialStatements::PrepareTableContent ()
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FinancialStatementFilter
+ *         Name:  FinancialDocumentFilter
  *  Description:  
  * =====================================================================================
  */
-bool FinancialStatementFilter (const AnchorData& an_anchor)
+bool FinancialDocumentFilter (sview html)
+{
+    static const boost::regex regex_finance_statements{R"***(financial\s+statements)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    return (boost::regex_search(html.cbegin(), html.cend(), regex_finance_statements));
+}		/* -----  end of function FinancialDocumentFilter  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFinancialDocument
+ *  Description:  
+ * =====================================================================================
+ */
+sview FindFinancialDocument (sview file_content)
+{
+    HTML_FromFile htmls{file_content};
+
+    auto document = std::find_if(std::begin(htmls), std::end(htmls), FinancialDocumentFilter);
+    if (document != std::end(htmls))
+    {
+        return *document;
+    }
+    return {};
+}		/* -----  end of function FindFinancialDocument  ----- */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FinancialStatementFilterUsingAnchors 
+ *  Description:  
+ * =====================================================================================
+ */
+bool FinancialStatementFilterUsingAnchors (const AnchorData& an_anchor)
 {
     static const boost::regex regex_finance_statements{R"***(financial\s+statements<)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -133,13 +164,8 @@ bool FinancialStatementFilter (const AnchorData& an_anchor)
 
     const auto& anchor = an_anchor.anchor_content;
 
-    if (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_finance_statements))
-    {
-        return true;
-    }
-
-    return false;
-}		/* -----  end of function FinancialStatementFilter  ----- */
+    return (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_finance_statements));
+}		/* -----  end of function FinancialStatementFilterUsingAnchors  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FinancialAnchorFilter
@@ -202,7 +228,7 @@ sview FindFinancialContentUsingAnchors (sview file_content)
     auto look_for_top_level([] (auto html)
     {
         AnchorsFromHTML anchors(html);
-        auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialStatementFilter);
+        auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialStatementFilterUsingAnchors);
         return financial_anchor != anchors.end();
     });
 

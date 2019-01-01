@@ -57,8 +57,8 @@ class HTML_FromFile
 {
 public:
 
-    class iterator: public std::iterator<
-                    std::forward_iterator_tag,      // iterator_category
+    class html_itor: public std::iterator<
+                    std::forward_iterator_tag,      // html_itor_category
                     sview                           // value_type
                     >
     {
@@ -71,17 +71,28 @@ public:
 
     public:
 
-        iterator();
-        explicit iterator(sview file_content);
+        html_itor() = default;
+        explicit html_itor(sview file_content);
 
-        iterator& operator++();
-        iterator operator++(int) { iterator retval = *this; ++(*this); return retval; }
+        html_itor& operator++();
+        html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(iterator other) const { return doc_ == other.doc_; }
-        bool operator!=(iterator other) const { return !(*this == other); }
+        bool operator==(html_itor other) const { return doc_ == other.doc_; }
+        bool operator!=(html_itor other) const { return !(*this == other); }
 
         reference operator*() const { return html_; }
+        pointer operator->() const { return &html_; }
     };
+
+      typedef sview					value_type;
+      typedef typename html_itor::pointer			pointer;
+      typedef typename html_itor::pointer	const_pointer;
+      typedef typename html_itor::reference		reference;
+      typedef typename html_itor::reference	const_reference;
+      typedef html_itor                          iterator;
+      typedef html_itor                    const_iterator;
+      typedef size_t					size_type;
+      typedef ptrdiff_t					difference_type;
 
 public:
     /* ====================  LIFECYCLE     ======================================= */
@@ -89,8 +100,11 @@ public:
 
     /* ====================  ACCESSORS     ======================================= */
 
-    iterator begin() const;
-    iterator end() const;
+    const_iterator begin() const;
+    const_iterator end() const;
+
+    size_type size() const { return std::distance(begin(), end()); }
+    bool empty() const { return file_content_.empty(); }
 
     /* ====================  MUTATORS      ======================================= */
 

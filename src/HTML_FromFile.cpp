@@ -52,29 +52,25 @@ HTML_FromFile::HTML_FromFile (sview file_content)
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
 
-HTML_FromFile::iterator HTML_FromFile::begin () const
+HTML_FromFile::const_iterator HTML_FromFile::begin () const
 {
     iterator it{file_content_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
-HTML_FromFile::iterator HTML_FromFile::end () const
+HTML_FromFile::const_iterator HTML_FromFile::end () const
 {
     return {};
 }		/* -----  end of method HTML_FromFile::end  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
- *       Class:  HTML_FromFile::iterator
- *      Method:  HTML_FromFile::iterator
+ *       Class:  HTML_FromFile::html_itor
+ *      Method:  HTML_FromFile::html_itor
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTML_FromFile::iterator::iterator ()
-{
-}  /* -----  end of method HTML_FromFile::iterator::HTML_FromFile::iterator  (constructor)  ----- */
-
-HTML_FromFile::iterator::iterator (sview file_content)
+HTML_FromFile::html_itor::html_itor (sview file_content)
     : file_content_{file_content}
 {
     doc_ = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc_);
@@ -87,9 +83,9 @@ HTML_FromFile::iterator::iterator (sview file_content)
             break;
         }
     }
-}  /* -----  end of method HTML_FromFile::iterator::HTML_FromFile::iterator  (constructor)  ----- */
+}  /* -----  end of method HTML_FromFile::html_itor::HTML_FromFile::html_itor  (constructor)  ----- */
 
-HTML_FromFile::iterator& HTML_FromFile::iterator::operator++ ()
+HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
 {
     for (++doc_; doc_ != end_; ++doc_)
     {
