@@ -366,7 +366,9 @@ bool StatementOfOperationsFilter(sview table)
 
     static const boost::regex income{R"***(revenue|(?:(?:total|net).*?(?:income|revenue)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
+//    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex expenses{R"***(income.*?operation)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net.*?(?:income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -482,7 +484,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
                     balance_sheet->begin(), balance_sheet->end(),
                     regex_repl,
                     " ",
-                    boost::match_default | boost::format_all);
+                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
     }
     if (statement_of_ops != tables.end())
     {
@@ -491,7 +493,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
                     statement_of_ops->begin(), statement_of_ops->end(),
                     regex_repl,
                     " ",
-                    boost::match_default | boost::format_all);
+                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
     }
     if (cash_flows != tables.end())
     {
@@ -500,7 +502,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
                     cash_flows->begin(), cash_flows->end(),
                     regex_repl,
                     " ",
-                    boost::match_default | boost::format_all);
+                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
     }
     if (stockholders_equity != tables.end())
     {
@@ -509,7 +511,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
                     stockholders_equity->begin(), stockholders_equity->end(),
                     regex_repl,
                     " ",
-                    boost::match_default | boost::format_all);
+                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
     }
 
     return the_tables;
@@ -675,7 +677,7 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
 
     // first, find our label.
 
-    static const boost::regex assets{R"***(^.*?((?:current|total).*?assets).*?\t)***",
+    static const boost::regex assets{R"***(^.*?(total.*?assets).*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     boost::cmatch match_label;
