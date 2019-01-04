@@ -364,11 +364,11 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***(revenue|(?:(?:total|net).*?(?:income|revenue)))***",
+    static const boost::regex income{R"***(revenue|(?:(?:total|net).*?(?:income|revenue|sales)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***(income.*?operation)***",
+    const boost::regex expenses{R"***((?:income.*?operation)|other income|(?:(?:operating|total).*?(?:expense|costs)))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net.*?(?:income|loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -466,9 +466,6 @@ bool StockholdersEquityFilter(sview table)
  */
 FinancialStatements ExtractFinancialStatements (sview financial_content)
 {
-    static const boost::regex regex_repl{R"***(&.*?;)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
     TablesFromHTML tables{financial_content};
 
     auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
@@ -479,39 +476,19 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
     FinancialStatements the_tables;
     if (balance_sheet != tables.end())
     {
-//        the_tables.balance_sheet_.the_data_ = *balance_sheet;
-        boost::regex_replace(std::back_inserter(the_tables.balance_sheet_.the_data_),
-                    balance_sheet->begin(), balance_sheet->end(),
-                    regex_repl,
-                    " ",
-                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
+        the_tables.balance_sheet_.the_data_ = *balance_sheet;
     }
     if (statement_of_ops != tables.end())
     {
-//        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
-        boost::regex_replace(std::back_inserter(the_tables.statement_of_operations_.the_data_),
-                    statement_of_ops->begin(), statement_of_ops->end(),
-                    regex_repl,
-                    " ",
-                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
+        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
     }
     if (cash_flows != tables.end())
     {
-//        the_tables.cash_flows_.the_data_ = *cash_flows;
-        boost::regex_replace(std::back_inserter(the_tables.cash_flows_.the_data_),
-                    cash_flows->begin(), cash_flows->end(),
-                    regex_repl,
-                    " ",
-                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
+        the_tables.cash_flows_.the_data_ = *cash_flows;
     }
     if (stockholders_equity != tables.end())
     {
-//        the_tables.stockholders_equity_.the_data_ = *stockholder_equity;
-        boost::regex_replace(std::back_inserter(the_tables.stockholders_equity_.the_data_),
-                    stockholders_equity->begin(), stockholders_equity->end(),
-                    regex_repl,
-                    " ",
-                    boost::match_default | boost::format_all | boost::regex_constants::format_literal);
+        the_tables.stockholders_equity_.the_data_ = *stockholders_equity;
     }
 
     return the_tables;
@@ -550,15 +527,22 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
  *  Description:
  * =====================================================================================
  */
-std::string CollectTableContent (const std::string& html)
+std::string CollectTableContent (const std::string& a_table)
 {
+    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    static const boost::regex regex_multiple_tabs{R"***(\t{2,})***"};
+    static const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
+    static const boost::regex regex_space_tab{R"***( \t)***"};
+
     std::string table_data;
     table_data.reserve(START_WITH);
     CDocument the_filing;
-    the_filing.parse(html);
+    the_filing.parse(a_table);
     CSelection all_tables = the_filing.find("table");
 
-    // loop through all tables in the document.
+    // loop through all tables in the html fragment
+    // (which mostly will contain just 1 table.)
 
     for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
     {
@@ -566,9 +550,23 @@ std::string CollectTableContent (const std::string& html)
 
         CNode a_table = all_tables.nodeAt(indx);
         table_data += ExtractTextDataFromTable(a_table);
-
     }
-    return table_data;
+
+    // after parsing, let's do a little cleanup
+
+    const std::string delete_this = "";
+    const std::string one_space = " ";
+    const std::string one_tab = "\t";
+    const std::string just_paren = ")";
+
+    std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, delete_this);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_tabs, one_tab);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_tabs, one_tab);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_tab_before_paren, just_paren);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_space_tab, one_tab);
+
+    return clean_table_data;
 }		/* -----  end of function CollectTableContent  ----- */
 
 
@@ -697,7 +695,7 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
     // and we will need to determine (elsewhere) which to use.
     // for now, pick the first.
 
-    const boost::regex regex_number{R"***(\t([(-+]?[,0-9]+\.?[0-9]*[)]*)\t)***"};
+    const boost::regex regex_number{R"***(\t([(-]?[,0-9]+\.?[0-9]*[)]*)\t)***"};
     boost::cmatch match_values;
     bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
     if (! found_it)
