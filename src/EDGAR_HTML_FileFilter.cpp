@@ -609,6 +609,10 @@ std::string ExtractTextDataFromTable (CNode& a_table)
             table_text += '\n';
         }
     }
+    if (table_text.empty())
+    {
+        throw std::domain_error("table has no HTML.");
+    }
     table_text.shrink_to_fit();
     return table_text;
 }		/* -----  end of function ExtractTextDataFromTable  ----- */

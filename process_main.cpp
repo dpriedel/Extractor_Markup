@@ -37,14 +37,14 @@
 
 #include <atomic>
 #include <cstdlib>
-#include <experimental/filesystem>
-#include <experimental/string_view>
+#include <filesystem>
+#include <string_view>
 #include <fstream>
 #include <iostream>
-#include <parallel/algorithm>
+#include <algorithm>
 
-namespace fs = std::experimental::filesystem;
-using sview = std::experimental::string_view;
+namespace fs = std::filesystem;
+using sview = std::string_view;
 using namespace std::string_literals;
 
 #include <boost/program_options.hpp>
@@ -53,6 +53,7 @@ using namespace std::string_literals;
 namespace po = boost::program_options;
 
 #include "ExtractEDGAR_XBRL.h"
+#include "ExtractEDGAR_Utils.h"
 #include "Extractors.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
@@ -63,7 +64,6 @@ void ParseProgramOptions(int argc, const char* argv[]);
 void CheckArgs();
 std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list,
         bool file_name_has_form, const std::string& form_type);
-std::string LoadXMLDataFileForUse(const std::string& file_name);
 
 po::positional_options_description	Positional;			//	old style options
 po::options_description				NewOptions;			//	new style options (with identifiers)
@@ -114,7 +114,7 @@ int main(int argc, const char* argv[])
         auto scan_file([&the_filters, &files_processed](const auto& file_path)
         {
             std::cout << "processing file: " << file_path << '\n';
-            auto file_content = LoadXMLDataFileForUse(file_path);
+            const std::string file_content = LoadDataFileForUse(file_path.c_str());
 
             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
             
@@ -133,7 +133,7 @@ int main(int argc, const char* argv[])
             }
         });
 
-        __gnu_parallel::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        std::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
         // let's see if we got a count...
 
@@ -151,7 +151,6 @@ int main(int argc, const char* argv[])
         std::cout << e.what();
         result = 1;
     }
-
     return result;
 
 }        // -----  end of method main  -----
@@ -230,7 +229,7 @@ void CheckArgs ()
 
 }		/* -----  end of function CheckArgs  ----- */
 
-std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list);
+//std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list);
 
 
 /* 
@@ -298,14 +297,4 @@ std::vector<std::string> MakeListOfFilesToProcess (const fs::path& input_directo
 
     return list_of_files_to_process;
 }		/* -----  end of function MakeListOfFilesToProcess  ----- */
-
-std::string LoadXMLDataFileForUse(const std::string& file_name)
-{
-    std::string file_content(fs::file_size(file_name), '\0');
-    std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
-    input_file.read(&file_content[0], file_content.size());
-    input_file.close();
-    
-    return file_content;
-}		/* -----  end of function LoadXMLDataFileForUse  ----- */
 

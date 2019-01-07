@@ -38,17 +38,17 @@
 #define __EXTRACTEDGAR_XBRL__
 
 #include <atomic>
-#include <experimental/filesystem>
-#include <experimental/string_view>
+#include <filesystem>
+#include <string_view>
 #include <optional>
 
-using sview = std::experimental::string_view;
+using sview = std::string_view;
 
 #include <boost/regex_fwd.hpp>
 
 #include "ExtractEDGAR.h"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 // determine whether or not we want to process this file
 

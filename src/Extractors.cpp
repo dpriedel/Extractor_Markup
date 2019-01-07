@@ -42,6 +42,9 @@
 #include <boost/regex.hpp>
 
 #include "Extractors.h"
+#include "HTML_FromFile.h"
+#include "TablesFromFile.h"
+#include "EDGAR_HTML_FileFilter.h"
 
 // gumbo-query
 
@@ -99,44 +102,44 @@ sview FindFileNameInSection (sview document)
 }		/* -----  end of function FindFileNameInSection  ----- */
 
 /*
- * ===  FUNCTION  ======================================================================
- *         Name:  FindHTML
- *  Description:
- * =====================================================================================
- */
-
-sview FindHTML (sview document)
-{
-    auto file_name = FindFileNameInSection(document);
-    if (boost::algorithm::ends_with(file_name, ".htm"))
-    {
-        std::cout << "got htm" << '\n';
-
-        // now, we just need to drop the extraneous XMLS surrounding the data we need.
-
-        auto x = document.find(R"***(<TEXT>)***");
-
-        // skip 1 more line.
-
-        x = document.find('\n', x + 1);
-
-        document.remove_prefix(x);
-
-        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != sview::npos)
-        {
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        }
-        else
-        {
-            throw std::runtime_error("Can't find end of HTML in document.\n");
-        }
-
-        return document;
-    }
-    return {};
-}		/* -----  end of function FindHTML  ----- */
-
+// * ===  FUNCTION  ======================================================================
+// *         Name:  FindHTML
+// *  Description:
+// * =====================================================================================
+// */
+//
+//sview FindHTML (sview document)
+//{
+//    auto file_name = FindFileNameInSection(document);
+//    if (boost::algorithm::ends_with(file_name, ".htm"))
+//    {
+//        std::cout << "got htm" << '\n';
+//
+//        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+//
+//        auto x = document.find(R"***(<TEXT>)***");
+//
+//        // skip 1 more line.
+//
+//        x = document.find('\n', x + 1);
+//
+//        document.remove_prefix(x);
+//
+//        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+//        if (xbrl_end_loc != sview::npos)
+//        {
+//            document.remove_suffix(document.length() - xbrl_end_loc);
+//        }
+//        else
+//        {
+//            throw std::runtime_error("Can't find end of HTML in document.\n");
+//        }
+//
+//        return document;
+//    }
+//    return {};
+//}		/* -----  end of function FindHTML  ----- */
+//
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FindTableOfContents
@@ -202,7 +205,7 @@ std::string CollectAllAnchors (sview document)
         std::cout << anchor_parent.tag() << '\n';
 
         sview anchor_parent_entry{html.data() + anchor_parent.startPosOuter(), anchor_parent.endPosOuter() - anchor_parent.startPosOuter()};
-        the_anchors.append(anchor_parent_entry.to_string());
+        the_anchors.append(std::string{anchor_parent_entry});
         the_anchors += '\n';
     }
     return the_anchors;
@@ -236,46 +239,46 @@ std::string CollectTableContent (sview html)
 }		/* -----  end of function CollectTableContent  ----- */
 
 
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  ExtractTextDataFromTable
- *  Description:  
- * =====================================================================================
- */
-
-std::string ExtractTextDataFromTable (CNode& a_table)
-{
-    std::string table_text;
-    table_text.reserve(START_WITH);
-
-    // now, the each table, find all rows in the table.
-
-    CSelection a_table_rows = a_table.find("tr");
-
-    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
-    {
-        CNode a_table_row = a_table_rows.nodeAt(indx);
-
-        // for each row in the table, find all the fields.
-
-        CSelection a_table_row_cells = a_table_row.find("td");
-
-        std::string new_row_data;
-        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
-        {
-            CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
-            new_row_data += a_table_row_cell.text() += '\t';
-        }
-        auto new_data = FilterFoundHTML(new_row_data);
-        if (! new_data.empty())
-        {
-            table_text += new_data;
-            table_text += '\n';
-        }
-    }
-    table_text.shrink_to_fit();
-    return table_text;
-}		/* -----  end of function ExtractTextDataFromTable  ----- */
+///* 
+// * ===  FUNCTION  ======================================================================
+// *         Name:  ExtractTextDataFromTable
+// *  Description:  
+// * =====================================================================================
+// */
+//
+//std::string ExtractTextDataFromTable (CNode& a_table)
+//{
+//    std::string table_text;
+//    table_text.reserve(START_WITH);
+//
+//    // now, the each table, find all rows in the table.
+//
+//    CSelection a_table_rows = a_table.find("tr");
+//
+//    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+//    {
+//        CNode a_table_row = a_table_rows.nodeAt(indx);
+//
+//        // for each row in the table, find all the fields.
+//
+//        CSelection a_table_row_cells = a_table_row.find("td");
+//
+//        std::string new_row_data;
+//        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+//        {
+//            CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
+//            new_row_data += a_table_row_cell.text() += '\t';
+//        }
+//        auto new_data = FilterFoundHTML(new_row_data);
+//        if (! new_data.empty())
+//        {
+//            table_text += new_data;
+//            table_text += '\n';
+//        }
+//    }
+//    table_text.shrink_to_fit();
+//    return table_text;
+//}		/* -----  end of function ExtractTextDataFromTable  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  CollectFinancialStatementContent
@@ -331,27 +334,27 @@ std::string CollectFinancialStatementContent (sview document_content)
     return table_data;
 }		/* -----  end of function CollectFinancialStatementContent  ----- */
 
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  FilterFoundHTML
- *  Description:  Apply various filters to cut down on amount of undesired data
- * =====================================================================================
- */
-std::string FilterFoundHTML (const std::string& new_row_data)
-{
-    // let's start by looking for rows with at least 1 word followed by at least 1 number.
-
-        return new_row_data;
-//    const boost::regex regex_word_number{R"***([a-zA-Z]+.*?\t\(?[-+.,0-9]+\t)***"};
+///*
+// * ===  FUNCTION  ======================================================================
+// *         Name:  FilterFoundHTML
+// *  Description:  Apply various filters to cut down on amount of undesired data
+// * =====================================================================================
+// */
+//std::string FilterFoundHTML (const std::string& new_row_data)
+//{
+//    // let's start by looking for rows with at least 1 word followed by at least 1 number.
 //
-//    boost::smatch matches;
-//    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_word_number);
-//    if (found_it)
-//    {
 //        return new_row_data;
-//    }
-//    return {};
-}		/* -----  end of function FilterFoundHTML  ----- */
+////    const boost::regex regex_word_number{R"***([a-zA-Z]+.*?\t\(?[-+.,0-9]+\t)***"};
+////
+////    boost::smatch matches;
+////    bool found_it = boost::regex_search(new_row_data.cbegin(), new_row_data.cend(), matches, regex_word_number);
+////    if (found_it)
+////    {
+////        return new_row_data;
+////    }
+////    return {};
+//}		/* -----  end of function FilterFoundHTML  ----- */
 
 FilterList SelectExtractors (int argc, const char* argv[])
 {
@@ -359,11 +362,12 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-    filters.emplace_back(SS_data{});
+//    filters.emplace_back(SS_data{});
 //    filters.emplace_back(DocumentCounter{});
 
-    filters.emplace_back(HTM_data{});
-    filters.emplace_back(Count_SS{});
+//    filters.emplace_back(HTM_data{});
+//    filters.emplace_back(Count_SS{});
+    filters.emplace_back(BalanceSheet_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -526,6 +530,27 @@ void HTM_data::UseExtractor(sview document, const fs::path& output_directory, co
         WriteDataToFile(output_file_name, tables);
     }
 }
+
+void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+{
+    // we are being given a DOCUMENT from the file so we need to scan it for HTML
+    // then scan that for tables then scan that for a balance sheet.
+
+    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+
+    HTML_FromFile htmls{document};
+    for (auto html : htmls)
+    {
+        TablesFromHTML tables{html};
+        auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
+        if (balance_sheet != tables.end())
+        {
+            WriteDataToFile(output_file_name, *balance_sheet);
+        }
+        break;
+    }
+    return ;
+}		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
 void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {

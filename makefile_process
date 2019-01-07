@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.68_gcc-8
+BOOSTDIR := /extra/boost/boost-1.69_gcc-8
 GCCDIR := /extra/gcc/gcc-8
 CPP := $(GCCDIR)/bin/g++
 
@@ -43,7 +43,14 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/process_main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp $(SDIR2)/Extractors.cpp SEC_Header.cpp
+SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp \
+		$(SDIR2)/Extractors.cpp \
+		$(SDIR2)/SEC_Header.cpp \
+		$(SDIR2)/EDGAR_HTML_FileFilter.cpp \
+		$(SDIR2)/ExtractEDGAR_Utils.cpp \
+		$(SDIR2)/HTML_FromFile.cpp \
+		$(SDIR2)/AnchorsFromHTML.cpp \
+		$(SDIR2)/TablesFromFile.cpp
 #
 #SDIR3h := ../ExtractEDGARData/src
 #SDIR3 := ../ExtractEDGARData/src
@@ -64,12 +71,14 @@ CFG_LIB := -lpthread \
 		-lstdc++fs \
 		-lgomp \
 		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt \
-		-lboost_regex-mt \
-		-lboost_program_options-mt \
+		-lboost_date_time-mt-x64 \
+		-lboost_regex-mt-x64 \
+		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
 		-lPocoFoundationd \
 		-lPocoUtild \
+		-lgumbo \
+		-lgq \
 		-L/usr/lib \
 		-lpugixml \
 		-lpq -lpqxx
@@ -81,7 +90,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2) # $(OBJS3)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -fPIC -fopenmp -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -D_GLIBCXX_PARALLEL -fPIC -fopenmp -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -105,7 +114,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fPIC -fopenmp -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fPIC D_GLIBCXX_PARALLEL -fopenmp -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
