@@ -63,7 +63,7 @@ sview FindTableOfContents(sview document);
 
 std::string CollectAllAnchors (sview document);
 
-std::string CollectTableContent(sview html);
+//std::string CollectTableContent(sview html);
 
 std::string CollectFinancialStatementContent (sview document_content);
 
@@ -108,6 +108,11 @@ struct HTM_data
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
+struct FinancialStatements_data
+{
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+};
+
 struct BalanceSheet_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
@@ -134,7 +139,7 @@ struct ALL_data
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
 using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data,
-      BalanceSheet_data, ALL_data>;
+      FinancialStatements_data, BalanceSheet_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors(int argc, const char* argv[]);

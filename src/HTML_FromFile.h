@@ -82,6 +82,8 @@ public:
 
         reference operator*() const { return html_; }
         pointer operator->() const { return &html_; }
+
+        sview to_sview() const { return html_; }
     };
 
       typedef sview					value_type;

@@ -89,6 +89,7 @@ std::vector<sview> Find_HTML_Documents (sview file_content)
 
     return results;
 }		/* -----  end of function Find_HTML_Documents  ----- */
+
 void FinancialStatements::PrepareTableContent ()
 {
     if (! balance_sheet_.the_data_.empty())
@@ -338,15 +339,15 @@ bool BalanceSheetFilter(sview table)
     
     // at this point, I'm only interested in internal hrefs.
     
-    if (! boost::regex_search(table.cbegin(), table.cend(), assets))
+    if (! boost::regex_search(table.cbegin(), table.cend(), assets, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), liabilities))
+    if (! boost::regex_search(table.cbegin(), table.cend(), liabilities, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), equity))
+    if (! boost::regex_search(table.cbegin(), table.cend(), equity, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
@@ -375,15 +376,15 @@ bool StatementOfOperationsFilter(sview table)
     
     // at this point, I'm only interested in internal hrefs.
     
-    if (! boost::regex_search(table.cbegin(), table.cend(), income))
+    if (! boost::regex_search(table.cbegin(), table.cend(), income, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), expenses))
+    if (! boost::regex_search(table.cbegin(), table.cend(), expenses, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), net_income))
+    if (! boost::regex_search(table.cbegin(), table.cend(), net_income, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
@@ -410,7 +411,7 @@ bool CashFlowsFilter(sview table)
     
     // at this point, I'm only interested in internal hrefs.
     
-    if (! boost::regex_search(table.cbegin(), table.cend(), operating))
+    if (! boost::regex_search(table.cbegin(), table.cend(), operating, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
@@ -418,7 +419,7 @@ bool CashFlowsFilter(sview table)
 //    {
 //        return false;
 //    }
-    if (! boost::regex_search(table.cbegin(), table.cend(), financing))
+    if (! boost::regex_search(table.cbegin(), table.cend(), financing, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
@@ -443,15 +444,15 @@ bool StockholdersEquityFilter(sview table)
     static const boost::regex equity{R"***(repurchased stock)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
-    if (! boost::regex_search(table.cbegin(), table.cend(), shares))
+    if (! boost::regex_search(table.cbegin(), table.cend(), shares, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), capital))
+    if (! boost::regex_search(table.cbegin(), table.cend(), capital, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    if (! boost::regex_search(table.cbegin(), table.cend(), equity))
+    if (! boost::regex_search(table.cbegin(), table.cend(), equity, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
@@ -562,7 +563,6 @@ std::string CollectTableContent (const std::string& a_table)
     std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, delete_this);
     clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
     clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_tabs, one_tab);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_tabs, one_tab);
     clean_table_data = boost::regex_replace(clean_table_data, regex_tab_before_paren, just_paren);
     clean_table_data = boost::regex_replace(clean_table_data, regex_space_tab, one_tab);
 
@@ -625,9 +625,15 @@ std::string ExtractTextDataFromTable (CNode& a_table)
  */
 std::string FilterFoundHTML (const std::string& new_row_data)
 {
+    // at this point, I do not want any line breaks or returns
+
+    static const boost::regex regex_line_breaks{R"***([\x0a\x0d])***"};
+    const std::string delete_this = "";
+    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, delete_this);
+
     // let's start by looking for rows with at least 1 word followed by at least 1 number.
 
-        return new_row_data;
+    return clean_row_data;
 //    const boost::regex regex_word_number{R"***([a-zA-Z]+.*?\t\(?[-+.,0-9]+\t)***"};
 //
 //    boost::smatch matches;
@@ -679,7 +685,7 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
 
     // first, find our label.
 
-    static const boost::regex assets{R"***(^.*?(total.*?assets).*?\t)***",
+    static const boost::regex assets{R"***(^.*?(total assets).*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     boost::cmatch match_label;
@@ -691,7 +697,11 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
 
     if (the_line == lines_.end())
     {
-        throw ExtractException("Can't find total assets in balance sheet.");
+        // for some reason, some balance sheets do not have a 'total assets' label...it's blank !!
+
+        //TODO  handle this.  maybe look for line with no label but numbers before liabailities section.
+
+        throw ExtractException("Can't find total assets in balance sheet.\n");
     }
     std::string the_label = match_label[1].str();
 
@@ -699,7 +709,7 @@ EE::EDGAR_Labels BalanceSheet::CollectValues ()
     // and we will need to determine (elsewhere) which to use.
     // for now, pick the first.
 
-    const boost::regex regex_number{R"***(\t([(-]?[,0-9]+\.?[0-9]*[)]*)\t)***"};
+    const boost::regex regex_number{R"***(\t([(-]?[$]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
     boost::cmatch match_values;
     bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
     if (! found_it)

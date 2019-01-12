@@ -35,13 +35,13 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <filesystem>
-#include <string_view>
 #include <fstream>
 #include <iostream>
-#include <algorithm>
+#include <string_view>
 
 namespace fs = std::filesystem;
 using sview = std::string_view;
@@ -120,14 +120,21 @@ int main(int argc, const char* argv[])
             
             if (use_file)
             {
-                for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
-                    doc != boost::cregex_token_iterator{}; ++doc)
+                for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(),
+                            regex_doc); doc != boost::cregex_token_iterator{}; ++doc)
                 {
                     sview document(doc->first, doc->length());
                     for(auto& e : the_filters)
                     {
-                        std::visit([document, &use_file](auto &&x)
-                            {x.UseExtractor(document, output_directory, use_file.value());}, e);
+                        try
+                        {
+                            std::visit([document, &use_file](auto &&x)
+                                {x.UseExtractor(document, output_directory, use_file.value());}, e);
+                        }
+                        catch(std::exception& ex)
+                        {
+                            std::cerr << ex.what() << '\n';
+                        }
                     }
                 }
             }
@@ -159,13 +166,14 @@ void SetupProgramOptions ()
 {
 	NewOptions.add_options()
 		("help,h",								"produce help message")
-		/* ("mode", 		po::value<std::string>(&this->mode_)->default_value("daily"), "'daily' or 'quarterly' for index files, 'ticker-only'") */
-		/* ("begin-date",	po::value<bg::date>(&this->begin_date_)->default_value(bg::day_clock::local_day()), "retrieve files with dates greater than or equal to") */
+		/* ("begin-date",	po::value<bg::date>(&this->begin_date_)->default_value(bg::day_clock::local_day()),
+         * "retrieve files with dates greater than or equal to") */
 		/* ("end-date",	po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to") */
 		("form",	po::value<std::string>(&form_type)->required(),	"name of form type[s] we are processing")
 		/* ("ticker",	po::value<std::string>(&this->ticker_),	"ticker to lookup and filter form downloads") */
 		/* ("file,f",				po::value<std::string>(),	"name of file containing data for ticker. Default is stdin") */
-		/* ("mode,m",				po::value<std::string>(),	"mode: either 'load' new data or 'update' existing data. Default is 'load'") */
+		/* ("mode,m",				po::value<std::string>(),
+         * "mode: either 'load' new data or 'update' existing data. Default is 'load'") */
 		/* ("output,o",			po::value<std::string>(),	"output file name") */
 		/* ("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.") */
 		/* ("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'") */
@@ -174,8 +182,10 @@ void SetupProgramOptions ()
 		("form-dir",		po::value<fs::path>(&input_directory),	"directory of form files to be processed")
 		("list-file",		po::value<fs::path>(&file_list),	"path to file with list of files to process.")
 		("output-dir",		po::value<fs::path>(&output_directory)->required(),	"top level directory to save outputs to")
-		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1), "maximum number of files to extract. Default of -1 means no limit.")
-		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true), "form number is part of file path. Default is 'false'")
+		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1),
+            "maximum number of files to extract. Default of -1 means no limit.")
+		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true),
+            "form number is part of file path. Default is 'false'")
 		;
 
 }		// -----  end of method CollectEDGARApp::Do_SetupProgramOptions  -----

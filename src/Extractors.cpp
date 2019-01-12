@@ -36,6 +36,7 @@
 	/* along with EEData.  If not, see <http://www.gnu.org/licenses/>. */
 #include "ExtractEDGAR_XBRL.h"
 
+#include <filesystem>
 #include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -45,6 +46,7 @@
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 #include "EDGAR_HTML_FileFilter.h"
+#include "ExtractEDGAR_Utils.h"
 
 // gumbo-query
 
@@ -52,7 +54,7 @@
 #include "gq/Node.h"
 #include "gq/Selection.h"
 
-// namespace fs = boost::filesystem;
+ namespace fs = std::filesystem;
 
 //#include "pstreams/pstream.h"
 
@@ -101,7 +103,7 @@ sview FindFileNameInSection (sview document)
     throw std::runtime_error("Can't find file name in document.\n");
 }		/* -----  end of function FindFileNameInSection  ----- */
 
-/*
+///*
 // * ===  FUNCTION  ======================================================================
 // *         Name:  FindHTML
 // *  Description:
@@ -211,33 +213,33 @@ std::string CollectAllAnchors (sview document)
     return the_anchors;
 }		/* -----  end of function CollectAllAnchors  ----- */
 /*
- * ===  FUNCTION  ======================================================================
- *         Name:  CollectTableContent
- *  Description:
- * =====================================================================================
- */
-std::string CollectTableContent (sview html)
-{
-    std::string table_data;
-    table_data.reserve(START_WITH);
-    CDocument the_filing;
-    the_filing.parse(std::string{html});
-    CSelection all_tables = the_filing.find("table");
-
-    // loop through all tables in the document.
-
-    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
-    {
-        // now, for each table, extract all the text
-
-        CNode a_table = all_tables.nodeAt(indx);
-        table_data += ExtractTextDataFromTable(a_table);
-
-    }
-    std::cout << table_data.size() << '\n';
-    return table_data;
-}		/* -----  end of function CollectTableContent  ----- */
-
+// * ===  FUNCTION  ======================================================================
+// *         Name:  CollectTableContent
+// *  Description:
+// * =====================================================================================
+// */
+//std::string CollectTableContent (sview html)
+//{
+//    std::string table_data;
+//    table_data.reserve(START_WITH);
+//    CDocument the_filing;
+//    the_filing.parse(std::string{html});
+//    CSelection all_tables = the_filing.find("table");
+//
+//    // loop through all tables in the document.
+//
+//    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
+//    {
+//        // now, for each table, extract all the text
+//
+//        CNode a_table = all_tables.nodeAt(indx);
+//        table_data += ExtractTextDataFromTable(a_table);
+//
+//    }
+//    std::cout << table_data.size() << '\n';
+//    return table_data;
+//}		/* -----  end of function CollectTableContent  ----- */
+//
 
 ///* 
 // * ===  FUNCTION  ======================================================================
@@ -367,7 +369,8 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(HTM_data{});
 //    filters.emplace_back(Count_SS{});
-    filters.emplace_back(BalanceSheet_data{});
+//    filters.emplace_back(BalanceSheet_data{});
+    filters.emplace_back(FinancialStatements_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -531,25 +534,69 @@ void HTM_data::UseExtractor(sview document, const fs::path& output_directory, co
     }
 }
 
+void FinancialStatements_data::UseExtractor (sview document, const fs::path& output_directory,
+        const EE::SEC_Header_fields& fields)
+{
+    // we locate the HTML document in the file which contains the financial statements.
+    // we then convert that to text and save the output.
+
+    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    output_file_name.replace_extension(".txt");
+
+    auto financial_content = FindHTML(document);
+//    if (financial_content.empty() || ! FinancialDocumentFilter(financial_content))
+    if (financial_content.empty())
+    {
+        // just doesn't have any html...or html we are interested in.
+        return;
+    }
+//    auto all_financial_tables = CollectTableContent(std::string{financial_content});
+//    if (all_financial_tables.empty())
+//    {
+//        return;
+//    }
+//    WriteDataToFile(output_file_name, all_financial_tables);
+
+    auto financial_statements = ExtractFinancialStatements(financial_content);
+    if (financial_statements.has_data())
+    {
+        financial_statements.PrepareTableContent();
+        WriteDataToFile(output_file_name, financial_statements.balance_sheet_.parsed_data_ +
+                financial_statements.statement_of_operations_.parsed_data_ +
+                financial_statements.cash_flows_.parsed_data_ +
+                financial_statements.stockholders_equity_.parsed_data_);
+    }
+}		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
+
 void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     // we are being given a DOCUMENT from the file so we need to scan it for HTML
     // then scan that for tables then scan that for a balance sheet.
 
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    output_file_name.replace_extension(".txt");
 
-    HTML_FromFile htmls{document};
-    for (auto html : htmls)
+    auto financial_content = FindHTML(document);
+    if (financial_content.empty() || ! FinancialDocumentFilter(financial_content))
     {
-        TablesFromHTML tables{html};
-        auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
-        if (balance_sheet != tables.end())
-        {
-            WriteDataToFile(output_file_name, *balance_sheet);
-        }
-        break;
+        // just doesn't have any html...
+        return;
     }
-    return ;
+    TablesFromHTML tables{financial_content};
+    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
+    if (balance_sheet != tables.end())
+    {
+        BalanceSheet bal_sheet;
+        bal_sheet.the_data_ = balance_sheet.to_sview();
+        bal_sheet.parsed_data_ = CollectTableContent(bal_sheet.the_data_);
+        bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
+        WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
+        auto values = bal_sheet.CollectValues();
+        if (values.empty())
+        {
+            throw ExtractException("Can't find values in balance sheet. " + output_file_name.string());
+        }
+    }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
 void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)

@@ -80,6 +80,8 @@ public:
 
         reference operator*() const { return current_table_; };
         pointer operator->() const { return &current_table_; }
+
+        sview to_sview() const { return current_table_; }
     };
 
       typedef sview					value_type;

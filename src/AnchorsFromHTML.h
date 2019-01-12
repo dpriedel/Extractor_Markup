@@ -95,6 +95,8 @@ public:
 
         reference operator*() const { return the_anchor_; }
         pointer operator->() const { return &the_anchor_; }
+
+        sview to_sview() const { return the_anchor_.anchor_content; }
     };
 
       typedef sview					value_type;

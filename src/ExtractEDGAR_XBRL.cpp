@@ -226,8 +226,6 @@ std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_
         {
             throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
         }
-        std::cout << "got one" << '\n';
-
         return std::optional{header_fields};
     }
     return std::nullopt;
