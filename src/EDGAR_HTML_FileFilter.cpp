@@ -56,6 +56,8 @@ using namespace std::string_literals;
 static const char* NONE = "none";
 static int START_WITH = 5000;
 
+const boost::regex regex_value{R"***(^([\-()"'A-Za-z ,.]+)[^\t]*\t\$?([(\-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FileHasHTML::operator()
@@ -530,16 +532,26 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
  */
 std::string CollectTableContent (const std::string& a_table)
 {
+    static const boost::regex regex_bogus_em_dash{R"***(&#151;)***"};
+    static const boost::regex regex_real_em_dash{R"***(&#8212;)***"};
     static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
     static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
     static const boost::regex regex_multiple_tabs{R"***(\t{2,})***"};
     static const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
     static const boost::regex regex_space_tab{R"***( \t)***"};
+    static const boost::regex regex_dollar_tab{R"***(\$\t)***"};
+
+    const std::string pseudo_em_dash = "---";
+
+    // let's try this...
+
+    std::string temp = boost::regex_replace(a_table, regex_bogus_em_dash, pseudo_em_dash);
+    temp = boost::regex_replace(temp, regex_real_em_dash, pseudo_em_dash);
 
     std::string table_data;
     table_data.reserve(START_WITH);
     CDocument the_filing;
-    the_filing.parse(a_table);
+    the_filing.parse(temp);
     CSelection all_tables = the_filing.find("table");
 
     // loop through all tables in the html fragment
@@ -559,9 +571,12 @@ std::string CollectTableContent (const std::string& a_table)
     const std::string one_space = " ";
     const std::string one_tab = "\t";
     const std::string just_paren = ")";
+    const std::string just_dollar = "$";
 
+//    std::string clean_table_data = boost::regex_replace(table_data, regex_bogus_em_dash, pseudo_em_dash);
     std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, delete_this);
     clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
+    clean_table_data = boost::regex_replace(clean_table_data, regex_dollar_tab, just_dollar);
     clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_tabs, one_tab);
     clean_table_data = boost::regex_replace(clean_table_data, regex_tab_before_paren, just_paren);
     clean_table_data = boost::regex_replace(clean_table_data, regex_space_tab, one_tab);
@@ -645,95 +660,172 @@ std::string FilterFoundHTML (const std::string& new_row_data)
 //    return {};
 }		/* -----  end of function FilterFoundHTML  ----- */
 
-EE::EDGAR_Labels FinancialStatements::CollectValues ()
+EE::EDGAR_Values FinancialStatements::CollectValues ()
 {
-    EE::EDGAR_Labels results;
+    EE::EDGAR_Values results;
 
     if (! balance_sheet_.parsed_data_.empty())
     {
         auto new_data = balance_sheet_.CollectValues();
-//        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
-        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+        std::copy(new_data.begin(), new_data.end(), std::back_inserter(results));
+//        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
     }
     if (! statement_of_operations_.parsed_data_.empty())
     {
         auto new_data = statement_of_operations_.CollectValues();
 //        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
-        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+        std::copy(new_data.begin(), new_data.end(), std::back_inserter(results));
+//        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
     }
     if (! cash_flows_.parsed_data_.empty())
     {
         auto new_data = cash_flows_.CollectValues();
 //        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
-        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+        std::copy(new_data.begin(), new_data.end(), std::back_inserter(results));
+//        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
     }
     if (! stockholders_equity_.parsed_data_.empty())
     {
         auto new_data = stockholders_equity_.CollectValues();
 //        std::copy(new_data.begin(), new_data.end(), std::inserter(results, std::next(results.begin())));
-        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
+        std::copy(new_data.begin(), new_data.end(), std::back_inserter(results));
+//        std::for_each(new_data.begin(), new_data.end(), [&results](const auto&data){ results[data.first] = data.second; });
     }
     return results;
 }		/* -----  end of method FinancialStatements::CollectValues  ----- */
 
-EE::EDGAR_Labels BalanceSheet::CollectValues ()
+EE::EDGAR_Values BalanceSheet::CollectValues ()
 {
     // first off, let's try to find total assets
     // and, since we're trying to figure out stuff, we will throw if we don't find our data !!
 
-    EE::EDGAR_Labels results;
+    EE::EDGAR_Values results;
 
-    // first, find our label.
-
-    static const boost::regex assets{R"***(^.*?(total assets).*?\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    boost::cmatch match_label;
-    auto matcher([&assets, &match_label](auto line)
-    {
-        return boost::regex_match(line.cbegin(), line.cend(), match_label, assets);
-    });
-    auto the_line = std::find_if(lines_.begin(), lines_.end(), matcher);
-
-    if (the_line == lines_.end())
-    {
-        // for some reason, some balance sheets do not have a 'total assets' label...it's blank !!
-
-        //TODO  handle this.  maybe look for line with no label but numbers before liabailities section.
-
-        throw ExtractException("Can't find total assets in balance sheet.\n");
-    }
-    std::string the_label = match_label[1].str();
-
-    // now, we need to find our value.  there could be multiple numbers on the line
-    // and we will need to determine (elsewhere) which to use.
-    // for now, pick the first.
-
-    const boost::regex regex_number{R"***(\t([(-]?[$]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
-    boost::cmatch match_values;
-    bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
-    if (! found_it)
-    {
-        throw ExtractException("Can't find values in balance sheet.\n" + std::string{*the_line});
-    }
-    std::string the_value = match_values[1].str();
-    results[the_label] = the_value;
+    // for now, we're doing just a quick and dirty...
+    // look for a label followed by a number in the same line
+    
+    std::for_each(
+            lines_.begin(),
+            lines_.end(),
+            [&results](auto& a_line)
+            {
+                boost::cmatch match_values;
+                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
+                if (found_it)
+                {
+//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
+                    results.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
+                }
+            }
+        );
+//    // first, find our label.
+//
+//    static const boost::regex assets{R"***(^.*?(total assets).*?\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//
+//    boost::cmatch match_label;
+//    auto matcher([&assets, &match_label](auto line)
+//    {
+//        return boost::regex_match(line.cbegin(), line.cend(), match_label, assets);
+//    });
+//    auto the_line = std::find_if(lines_.begin(), lines_.end(), matcher);
+//
+//    if (the_line == lines_.end())
+//    {
+//        // for some reason, some balance sheets do not have a 'total assets' label...it's blank !!
+//
+//        //TODO  handle this.  maybe look for line with no label but numbers before liabailities section.
+//
+//        throw ExtractException("Can't find total assets in balance sheet.\n");
+//    }
+//    std::string the_label = match_label[1].str();
+//
+//    // now, we need to find our value.  there could be multiple numbers on the line
+//    // and we will need to determine (elsewhere) which to use.
+//    // for now, pick the first.
+//
+//    const boost::regex regex_number{R"***(\t([(-]?[$]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+//    boost::cmatch match_values;
+//    bool found_it = boost::regex_search(the_line->cbegin(), the_line->cend(), match_values, regex_number);
+//    if (! found_it)
+//    {
+//        throw ExtractException("Can't find values in balance sheet.\n" + std::string{*the_line});
+//    }
+//    std::string the_value = match_values[1].str();
+//    results[the_label] = the_value;
 
     return results;
 }		/* -----  end of method BalanceSheet::CollectValues  ----- */
 
-EE::EDGAR_Labels StatementOfOperations::CollectValues ()
+EE::EDGAR_Values StatementOfOperations::CollectValues ()
 {
-    return {};
+    EE::EDGAR_Values results;
+
+    // for now, we're doing just a quick and dirty...
+    // look for a label followed by a number in the same line
+    
+    std::for_each(
+            lines_.begin(),
+            lines_.end(),
+            [&results](auto& a_line)
+            {
+                boost::cmatch match_values;
+                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
+                if (found_it)
+                {
+//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
+                    results.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
+                }
+            }
+        );
+    return results;
 }		/* -----  end of method StatementOfOperations::CollectValues  ----- */
 
-EE::EDGAR_Labels CashFlows::CollectValues ()
+EE::EDGAR_Values CashFlows::CollectValues ()
 {
-    return {};
+    EE::EDGAR_Values results;
+
+    // for now, we're doing just a quick and dirty...
+    // look for a label followed by a number in the same line
+    
+    std::for_each(
+            lines_.begin(),
+            lines_.end(),
+            [&results](auto& a_line)
+            {
+                boost::cmatch match_values;
+                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
+                if (found_it)
+                {
+//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
+                    results.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
+                }
+            }
+        );
+    return results;
 }		/* -----  end of method CashFlows::CollectValues  ----- */
 
-EE::EDGAR_Labels StockholdersEquity::CollectValues ()
+EE::EDGAR_Values StockholdersEquity::CollectValues ()
 {
-    return {};
+    EE::EDGAR_Values results;
+
+    // for now, we're doing just a quick and dirty...
+    // look for a label followed by a number in the same line
+    
+    std::for_each(
+            lines_.begin(),
+            lines_.end(),
+            [&results](auto& a_line)
+            {
+                boost::cmatch match_values;
+                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
+                if (found_it)
+                {
+//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
+                    results.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
+                }
+            }
+        );
+    return results;
 }		/* -----  end of method StockholdersEquity::CollectValues  ----- */
 

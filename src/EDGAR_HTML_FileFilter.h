@@ -70,7 +70,7 @@ struct BalanceSheet
     std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Labels CollectValues();
+    EE::EDGAR_Values CollectValues();
 };
 
 struct StatementOfOperations
@@ -80,7 +80,7 @@ struct StatementOfOperations
     std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Labels CollectValues();
+    EE::EDGAR_Values CollectValues();
 };
 
 struct CashFlows
@@ -90,7 +90,7 @@ struct CashFlows
     std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Labels CollectValues();
+    EE::EDGAR_Values CollectValues();
 };
 
 struct StockholdersEquity
@@ -100,7 +100,7 @@ struct StockholdersEquity
     std::vector<sview> lines_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Labels CollectValues();
+    EE::EDGAR_Values CollectValues();
 };
 
 struct FinancialStatements
@@ -118,7 +118,7 @@ struct FinancialStatements
 
     void PrepareTableContent();
 
-    EE::EDGAR_Labels CollectValues();
+    EE::EDGAR_Values CollectValues();
 };
 
 struct MultiplierData

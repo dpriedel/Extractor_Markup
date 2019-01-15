@@ -37,6 +37,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace ExtractEDGAR
 {
@@ -73,6 +74,7 @@ namespace ExtractEDGAR
 	// 	std::string user_label;
 	// };
 	using EDGAR_Labels = std::map<std::string, std::string>;
+	using EDGAR_Values = std::vector<std::pair<std::string, std::string>>;
 };
 
 namespace EE = ExtractEDGAR;
