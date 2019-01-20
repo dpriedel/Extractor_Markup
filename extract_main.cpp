@@ -42,9 +42,6 @@
 //#include <regex>
 #include <boost/regex.hpp>
 
-#include <range/v3/all.hpp>
-namespace rng = ranges::v3;
-
 // gumbo-query
 
 #include "gq/Document.h"
@@ -105,49 +102,21 @@ int main(int argc, const char* argv[])
         auto documents = FindDocumentSections(file_content);
         std::cout << documents.size() << '\n';
 
-//        auto all_html_tables = rng::accumulate(rng::view::transform(documents, [](auto content) {return CollectTableContent(content); }), ""s);
-
-//        std::cout << all_html_tables.size() << '\n';
-//
-//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".txt"), all_html_tables);
-
-//        auto all_document_html_content = rng::accumulate(rng::view::transform(documents, [](auto content) { return std::string{FindHTML(content)}; }), ""s);
-//
-//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".html"), all_document_html_content);
-
-        // let's look for the table of contents
-        
-//        auto all_financial_tables = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectFinancialStatementContent(document_content); }), ""s);
-//
-//        std::cout << all_financial_tables.size() << '\n';
-//
-//        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".stmt.txt"), all_financial_tables);
-
-        auto all_anchors = rng::accumulate(rng::view::transform(documents, [](auto document_content) {return CollectAllAnchors(document_content); }), ""s);
-
-        std::cout << all_anchors.size() << '\n';
-
-        WriteDataToFile(fs::path{output_directory} /= (input_file_name.stem() += ".a.html"), all_anchors);
-//        for (auto document : documents)
-//        {
-//            auto toc = FindTableOfContents(document);
-//            if (! toc.empty())
-//            {
-//                std::cout << "found anchor\n" << toc << '\n';
-//                break;
-//            }
-//        }
-//        for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc);
-//            doc != boost::cregex_token_iterator{}; ++doc)
-//        {
-//            sview document(doc->first, doc->length());
-//            for(auto& e : the_filters)
-//            {
-//                std::visit([document, &output_directory, &use_file](auto &&x)
-//                    {x.UseExtractor(document, output_directory, use_file.value());}, e);
-//            }
-//        }
-
+        for (auto document : documents)
+        {
+            for(auto& e : the_filters)
+            {
+                try
+                {
+                    std::visit([document, &use_file, &output_directory](auto &&x)
+                        {x.UseExtractor(document, output_directory, use_file.value());}, e);
+                }
+                catch(std::exception& ex)
+                {
+                    std::cerr << ex.what() << '\n';
+                }
+            }
+        }
         // let's see if we got a count...
 
         for (const auto& e : the_filters)

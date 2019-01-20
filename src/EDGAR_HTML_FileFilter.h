@@ -68,9 +68,12 @@ struct BalanceSheet
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
+    EE::EDGAR_Values values_;
+    bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Values CollectValues();
+    void CollectValues();
+    bool ValidateContent();
 };
 
 struct StatementOfOperations
@@ -78,9 +81,12 @@ struct StatementOfOperations
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
+    EE::EDGAR_Values values_;
+    bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Values CollectValues();
+    void CollectValues();
+    bool ValidateContent();
 };
 
 struct CashFlows
@@ -88,9 +94,12 @@ struct CashFlows
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
+    EE::EDGAR_Values values_;
+    bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Values CollectValues();
+    void CollectValues();
+    bool ValidateContent();
 };
 
 struct StockholdersEquity
@@ -98,9 +107,12 @@ struct StockholdersEquity
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
+    EE::EDGAR_Values values_;
+    bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
-    EE::EDGAR_Values CollectValues();
+    void CollectValues();
+    bool ValidateContent();
 };
 
 struct FinancialStatements
@@ -109,6 +121,7 @@ struct FinancialStatements
     StatementOfOperations statement_of_operations_;
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
+    EE::EDGAR_Values values_;
 
     bool has_data() const
     {
@@ -117,8 +130,11 @@ struct FinancialStatements
     }
 
     void PrepareTableContent();
+    bool ValidateContent();
 
-    EE::EDGAR_Values CollectValues();
+    void CollectValues();
+
+    const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
 
 struct MultiplierData
@@ -164,6 +180,10 @@ bool StatementOfOperationsFilter(sview table);
 bool CashFlowsFilter(sview table);
 
 bool StockholdersEquityFilter(sview table);
+
+// uses a 2-phase approach to look for financial statements.
+
+FinancialStatements FindAndExtractFinancialStatements(sview file_content);
 
 FinancialStatements ExtractFinancialStatements(sview financial_content);
 

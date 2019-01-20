@@ -38,8 +38,11 @@
 #define __XBRL_Extractors__
 
 #include <filesystem>
+#include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
+
 using sview = std::string_view;
 
 //#include <boost/hana.hpp>

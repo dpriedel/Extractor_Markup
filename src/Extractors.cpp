@@ -34,15 +34,15 @@
 
 	/* You should have received a copy of the GNU General Public License */
 	/* along with EEData.  If not, see <http://www.gnu.org/licenses/>. */
+
+#include "Extractors.h"
 #include "ExtractEDGAR_XBRL.h"
 
-#include <filesystem>
 #include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
-#include "Extractors.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 #include "EDGAR_HTML_FileFilter.h"
@@ -54,7 +54,8 @@
 #include "gq/Node.h"
 #include "gq/Selection.h"
 
- namespace fs = std::filesystem;
+namespace fs = std::filesystem;
+using namespace std::string_literals;
 
 //#include "pstreams/pstream.h"
 
@@ -561,10 +562,10 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
     if (financial_statements.has_data())
     {
         financial_statements.PrepareTableContent();
-        WriteDataToFile(output_file_name, financial_statements.balance_sheet_.parsed_data_ +
-                financial_statements.statement_of_operations_.parsed_data_ +
-                financial_statements.cash_flows_.parsed_data_ +
-                financial_statements.stockholders_equity_.parsed_data_);
+        WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
+                "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
+                "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
+                "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 

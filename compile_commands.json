@@ -271,5 +271,29 @@
         ],
         "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
         "file": "process_main.cpp"
+    },
+    {
+        "arguments": [
+            "/extra/gcc/gcc-8/bin/g++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++17",
+            "-D_DEBUG",
+            "-fPIC",
+            "-fopenmp",
+            "-I./src",
+            "-I/usr/local/include",
+            "-I/extra/pstream",
+            "-I/extra/boost/boost-1.69_gcc-8",
+            "-march=native",
+            "-o",
+            "ExtractDebug/extract_main.o",
+            "extract_main.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/ExtractEDGAR_XBRL",
+        "file": "extract_main.cpp"
     }
 ]
