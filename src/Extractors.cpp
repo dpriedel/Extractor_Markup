@@ -544,28 +544,17 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     output_file_name.replace_extension(".txt");
 
-    auto financial_content = FindHTML(document);
-//    if (financial_content.empty() || ! FinancialDocumentFilter(financial_content))
-    if (financial_content.empty())
-    {
-        // just doesn't have any html...or html we are interested in.
-        return;
-    }
-//    auto all_financial_tables = CollectTableContent(std::string{financial_content});
-//    if (all_financial_tables.empty())
-//    {
-//        return;
-//    }
-//    WriteDataToFile(output_file_name, all_financial_tables);
-
-    auto financial_statements = ExtractFinancialStatements(financial_content);
+    auto financial_statements = FindAndExtractFinancialStatements(document);
     if (financial_statements.has_data())
     {
-        financial_statements.PrepareTableContent();
         WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
                 "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
                 "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
                 "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
+    }
+    else
+    {
+        throw ExtractException("Can't find financial_statements. " + output_file_name.string());
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 
@@ -592,8 +581,8 @@ void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_dire
         bal_sheet.parsed_data_ = CollectTableContent(bal_sheet.the_data_);
         bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
         WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
-        auto values = bal_sheet.CollectValues();
-        if (values.empty())
+        bal_sheet.CollectValues();
+        if (bal_sheet.values_.empty())
         {
             throw ExtractException("Can't find values in balance sheet. " + output_file_name.string());
         }
