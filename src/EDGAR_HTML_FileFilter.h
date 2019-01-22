@@ -125,8 +125,8 @@ struct FinancialStatements
 
     bool has_data() const
     {
-        return NotAllEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
-//        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
+//        return NotAllEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
     }
 
     void PrepareTableContent();
