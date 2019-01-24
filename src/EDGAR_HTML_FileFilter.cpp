@@ -365,7 +365,7 @@ bool BalanceSheetFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex liabilities{R"***((?:current|total).+?liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((?:holders'? (?:equity|defici))|(?:equity|common.+?share))***",
+    static const boost::regex equity{R"***((?:holders'? (?:equity|defici))|(?:common.+?share))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -397,7 +397,22 @@ bool BalanceSheetFilter(sview table)
     {
         return false;
     }
-    return true;
+
+    // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
+    // to contain our match criteria.
+
+    auto lines = split_string(parsed_data, '\n');
+    for (auto line : lines)
+    {
+        if (boost::regex_search(line.cbegin(), line.cend(), assets_p))
+        {
+            if (line.size() < 150)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }		/* -----  end of function BalanceSheetFilter  ----- */
 
 /* 
@@ -411,29 +426,39 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***((?:(?:total|other|net).+?)?(?:income|revenue|sales))***",
+    static const boost::regex income{R"***((?:total|other|net).*?(?:income|revenue|sales))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((?:income.+?operat)|(?:(?:operat|total).*?(?:expense|costs|loss))|expense)***",
+    const boost::regex expenses{R"***((?:operat|total|general).*?(?:expense|costs|loss|admin))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***((?:net.*?gain)|(?:net.*?loss)|(?:net.*income))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex shares_outstanding{R"***(share.*outstanding|per share)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
     
+//    std::cout.write(table.data(), 2500);
     if (! boost::regex_search(table.cbegin(), table.cend(), income, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    std::cout << "Matched income\n";
+
+    std::cout << "matched income\n";
     if (! boost::regex_search(table.cbegin(), table.cend(), expenses, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    std::cout << "Matched expense\n";
+    std::cout << "matched expenses\n";
     if (! boost::regex_search(table.cbegin(), table.cend(), net_income, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
+    std::cout << "matched net income\n";
+    if (! boost::regex_search(table.cbegin(), table.cend(), shares_outstanding, boost::regex_constants::match_not_dot_newline))
+    {
+        return false;
+    }
+    std::cout << "matched shares\n";
 
     // let's experiment
 
@@ -443,41 +468,28 @@ bool StatementOfOperationsFilter(sview table)
     // this is a lot of extra work but go with it for now....
 
     auto parsed_data = CollectTableContent(std::string{table});
-    std::cout << "parsed data:\n" << parsed_data << '\n';
     static const boost::regex income_p{R"***(^.*?(?:total|other|net).*?(?:income|revenue|sales)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), income_p, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-//    boost::cmatch matches;
-//    if (boost::regex_search(table.cbegin(), table.cend(), matches, income, boost::regex_constants::match_not_dot_newline))
-//    {
-//        std::cout << "Match1: " << matches[0].str() << '\n';
-//    }
-//    else
-//    {
-//        return false;
-//    }
-//    if (boost::regex_search(table.cbegin(), table.cend(), matches, expenses, boost::regex_constants::match_not_dot_newline))
-//    {
-//        std::cout << "Match2: " << matches[0].str() << '\n';
-//    }
-//    else
-//    {
-//        return false;
-//    }
-//    if (boost::regex_search(table.cbegin(), table.cend(), matches, net_income, boost::regex_constants::match_not_dot_newline))
-//    {
-//        std::cout << "Match3: " << matches[0].str() << '\n';
-//    }
-//    else
-//    {
-//        return false;
-//    }
-//
-//    std::cout << table << '\n';
-    return true;
+
+    // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
+    // to contain our match criteria.
+
+    auto lines = split_string(parsed_data, '\n');
+    for (auto line : lines)
+    {
+        if (boost::regex_search(line.cbegin(), line.cend(), income_p))
+        {
+            if (line.size() < 150)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }		/* -----  end of function StatementOfOperationsFilter  ----- */
 
 /* 
@@ -491,11 +503,11 @@ bool CashFlowsFilter(sview table)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(operating activities|(?:cash (?:flow(?:s?)|used|provided).*?(?:from|in|by).+?operating))***",
+    static const boost::regex operating{R"***(operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash (?:flow(?:s?)|used|provided).*?(?:from|in|by).+?investing)***",
+    static const boost::regex investing{R"***(cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?investing)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(financing activities|(?:cash (?:flow(?:s?)|used|provided).*?(?:from|in|by).+?financing))***",
+    static const boost::regex financing{R"***(financing activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?financing))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -521,14 +533,28 @@ bool CashFlowsFilter(sview table)
     // this is a lot of extra work but go with it for now....
 
     auto parsed_data = CollectTableContent(std::string{table});
-    std::cout << "Cash Flows parsed data:\n" << parsed_data << '\n';
-    static const boost::regex operating_p{R"***(^operating activities|(?:cash (?:flow(?:s?)|used|provided).*?(?:from|in|by).+?operating)[^\t]*\t)***",
+    static const boost::regex operating_p{R"***(^operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), operating_p, boost::regex_constants::match_not_dot_newline))
     {
         return false;
     }
-    return true;
+
+    // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
+    // to contain our match criteria.
+
+    auto lines = split_string(parsed_data, '\n');
+    for (auto line : lines)
+    {
+        if (boost::regex_search(line.cbegin(), line.cend(), operating_p))
+        {
+            if (line.size() < 150)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }		/* -----  end of function CashFlowsFilter  ----- */
 
 /* 
