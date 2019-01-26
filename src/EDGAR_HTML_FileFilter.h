@@ -65,6 +65,7 @@ struct FileHasHTML
 
 struct BalanceSheet
 {
+    AnchorData the_anchor_;
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
@@ -72,12 +73,15 @@ struct BalanceSheet
     bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
+    inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
+
     void CollectValues();
     bool ValidateContent();
 };
 
 struct StatementOfOperations
 {
+    AnchorData the_anchor_;
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
@@ -85,12 +89,15 @@ struct StatementOfOperations
     bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
+    inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
+
     void CollectValues();
     bool ValidateContent();
 };
 
 struct CashFlows
 {
+    AnchorData the_anchor_;
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
@@ -98,12 +105,15 @@ struct CashFlows
     bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
+    inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
+
     void CollectValues();
     bool ValidateContent();
 };
 
 struct StockholdersEquity
 {
+    AnchorData the_anchor_;
     std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
@@ -111,6 +121,8 @@ struct StockholdersEquity
     bool is_valid_;
 
     inline bool empty() const { return the_data_.empty(); }
+    inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
+
     void CollectValues();
     bool ValidateContent();
 };
@@ -159,13 +171,19 @@ bool FinancialDocumentFilter (sview html);
 
 sview FindFinancialDocument (sview file_content);
 
-bool FinancialStatementFilterUsingAnchors (const AnchorData& an_anchor);
+bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor);
 
-bool FinancialAnchorFilter(const AnchorData& an_anchor);
+bool StockholdersEquityAnchorFilter(const AnchorData& an_anchor);
+
+bool CashFlowsAnchorFilter(const AnchorData& an_anchor);
+
+bool StatementOfOperationsAnchorFilter(const AnchorData& an_anchor);
+
+bool BalanceSheetAnchorFilter(const AnchorData& an_anchor);
 
 sview FindFinancialContentUsingAnchors (sview file_content);
 
-AnchorData FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorList& all_anchors);
+AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors);
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
@@ -186,6 +204,8 @@ bool StockholdersEquityFilter(sview table);
 FinancialStatements FindAndExtractFinancialStatements(sview file_content);
 
 FinancialStatements ExtractFinancialStatements(sview financial_content);
+
+FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_content);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 

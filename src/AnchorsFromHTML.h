@@ -47,11 +47,11 @@ using sview = std::string_view;
 
 struct AnchorData
 {
-    std::string href;
-    std::string name;
-    std::string text;
-    sview anchor_content;
-    sview html_document;
+    std::string href_;
+    std::string name_;
+    std::string text_;
+    sview anchor_content_;
+    sview html_document_;
 };				/* ----------  end of struct AnchorData  ---------- */
 
 using AnchorList = std::vector<AnchorData>;
@@ -77,8 +77,8 @@ public:
         const char* anchor_end_ = nullptr;
         mutable AnchorData the_anchor_;
 
-        std::optional<AnchorData> FindNextAnchor(const char* start, const char* end);
-        const char* FindAnchorEnd(const char* start, const char* end, int level);
+        std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
+        const char* FindAnchorEnd(const char* begin, const char* end, int level);
         AnchorData ExtractDataFromAnchor (const char* start, const char* end, sview html);
         
     public:
@@ -96,7 +96,7 @@ public:
         reference operator*() const { return the_anchor_; }
         pointer operator->() const { return &the_anchor_; }
 
-        sview to_sview() const { return the_anchor_.anchor_content; }
+        sview to_sview() const { return the_anchor_.anchor_content_; }
     };
 
       typedef sview					value_type;

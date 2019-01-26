@@ -101,7 +101,7 @@ AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
     }
 
     the_anchor_ = *next_anchor;
-    anchor_begin_ = the_anchor_.anchor_content.end();
+    anchor_begin_ = the_anchor_.anchor_content_.end();
 
     return *this;
 }		/* -----  end of method AnchorsFromHTML::iterator::operator++  ----- */
