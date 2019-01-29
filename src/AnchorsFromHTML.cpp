@@ -108,7 +108,7 @@ AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
 
 std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char* begin, const char* end)
 {
-    static const boost::regex re_anchor_begin{R"***((?:<a>|<a ).*?>)***",
+    static const boost::regex re_anchor_begin{R"***((?:<a>|<a[^>])[^>]*?>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // we need to prime the pump by finding the beginning of the first anchor.
@@ -180,6 +180,14 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, 
 
     AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
         the_anchor.nodeAt(0).text(), sview(start, end - start), html};
+
+    // href sometimes is quoted, so remove them.
+
+    if (result.href_[0] == '"')
+    {
+        result.href_.erase(0, 1);
+        result.href_.resize(result.href_.size() - 1);
+    }
 //    result.CleanData();
     return result;
 }		/* -----  end of method AnchorsFromHTML::iterator::ExtractDataFromAnchor  ----- */
