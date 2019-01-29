@@ -82,6 +82,7 @@ public:
         pointer operator->() const { return &current_table_; }
 
         sview to_sview() const { return current_table_; }
+        bool TableHasMarkup (sview table);
     };
 
       typedef sview					value_type;

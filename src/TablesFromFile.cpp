@@ -79,14 +79,32 @@ TablesFromHTML::table_itor::table_itor(sview html)
 
 TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
 {
-    if (++doc_ != end_)
+    bool done = false;
+    while (! done)
     {
-        current_table_ = sview(doc_->first, doc_->length());
-    }
-    else
-    {
-        current_table_ = {};
+        if (++doc_ != end_)
+        {
+            current_table_ = sview(doc_->first, doc_->length());
+            if (TableHasMarkup(current_table_))
+            {
+                done = true;
+            }
+        }
+        else
+        {
+            current_table_ = {};
+            done = true;
+        }
     }
     return *this;
 }		/* -----  end of method TablesFromHTML::table_itor::operator++  ----- */
+
+bool TablesFromHTML::table_itor::TableHasMarkup (sview table)
+{
+    auto have_td = table.find("</TD>") != sview::npos || table.find("</td>") != sview::npos;
+    auto have_tr = table.find("</TR>") != sview::npos || table.find("</tr>") != sview::npos;
+//    auto have_div = table.find("</div>") != std::string::npos;
+
+    return have_td && have_tr /*&& have_div*/ ? true : false;
+}		// -----  end of method TablesFromHTML::table_itor:::TableHasMarkup  -----
 
