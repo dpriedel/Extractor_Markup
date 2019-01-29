@@ -947,13 +947,12 @@ std::string ExtractTextDataFromTable (CNode& a_table)
  */
 std::string FilterFoundHTML (const std::string& new_row_data)
 {
-    // at this point, I do not want any line breaks or returns
+    // at this point, I do not want any line breaks or returns from source data.
+    // (I'll add them where I want them.)
 
     static const boost::regex regex_line_breaks{R"***([\x0a\x0d])***"};
     const std::string delete_this = "";
     std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, delete_this);
-
-    // let's start by looking for rows with at least 1 word followed by at least 1 number.
 
     return clean_row_data;
 }		/* -----  end of function FilterFoundHTML  ----- */
@@ -961,7 +960,7 @@ std::string FilterFoundHTML (const std::string& new_row_data)
 void FinancialStatements::CollectValues ()
 {
     //TODO: set up iterator to return union of values from all statements.
-    //
+    // instead of making a copy as done here.
 
     if (! balance_sheet_.parsed_data_.empty())
     {
