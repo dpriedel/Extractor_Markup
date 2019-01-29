@@ -105,6 +105,6 @@ bool TablesFromHTML::table_itor::TableHasMarkup (sview table)
     auto have_tr = table.find("</TR>") != sview::npos || table.find("</tr>") != sview::npos;
 //    auto have_div = table.find("</div>") != std::string::npos;
 
-    return have_td && have_tr /*&& have_div*/ ? true : false;
-}		// -----  end of method TablesFromHTML::table_itor:::TableHasMarkup  -----
+    return have_td && have_tr;
+}		// -----  end of method TablesFromHTML::table_itor::TableHasMarkup  -----
 
