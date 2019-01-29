@@ -656,16 +656,22 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     if (! financial_document.empty())
     {
         auto financial_statements = ExtractFinancialStatementsUsingAnchors(financial_document);
-        financial_statements.PrepareTableContent();
-        return financial_statements;
+        if (financial_statements.has_data())
+        {
+            financial_statements.PrepareTableContent();
+            return financial_statements;
+        }
     }
 
     financial_document = FindFinancialDocument(file_content);
     if (! financial_document.empty())
     {
         auto financial_statements = ExtractFinancialStatements(financial_document);
-        financial_statements.PrepareTableContent();
-        return financial_statements;
+        if (financial_statements.has_data())
+        {
+            financial_statements.PrepareTableContent();
+            return financial_statements;
+        }
     }
     return {};
 }		/* -----  end of function FindFinancialStatements  ----- */
