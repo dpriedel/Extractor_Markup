@@ -131,7 +131,7 @@ bool FinancialStatements::ValidateContent ()
  */
 bool FinancialDocumentFilter (sview html)
 {
-    static const boost::regex regex_finance_statements{R"***(financial\s+statements)***",
+    static const boost::regex regex_finance_statements{R"***(financial.+?statements)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     if (boost::regex_search(html.cbegin(), html.cend(), regex_finance_statements))
@@ -226,7 +226,7 @@ bool StatementOfOperationsAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_operations{R"***(state.*?of.*?oper)***",
+    static const boost::regex regex_operations{R"***((?:state.*?of.*?oper)|(?:state.*?of.*?loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -419,7 +419,7 @@ bool BalanceSheetFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex liabilities{R"***((?:current|total).+?liabilities)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((?:holders.? (?:equity|defici))|(?:common.+?share)|(?:common.+?stock))***",
+    static const boost::regex equity{R"***((?:holders. (?:equity|defici))|(?:common.+?share)|(?:common.+?stock))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -481,7 +481,7 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***((?:total|other|net).*?(?:income|revenue|sales))***",
+    static const boost::regex income{R"***((?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
@@ -489,7 +489,7 @@ bool StatementOfOperationsFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***((?:net.*?gain)|(?:net.*?loss)|(?:net.*income))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex shares_outstanding{R"***(share.*outstanding|per share)***",
+    static const boost::regex shares_outstanding{R"***((?:share.*outstanding)|(?:per share)|(?:number.*?share))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     if (! boost::regex_search(table.cbegin(), table.cend(), income, boost::regex_constants::match_not_dot_newline))
@@ -518,7 +518,7 @@ bool StatementOfOperationsFilter(sview table)
     // this is a lot of extra work but go with it for now....
 
     auto parsed_data = CollectTableContent(std::string{table});
-    static const boost::regex income_p{R"***(^.*?(?:total|other|net).*?(?:income|revenue|sales)[^\t]*\t)***",
+    static const boost::regex income_p{R"***(^.*?(?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), income_p, boost::regex_constants::match_not_dot_newline))
     {
@@ -715,15 +715,11 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
 {
     // this all is rather a lot of code but it should be our most efficient way through the data.
 
+    FinancialStatements the_tables;
+
     AnchorsFromHTML anchors(financial_content);
 
     auto balance_sheet_href = std::find_if(anchors.begin(), anchors.end(), BalanceSheetAnchorFilter);
-    auto stmt_of_ops_href = std::find_if(anchors.begin(), anchors.end(), StatementOfOperationsAnchorFilter);
-    auto cash_flows_href = std::find_if(anchors.begin(), anchors.end(), CashFlowsAnchorFilter);
-    auto sholder_equity_href = std::find_if(anchors.begin(), anchors.end(), StockholdersEquityAnchorFilter);
-
-    FinancialStatements the_tables;
-
     if (balance_sheet_href != anchors.end())
     {
         auto balance_sheet_dest = FindDestinationAnchor(*balance_sheet_href, anchors);
@@ -741,6 +737,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
         }
     }
 
+    auto stmt_of_ops_href = std::find_if(anchors.begin(), anchors.end(), StatementOfOperationsAnchorFilter);
     if (stmt_of_ops_href != anchors.end())
     {
         auto stmt_of_ops_dest = FindDestinationAnchor(*stmt_of_ops_href, anchors);
@@ -758,6 +755,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
         }
     }
 
+    auto cash_flows_href = std::find_if(anchors.begin(), anchors.end(), CashFlowsAnchorFilter);
     if (cash_flows_href != anchors.end())
     {
         auto cash_flows_dest = FindDestinationAnchor(*cash_flows_href, anchors);
@@ -775,6 +773,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
         }
     }
 
+    auto sholder_equity_href = std::find_if(anchors.begin(), anchors.end(), StockholdersEquityAnchorFilter);
     if (sholder_equity_href != anchors.end())
     {
         auto sholder_equity_dest = FindDestinationAnchor(*sholder_equity_href, anchors);
