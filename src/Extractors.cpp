@@ -554,6 +554,16 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
     }
     else
     {
+        std::cout << "\n\nBalance Sheet\n";
+        std::cout.write(financial_statements.balance_sheet_.parsed_data_.data(), 500);
+        std::cout << "\n\nCash Flow\n";
+        std::cout.write(financial_statements.cash_flows_.parsed_data_.data(), 500);
+        std::cout << "\n\nStmt of Operations\n";
+        std::cout.write(financial_statements.statement_of_operations_.parsed_data_.data(), 500);
+        std::cout << "\n\nShareholder Equity\n";
+        std::cout.write(financial_statements.stockholders_equity_.parsed_data_.data(), std::min(500UL,
+                   financial_statements.stockholders_equity_.the_data_.size()));
+
         throw ExtractException("Can't find financial_statements. " + output_file_name.string());
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
