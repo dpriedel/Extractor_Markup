@@ -45,8 +45,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
-
-#include <Poco/Logger.h>
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
 
 #include <pqxx/pqxx>
 
@@ -542,7 +542,7 @@ pugi::xml_document ParseXMLContent(sview document)
 
 bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
-    const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger)
+    const EE::ContextPeriod& context_fields, bool replace_content)
 {
     // start stuffing the database.
 
@@ -560,10 +560,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 	auto have_data = row[0].as<int>();
     if (have_data != 0 && ! replace_content)
     {
-        if (the_logger != nullptr)
-        {
-            the_logger->debug("Skipping: Form data exists and Replace not specifed for file: " + SEC_fields.at("file_name"));
-        }
+        BOOST_LOG_TRIVIAL(debug) << "Skipping: Form data exists and Replace not specifed for file: " << SEC_fields.at("file_name");
         c.disconnect();
         return false;
     }

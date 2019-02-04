@@ -141,6 +141,6 @@ std::string ConvertPeriodEndDateToContextName(sview period_end_date);
 
 bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
-    const EE::ContextPeriod& context_fields, bool replace_content, Poco::Logger* the_logger=nullptr);
+    const EE::ContextPeriod& context_fields, bool replace_content);
 
 #endif   /* ----- #ifndef EDGAR_XBRL_FileFilter_INC  ----- */

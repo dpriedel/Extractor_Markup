@@ -46,12 +46,44 @@
 #include <tuple>
 #include <vector>
 
-namespace Poco
-{
-    class Logger;
-};
+#include <boost/assert.hpp>
 
 using sview = std::string_view;
+
+// some code to help with putting together error messages,
+
+// first, we need to be able to convert things to std::string.
+
+template<typename T>
+std::string dpr_to_string(T&& t)
+{
+    if constexpr(std::disjunction_v<std::is_integral<T>, std::is_floating_point<T>>)
+    {
+        return std::to_string(std::forward<T>(t));
+    }
+    else if constexpr(std::is_convertible_v<T, std::string>)
+    {
+        return std::string(std::forward<T>(t));
+    }
+    else if constexpr(std::is_same_v<T, std::string>)
+    {
+        return t;
+    }
+    else
+    {
+        return {};
+    }
+}
+
+// now, a function to concatenate a bunch of string-like things.
+
+template<typename... Ts>
+std::string catenate(Ts&&... ts)
+{
+    // let's use fold expression
+
+    return (dpr_to_string(std::forward<Ts>(ts)) += ...);
+}
 
 #include "ExtractEDGAR.h"
 

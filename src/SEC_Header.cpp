@@ -36,8 +36,6 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/regex.hpp>
 
-#include "Poco/Logger.h"
-
 namespace bg = boost::gregorian;
 
 
@@ -53,7 +51,7 @@ void SEC_Header::UseData (sview file_content)
 	boost::cmatch results;
 
 	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);
-	poco_assert_msg(found_it, "Can't find SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find SEC Header");
 
     header_data_ = results[0].first, results[0].length();
 }		// -----  end of method SEC_Header::UseData  -----
@@ -76,7 +74,7 @@ void SEC_Header::ExtractCIK ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find CIK in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find CIK in SEC Header");
 
 	parsed_header_data_["cik"] = results.str(1);
 }		// -----  end of method SEC_Header::ExtractCIK  -----
@@ -107,7 +105,7 @@ void SEC_Header::ExtractFormType ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find 'form type' in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find 'form type' in SEC Header");
 
 	parsed_header_data_["form_type"] = results.str(1);
 }		// -----  end of method SEC_Header::ExtractFormNumber  -----
@@ -119,7 +117,7 @@ void SEC_Header::ExtractDateFiled ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find 'date filed' in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find 'date filed' in SEC Header");
 
 	bg::date d1{bg::from_undelimited_string(results.str(1))};
 	parsed_header_data_["date_filed"] = bg::to_iso_extended_string(d1);
@@ -132,7 +130,7 @@ void SEC_Header::ExtractQuarterEnding ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find 'quarter ending' in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find 'quarter ending' in SEC Header");
 
 	bg::date d1{bg::from_undelimited_string(results.str(1))};
 	parsed_header_data_["quarter_ending"] = bg::to_iso_extended_string(d1);
@@ -145,7 +143,7 @@ void SEC_Header::ExtractFileName ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find 'file name' in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find 'file name' in SEC Header");
 
 	parsed_header_data_["file_name"] = results.str(1) + ".txt";
 }		// -----  end of method SEC_Header::ExtractFileName  -----
@@ -157,7 +155,7 @@ void SEC_Header::ExtractCompanyName ()
 	boost::cmatch results;
 	bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
 
-	poco_assert_msg(found_it, "Can't find 'company name' in SEC Header");
+    BOOST_ASSERT_MSG(found_it, "Can't find 'company name' in SEC Header");
 
 	parsed_header_data_["company_name"] = results.str(1);
 }		// -----  end of method SEC_Header::ExtractCompanyName  -----

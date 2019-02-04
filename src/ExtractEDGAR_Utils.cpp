@@ -38,8 +38,10 @@
 
 #include "ExtractEDGAR_Utils.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
@@ -160,3 +162,33 @@ bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_n
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
+namespace boost
+{
+    // these functions are declared in the library headers but left to the user to define.
+    // so here they are...
+    //
+    /* 
+     * ===  FUNCTION  ======================================================================
+     *         Name:  assertion_failed_mgs
+     *  Description:  
+     *         defined in boost header but left to us to implement.
+     * =====================================================================================
+     */
+
+    void assertion_failed_msg (char const* expr, char const* msg, char const* function, char const* file, long line)
+    {
+        std::cout << catenate("test: ", expr, " msg: ", msg, " in function: ", function, " from file: ", file, " at line: ", line, 555, ".\n");
+    }		/* -----  end of function assertion_failed_mgs  ----- */
+
+    /* 
+     * ===  FUNCTION  ======================================================================
+     *         Name:  assertion_failed
+     *  Description:  
+     * =====================================================================================
+     */
+    void assertion_failed (char const* expr, char const* function, char const* file, long line )
+    {
+        std::cout << catenate("test: ", expr, " in function: ", function, " from file: ", file, " at line: ", line, 555, ".\n");
+        return;
+    }		/* -----  end of function assertion_failed  ----- */
+}
