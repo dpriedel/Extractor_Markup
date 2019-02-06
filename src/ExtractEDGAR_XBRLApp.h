@@ -47,63 +47,49 @@
 #include <tuple>
 #include <vector>
 
+namespace fs = std::filesystem;
 using sview = std::string_view;
 
 // #include <boost/filesystem.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/program_options.hpp>
 
 namespace bg = boost::gregorian;
-namespace fs = std::filesystem;
-
-#include "Poco/AutoPtr.h"
-#include "Poco/Channel.h"
-#include "Poco/Logger.h"
-#include "Poco/Util/AbstractConfiguration.h"
-#include "Poco/Util/Application.h"
-#include "Poco/Util/HelpFormatter.h"
-#include "Poco/Util/Option.h"
-#include "Poco/Util/OptionSet.h"
-#include "Poco/Util/Validator.h"
+namespace po = boost::program_options;
 
 #include "ExtractEDGAR.h"
 
-class ExtractEDGAR_XBRLApp : public Poco::Util::Application
+class ExtractEDGAR_XBRLApp
 {
 
 public:
 
-	ExtractEDGAR_XBRLApp(int argc, char* argv[]);
+    ExtractEDGAR_XBRLApp(int argc, char* argv[]);
+    
+    // use ctor below for testing with predefined options
+
+    ExtractEDGAR_XBRLApp(const std::vector<std::string>* tokens);
+    
+    ExtractEDGAR_XBRLApp() = delete;
 	ExtractEDGAR_XBRLApp(const ExtractEDGAR_XBRLApp& rhs) = delete;
-    ExtractEDGAR_XBRLApp() = default;
 
     static bool SignalReceived(void) { return had_signal_ ; }
 
+    bool Startup();
+    void Run();
+    void Shutdown();
+
 protected:
 
-	void initialize(Application& self) override;
-	void uninitialize() override;
-	void reinitialize(Application& self) override;
+	//	Setup for parsing program options.
 
-	void defineOptions(Poco::Util::OptionSet& options) override;
+	void	SetupProgramOptions(void);
+	void 	ParseProgramOptions(void);
+	void 	ParseProgramOptions(const std::vector<std::string>* tokens);
 
-	void handleHelp(const std::string& name, const std::string& value);
+    void    ConfigureLogging(void);
 
-	void handleDefine(const std::string& name, const std::string& value);
-
-	void handleConfig(const std::string& name, const std::string& value);
-
-	void displayHelp();
-
-	void defineProperty(const std::string& def);
-
-	int main(const ArgVec& args) override;
-
-	void printProperties(const std::string& base);
-
-	void	Do_Main (void);
-    void    Do_Test (void);          //  same as Do_Main but let exceptsions pass thru.
-	void	Do_StartUp (void);
-	void	Do_CheckArgs (void);
+	bool	CheckArgs (void);
 	void	Do_Run (void);
 	void	Do_Quit (void);
 
@@ -130,43 +116,18 @@ private:
 
     static void HandleSignal(int signal);
 
-    class LogLevelValidator : public Poco::Util::Validator
-    {
-        LogLevelValidator(void) : Validator() {}
-
-        virtual void validate(const Poco::Util::Option& option, const std::string& value) override;
-    };
-
-    // a set of functions to be used to capture values from the command line.
-    // called from the options handling code.
-    // there should be a better way to do this but this works for now.
-
-    void inline store_begin_date(const std::string& name, const std::string& value) { begin_date_ = bg::from_string(value); }
-    void inline store_end_date(const std::string& name, const std::string& value) { end_date_ = bg::from_string(value); }
-    void inline store_form_dir(const std::string& name, const std::string& value) { local_form_file_directory_ = value; }
-    void inline store_single_file_to_process(const std::string& name, const std::string& value) { single_file_to_process_ = value; }
-    void inline store_replace_DB_content(const std::string& name, const std::string& value) { replace_DB_content_ = true; }
-    void inline store_list_of_files_to_process_path(const std::string& name, const std::string& value) { list_of_files_to_process_path_ = value; }
-    // void inline store_login_ID(const std::string& name, const std::string& value) { login_ID_ = value; }
-
-    void inline store_log_level(const std::string& name, const std::string& value) { logging_level_ = value; }
-    void inline store_mode(const std::string& name, const std::string& value) { mode_ = value; }
-    void inline store_form(const std::string& name, const std::string& value) { form_ = value; }
-    void inline store_CIK(const std::string& name, const std::string& value) { CIK_ = value; }
-    void inline store_SIC(const std::string& name, const std::string& value) { SIC_ = value; }
-    void inline store_log_path(const std::string& name, const std::string& value) { log_file_path_name_ = value; }
-    void inline store_max(const std::string& name, const std::string& value) { max_forms_to_process_ = std::stoi(value); }
-    void inline store_concurrency_limit(const std::string& name, const std::string& value) { max_at_a_time_ = std::stoi(value); }
-    void inline store_filename_has_form(const std::string& name, const std::string& value) { filename_has_form_ = true; }
-    void inline store_resume_at_filename(const std::string& name, const std::string& value) { resume_at_this_filename_ = value; }
-
 		// ====================  DATA MEMBERS  =======================================
 
 	using FilterList = std::vector<std::function<bool(const EE::SEC_Header_fields& header_fields, sview)>>;
 
+	po::positional_options_description	mPositional;			//	old style options
+	po::options_description				mNewOptions;			//	new style options (with identifiers)
+	po::variables_map					mVariableMap;
 
-    Poco::AutoPtr<Poco::Channel> logger_file_;
-
+	int mArgc = 0;
+	char** mArgv = nullptr;
+	const std::vector<std::string>*	tokens_ = nullptr;
+	
 	bg::date begin_date_;
 	bg::date end_date_;
 

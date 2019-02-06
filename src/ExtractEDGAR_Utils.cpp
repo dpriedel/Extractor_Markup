@@ -177,7 +177,8 @@ namespace boost
 
     void assertion_failed_msg (char const* expr, char const* msg, char const* function, char const* file, long line)
     {
-        std::cout << catenate("test: ", expr, " msg: ", msg, " in function: ", function, " from file: ", file, " at line: ", line, 555, ".\n");
+        throw std::logic_error(catenate("*** Assertion failed *** test: ", expr, " in function: ", function,
+                    " from file: ", file, " at line: ", line, ".\nassertion msg: ", msg));
     }		/* -----  end of function assertion_failed_mgs  ----- */
 
     /* 
@@ -188,7 +189,7 @@ namespace boost
      */
     void assertion_failed (char const* expr, char const* function, char const* file, long line )
     {
-        std::cout << catenate("test: ", expr, " in function: ", function, " from file: ", file, " at line: ", line, 555, ".\n");
-        return;
+        throw std::logic_error(catenate("*** Assertion failed *** test: ", expr, " in function: ", function,
+                    " from file: ", file, " at line: ", line));
     }		/* -----  end of function assertion_failed  ----- */
 }
