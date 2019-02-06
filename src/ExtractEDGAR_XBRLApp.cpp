@@ -184,7 +184,7 @@ ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (const std::vector<std::string>* tokens)
+ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (const std::vector<std::string>& tokens)
     : tokens_{tokens}
 {
 }  /* -----  end of method ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp  (constructor)  ----- */
@@ -239,7 +239,7 @@ bool ExtractEDGAR_XBRLApp::Startup()
 	try
 	{	
 		SetupProgramOptions();
-        if (! tokens_)
+        if (tokens_.empty())
             ParseProgramOptions();
         else
             ParseProgramOptions(tokens_);
@@ -259,8 +259,7 @@ void ExtractEDGAR_XBRLApp::SetupProgramOptions ()
 {
 	mNewOptions.add_options()
 		("help,h", "produce help message")
-		("begin-date", po::value<bg::date>(&this->begin_date_)->default_value(bg::day_clock::local_day()),
-         "retrieve files with dates greater than or equal to")
+		("begin-date", po::value<bg::date>(&this->begin_date_), "retrieve files with dates greater than or equal to")
 		("end-date", po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to")
 		("form-dir", po::value<fs::path>(&local_form_file_directory_),	"directory of form files to be processed")
 		("file,f", po::value<fs::path>(&single_file_to_process_),	"single file to be processed.")
@@ -301,9 +300,9 @@ void ExtractEDGAR_XBRLApp::ParseProgramOptions ()
 
 }		/* -----  end of method ExtractEDGAR_XBRLApp::ParseProgramOptions  ----- */
 
-void ExtractEDGAR_XBRLApp::ParseProgramOptions (const std::vector<std::string>* tokens)
+void ExtractEDGAR_XBRLApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
-	auto options = po::command_line_parser(*tokens).options(mNewOptions).run();
+	auto options = po::command_line_parser(tokens).options(mNewOptions).run();
 	po::store(options, mVariableMap);
 	if (mVariableMap.count("help"))
 	{
@@ -514,11 +513,6 @@ void ExtractEDGAR_XBRLApp::Run()
         std::cout << "Unknown problem collecting files." << '\n';
     }
 }		/* -----  end of method ExtractEDGAR_XBRLApp::Run  ----- */
-
-void ExtractEDGAR_XBRLApp::Shutdown ()
-{
-    return ;
-}		/* -----  end of method ExtractEDGAR_XBRL::Shutdown  ----- */
 
 bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content,
         std::atomic<int>& forms_processed)
@@ -828,12 +822,6 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
     return true;
 }
 
-void ExtractEDGAR_XBRLApp::Do_Quit ()
-{
-    BOOST_LOG_TRIVIAL(info) << ("\n\n*** End run "
-            + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
-}       // -----  end of method ExtractEDGAR_XBRLApp::Do_Quit  -----
-
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
     int success_counter{0};
@@ -1098,4 +1086,11 @@ void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
 
     ExtractEDGAR_XBRLApp::had_signal_ = true;
 
-}
+}		/* -----  end of method ExtractEDGAR_XBRL::HandleSignal  ----- */
+
+void ExtractEDGAR_XBRLApp::Shutdown ()
+{
+    BOOST_LOG_TRIVIAL(info) << ("\n\n*** End run "
+            + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+}       // -----  end of method ExtractEDGAR_XBRLApp::Shutdown  -----
+

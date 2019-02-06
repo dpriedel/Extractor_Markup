@@ -68,7 +68,7 @@ public:
     
     // use ctor below for testing with predefined options
 
-    ExtractEDGAR_XBRLApp(const std::vector<std::string>* tokens);
+    ExtractEDGAR_XBRLApp(const std::vector<std::string>& tokens);
     
     ExtractEDGAR_XBRLApp() = delete;
 	ExtractEDGAR_XBRLApp(const ExtractEDGAR_XBRLApp& rhs) = delete;
@@ -85,12 +85,11 @@ protected:
 
 	void	SetupProgramOptions(void);
 	void 	ParseProgramOptions(void);
-	void 	ParseProgramOptions(const std::vector<std::string>* tokens);
+	void 	ParseProgramOptions(const std::vector<std::string>& tokens);
 
     void    ConfigureLogging(void);
 
 	bool	CheckArgs (void);
-	void	Do_Run (void);
 	void	Do_Quit (void);
 
 	void BuildFilterList(void);
@@ -126,7 +125,7 @@ private:
 
 	int mArgc = 0;
 	char** mArgv = nullptr;
-	const std::vector<std::string>*	tokens_ = nullptr;
+	const std::vector<std::string> tokens_;
 	
 	bg::date begin_date_;
 	bg::date end_date_;

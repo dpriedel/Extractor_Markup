@@ -57,7 +57,7 @@ using sview = std::string_view;
 template<typename T>
 std::string dpr_to_string(T&& t)
 {
-    if constexpr(std::disjunction_v<std::is_integral<T>, std::is_floating_point<T>>)
+    if constexpr(std::is_integral_v<T> || std::is_floating_point_v<T>)
     {
         return std::to_string(std::forward<T>(t));
     }
@@ -82,7 +82,9 @@ std::string catenate(Ts&&... ts)
 {
     // let's use fold expression
 
-    return (dpr_to_string(std::forward<Ts>(ts)) += ...);
+    std::string result;
+    result = (dpr_to_string(std::forward<Ts>(ts)) += ... += result);
+    return result;
 }
 
 #include "ExtractEDGAR.h"
