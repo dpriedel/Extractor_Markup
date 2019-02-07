@@ -44,9 +44,8 @@
 #include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
-#include <boost/regex.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
+
+#include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
 
@@ -560,7 +559,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 	auto have_data = row[0].as<int>();
     if (have_data != 0 && ! replace_content)
     {
-        BOOST_LOG_TRIVIAL(debug) << "Skipping: Form data exists and Replace not specifed for file: " << SEC_fields.at("file_name");
+        spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
         c.disconnect();
         return false;
     }

@@ -58,11 +58,8 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
 
-namespace logging = boost::log;
+#include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
 
@@ -233,8 +230,8 @@ void ExtractEDGAR_XBRLApp::ConfigureLogging()
 
 bool ExtractEDGAR_XBRLApp::Startup()
 {
-    BOOST_LOG_TRIVIAL(info) << ("\n\n*** Begin run "
-           + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+    spdlog::info(("\n\n*** Begin run "
+           + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n"));
     bool result{true};
 	try
 	{	
@@ -324,7 +321,7 @@ bool ExtractEDGAR_XBRLApp::CheckArgs ()
 
     if (begin_date_ == bg::date() && end_date_ == begin_date_)
     {
-        BOOST_LOG_TRIVIAL(info) << "Neither begin date nor end date specified. No date range filtering to be done.";
+        spdlog::info("Neither begin date nor end date specified. No date range filtering to be done.");
     }
 
     //  the user may specify multiple form types in a comma delimited list. We need to parse the entries out
@@ -407,7 +404,7 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
     );
     input_file.close();
 
-    BOOST_LOG_TRIVIAL(debug) << catenate("Found: ", list_of_files_to_process_.size(), " files in list.");
+    spdlog::debug(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
     if (resume_at_this_filename_.empty())
     {
@@ -424,7 +421,7 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
         throw std::range_error("File: " + resume_at_this_filename_ + " not found in list of files.");
     }
 
-    BOOST_LOG_TRIVIAL(info) << catenate("Resuming with: ", list_of_files_to_process_.size(), " files in list.");
+    spdlog::info(catenate("Resuming with: ", list_of_files_to_process_.size(), " files in list."));
 }		/* -----  end of method ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess  ----- */
 
 void ExtractEDGAR_XBRLApp::BuildFilterList()
@@ -493,16 +490,16 @@ void ExtractEDGAR_XBRLApp::Run()
 
         auto [success_counter, skipped_counter, error_counter] = counters;
 
-        BOOST_LOG_TRIVIAL(info) << catenate("Processed: ", SumT(counters), " files. Successes: ",
-                success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, ".");
+        spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ",
+                success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
     }
     catch (std::system_error& e)
     {
         // any system problems, we eventually abort, but only after finishing work in process.
 
         auto ec = e.code();
-        BOOST_LOG_TRIVIAL(info) << catenate("Category: ", ec.category().name(), ". Value: ", ec.value(),
-                ". Message: ", ec.message());
+        spdlog::info(catenate("Category: ", ec.category().name(), ". Value: ", ec.value(),
+                ". Message: ", ec.message()));
     }
     catch (std::exception& e)
     {
@@ -583,7 +580,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs
     }
     catch(const std::exception& e)
     {
-        BOOST_LOG_TRIVIAL(error) << catenate("Problem processing file: ", input_file_name.string(), ". ", e.what());
+        spdlog::error(catenate("Problem processing file: ", input_file_name.string(), ". ", e.what()));
         return {0, 0, 1};
     }
 
@@ -627,7 +624,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
     }
     catch(const std::exception& e)
     {
-        BOOST_LOG_TRIVIAL(error) << catenate("Problem processing file: ", input_file_name.string(), ". ", e.what());
+        spdlog::error(catenate("Problem processing file: ", input_file_name.string(), ". ", e.what()));
         return {0, 0, 1};
     }
 
@@ -659,7 +656,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                         return;
                     }
                 }
-                BOOST_LOG_TRIVIAL(debug) << catenate("Scanning file: ", file_name);
+                spdlog::debug(catenate("Scanning file: ", file_name));
                 const std::string file_content(LoadDataFileForUse(file_name.c_str()));
 
                 SEC_Header SEC_data;
@@ -687,18 +684,18 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
             catch(std::range_error& e)
             {
                 ++error_counter;
-                BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, ".");
+                        ". Errors: ", error_counter, "."));
                 throw;
             }
             catch(std::exception& e)
             {
                 ++error_counter;
-                BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, ".");
-                BOOST_LOG_TRIVIAL(error) << catenate("Problem processing file: ", file_name, ". ", e.what());
+                        ". Errors: ", error_counter, "."));
+                spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
             }
         }
     });
@@ -730,7 +727,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                         return;
                     }
                 }
-                BOOST_LOG_TRIVIAL(debug) << catenate("Scanning file: ", dir_ent.path().string());
+                spdlog::debug(catenate("Scanning file: ", dir_ent.path().string()));
                 const std::string file_content(LoadDataFileForUse(dir_ent.path().c_str()));
 
                 SEC_Header SEC_data;
@@ -758,18 +755,18 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
             catch(std::range_error& e)
             {
                 ++error_counter;
-                BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, ".");
+                        ". Errors: ", error_counter, "."));
                 throw;
             }
             catch(std::exception& e)
             {
                 ++error_counter;
-                BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, ".");
-                BOOST_LOG_TRIVIAL(error) << catenate("Problem processing file: ", dir_ent.path().string(), ". ", e.what());
+                        ". Errors: ", error_counter, "."));
+                spdlog::error(catenate("Problem processing file: ", dir_ent.path().string(), ". ", e.what()));
             }
         }
     });
@@ -782,7 +779,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
-    BOOST_LOG_TRIVIAL(debug) << catenate("Loading contents from file: ", file_name);
+    spdlog::debug(catenate("Loading contents from file: ", file_name));
 
     if (mode_ == "XBRL")
     {
@@ -837,7 +834,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
         }
     }
     
-    BOOST_LOG_TRIVIAL(debug) << catenate("Scanning file: ", file_name);
+    spdlog::debug(catenate("Scanning file: ", file_name));
     const std::string file_content(LoadDataFileForUse(file_name.c_str()));
 
     SEC_Header SEC_data; SEC_data.UseData(file_content);
@@ -859,19 +856,19 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
         }
         catch(const ExtractException& e)
         {
-            BOOST_LOG_TRIVIAL(error) << e.what();
+            spdlog::error(e.what());
             ++error_counter;
         }
         catch(const pqxx::sql_error& e)
         {
-            BOOST_LOG_TRIVIAL(error) << catenate("Database error: ", e.what());
-            BOOST_LOG_TRIVIAL(error) << catenate("Query was: ", e.query());
+            spdlog::error(catenate("Database error: ", e.what()));
+            spdlog::error(catenate("Query was: ", e.query()));
             ++error_counter;
         }
     }
     else
     {
-        BOOST_LOG_TRIVIAL(debug) << catenate("Skipping file: ", file_name);
+        spdlog::debug(catenate("Skipping file: ", file_name));
         ++skipped_counter;
     }
 
@@ -956,10 +953,10 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         {
             // any system problems, we eventually abort, but only after finishing work in process.
 
-            BOOST_LOG_TRIVIAL(error) << e.what();
+            spdlog::error(e.what());
             auto ec = e.code();
-            BOOST_LOG_TRIVIAL(error) << catenate("Category: ", ec.category().name(), ". Value: ", ec.value(),
-                    ". Message: ", ec.message());
+            spdlog::error(catenate("Category: ", ec.category().name(), ". Value: ", ec.value(),
+                    ". Message: ", ec.message()));
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -974,7 +971,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         {
             // any problems, we'll document them and finish any other active tasks.
 
-            BOOST_LOG_TRIVIAL(error) << e.what();
+            spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -989,7 +986,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         {
             // any problems, we'll document them and continue.
 
-            BOOST_LOG_TRIVIAL(error) << "Unknown problem with async file processing";
+            spdlog::error("Unknown problem with async file processing");
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -1035,7 +1032,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         {
             // any problems, we'll document them and continue.
 
-            BOOST_LOG_TRIVIAL(error) << e.what();
+            spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
 
             // we ignore these...
@@ -1056,15 +1053,15 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     if (ep)
     {
-        BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
-                ". Skips: ", skipped_counter, ". Errors: ", error_counter, ".");
+        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
+                ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
         std::rethrow_exception(ep);
     }
 
     if (ExtractEDGAR_XBRLApp::had_signal_)
     {
-        BOOST_LOG_TRIVIAL(error) << catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
-                ". Skips: ", skipped_counter, ". Errors: ", error_counter, ".");
+        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
+                ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
         throw std::runtime_error("Received keyboard interrupt.  Processing manually terminated after loading: "
             + std::to_string(success_counter) + " files.");
     }
@@ -1090,7 +1087,7 @@ void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
 
 void ExtractEDGAR_XBRLApp::Shutdown ()
 {
-    BOOST_LOG_TRIVIAL(info) << ("\n\n*** End run "
+    spdlog::info("\n\n*** End run "
             + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
 }       // -----  end of method ExtractEDGAR_XBRLApp::Shutdown  -----
 
