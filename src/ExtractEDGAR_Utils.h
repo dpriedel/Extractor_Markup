@@ -42,6 +42,7 @@
 
 #include <exception>
 #include <map>
+#include <sstream>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -52,39 +53,17 @@ using sview = std::string_view;
 
 // some code to help with putting together error messages,
 
-// first, we need to be able to convert things to std::string.
-
-template<typename T>
-std::string dpr_to_string(T&& t)
-{
-    if constexpr(std::is_integral_v<T> || std::is_floating_point_v<T>)
-    {
-        return std::to_string(std::forward<T>(t));
-    }
-    else if constexpr(std::is_convertible_v<T, std::string>)
-    {
-        return std::string(std::forward<T>(t));
-    }
-    else if constexpr(std::is_same_v<T, std::string>)
-    {
-        return t;
-    }
-    else
-    {
-        return {};
-    }
-}
-
-// now, a function to concatenate a bunch of string-like things.
-
 template<typename... Ts>
 std::string catenate(Ts&&... ts)
 {
+    // let the standard library do the heavy lifting...
+
+    std::ostringstream result;
+
     // let's use fold expression
 
-    std::string result;
-    result = (dpr_to_string(std::forward<Ts>(ts)) += ... += result);
-    return result;
+    (result << ... << ts );
+    return result.str();
 }
 
 #include "ExtractEDGAR.h"
