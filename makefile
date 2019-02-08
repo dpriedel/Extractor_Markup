@@ -64,7 +64,7 @@ CFG_LIB := -lpthread -lstdc++fs \
    		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
-		-L/usr/local/lib -lPocoFoundationd -lPocoUtild \
+		-lboost_program_options-mt-x64 \
 		-lgumbo \
 		-lgq \
 		-L/usr/lib \
@@ -77,7 +77,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -93,7 +93,7 @@ OUTDIR=Release
 CFG_LIB := -lpthread -lstdc++fs \
    		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt -lboost_iostreams-mt -lboost_regex-mt \
-		-L/usr/local/lib -lPocoFoundation -lPocoUtil \
+		-lboost_program_options-mt-x64 \
 		-lgumbo \
 		-lgq \
 		-L/usr/lib \
@@ -109,7 +109,7 @@ DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++17 -DBOOST_ENABLE_ASSERT_HANDLER -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration

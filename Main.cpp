@@ -45,9 +45,13 @@ int main(int argc, char** argv)
 	int result = 0;
 	try
 	{
-		ExtractEDGAR_XBRLApp myApp;
-		myApp.init(argc, argv);
-		result = myApp.run();
+		ExtractEDGAR_XBRLApp myApp(argc, argv);
+		bool startup_ok = myApp.Startup();
+        if (startup_ok)
+        {
+            myApp.Run();
+            myApp.Shutdown();
+        }
 	}
 
 	catch (const std::exception& theProblem)
