@@ -75,7 +75,6 @@ struct BalanceSheet
     inline bool empty() const { return the_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
-    void CollectValues();
     bool ValidateContent();
 };
 
@@ -91,7 +90,6 @@ struct StatementOfOperations
     inline bool empty() const { return the_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
-    void CollectValues();
     bool ValidateContent();
 };
 
@@ -107,7 +105,6 @@ struct CashFlows
     inline bool empty() const { return the_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
-    void CollectValues();
     bool ValidateContent();
 };
 
@@ -123,7 +120,6 @@ struct StockholdersEquity
     inline bool empty() const { return the_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
-    void CollectValues();
     bool ValidateContent();
 };
 
@@ -143,11 +139,12 @@ struct FinancialStatements
 
     void PrepareTableContent();
     bool ValidateContent();
-
     void CollectValues();
 
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
+
+void CollectStatementValues (std::vector<sview>& lines, EE::EDGAR_Values& values);
 
 struct MultiplierData
 {

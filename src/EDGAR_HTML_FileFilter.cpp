@@ -964,130 +964,67 @@ void FinancialStatements::CollectValues ()
 
     if (! balance_sheet_.parsed_data_.empty())
     {
-        balance_sheet_.CollectValues();
+        CollectStatementValues(balance_sheet_.lines_, balance_sheet_.values_);
         std::copy(balance_sheet_.values_.begin(), balance_sheet_.values_.end(), std::back_inserter(values_));
     }
     if (! statement_of_operations_.parsed_data_.empty())
     {
-        statement_of_operations_.CollectValues();
-        std::copy(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(), std::back_inserter(values_));
+        CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.values_);
+        std::copy(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
+                std::back_inserter(values_));
     }
     if (! cash_flows_.parsed_data_.empty())
     {
-        cash_flows_.CollectValues();
+        CollectStatementValues(cash_flows_.lines_, cash_flows_.values_);
         std::copy(cash_flows_.values_.begin(), cash_flows_.values_.end(), std::back_inserter(values_));
     }
     if (! stockholders_equity_.parsed_data_.empty())
     {
-        stockholders_equity_.CollectValues();
+        CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.values_);
         std::copy(stockholders_equity_.values_.begin(), stockholders_equity_.values_.end(), std::back_inserter(values_));
     }
 }		/* -----  end of method FinancialStatements::CollectValues  ----- */
 
-void BalanceSheet::CollectValues ()
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CollectValues
+ *  Description:  Collect name/values pair
+ * =====================================================================================
+ */
+void CollectStatementValues (std::vector<sview>& lines, EE::EDGAR_Values& values)
 {
-    EE::EDGAR_Values results;
-
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
     
     std::for_each(
-            lines_.begin(),
-            lines_.end(),
-            [this](auto& a_line)
+            lines.begin(),
+            lines.end(),
+            [&values](auto& a_line)
             {
                 boost::cmatch match_values;
                 bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
                 if (found_it)
                 {
-//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
-                    this->values_.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
+                    values.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
                 }
             }
         );
-}		/* -----  end of method BalanceSheet::CollectValues  ----- */
+}		/* -----  end of method CollectValues  ----- */
 
 bool BalanceSheet::ValidateContent ()
 {
     return false;
 }		/* -----  end of method BalanceSheet::ValidateContent  ----- */
 
-void StatementOfOperations::CollectValues ()
-{
-    EE::EDGAR_Values results;
-
-    // for now, we're doing just a quick and dirty...
-    // look for a label followed by a number in the same line
-    
-    std::for_each(
-            lines_.begin(),
-            lines_.end(),
-            [this](auto& a_line)
-            {
-                boost::cmatch match_values;
-                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
-                if (found_it)
-                {
-//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
-                    this->values_.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
-                }
-            }
-        );
-}		/* -----  end of method StatementOfOperations::CollectValues  ----- */
-
 bool StatementOfOperations::ValidateContent ()
 {
     return false;
 }		/* -----  end of method StatementOfOperations::ValidateContent  ----- */
 
-void CashFlows::CollectValues ()
-{
-    EE::EDGAR_Values results;
-
-    // for now, we're doing just a quick and dirty...
-    // look for a label followed by a number in the same line
-    
-    std::for_each(
-            lines_.begin(),
-            lines_.end(),
-            [this](auto& a_line)
-            {
-                boost::cmatch match_values;
-                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
-                if (found_it)
-                {
-//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
-                    this->values_.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
-                }
-            }
-        );
-}		/* -----  end of method CashFlows::CollectValues  ----- */
-
 bool CashFlows::ValidateContent ()
 {
     return false;
 }		/* -----  end of method CashFlows::ValidateContent  ----- */
-
-void StockholdersEquity::CollectValues ()
-{
-    // for now, we're doing just a quick and dirty...
-    // look for a label followed by a number in the same line
-    
-    std::for_each(
-            lines_.begin(),
-            lines_.end(),
-            [this](auto& a_line)
-            {
-                boost::cmatch match_values;
-                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
-                if (found_it)
-                {
-//                    results[std::string{match_values[1].str()}] = std::string{match_values[2].str()};
-                    this->values_.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
-                }
-            }
-        );
-}		/* -----  end of method StockholdersEquity::CollectValues  ----- */
 
 bool StockholdersEquity::ValidateContent ()
 {
