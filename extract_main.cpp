@@ -79,7 +79,7 @@ int main(int argc, const char* argv[])
 
         if (! fs::exists(input_file_name) || fs::file_size(input_file_name) == 0)
         {
-            throw std::runtime_error("Input file is missing or empty.");
+            throw std::runtime_error("Input file is missing or empty.\n");
         }
 
         std::ifstream input_file{input_file_name};

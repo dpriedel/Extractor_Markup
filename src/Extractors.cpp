@@ -591,7 +591,7 @@ void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_dire
         bal_sheet.parsed_data_ = CollectTableContent(bal_sheet.the_data_);
         bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
         WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
-        bal_sheet.CollectValues();
+        CollectStatementValues(bal_sheet.lines_, bal_sheet.values_);
         if (bal_sheet.values_.empty())
         {
             throw ExtractException("Can't find values in balance sheet. " + output_file_name.string());
