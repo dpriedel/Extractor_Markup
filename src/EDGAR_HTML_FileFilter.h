@@ -49,8 +49,6 @@
 #include "ExtractEDGAR_Utils.h"
 #include "AnchorsFromHTML.h"
 
-#include "gq/Node.h"
-
 using sview = std::string_view;
 
 // HTML content related functions
@@ -66,13 +64,12 @@ struct FileHasHTML
 struct BalanceSheet
 {
     AnchorData the_anchor_;
-    std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
     bool is_valid_;
 
-    inline bool empty() const { return the_data_.empty(); }
+    inline bool empty() const { return parsed_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
     bool ValidateContent();
@@ -81,13 +78,12 @@ struct BalanceSheet
 struct StatementOfOperations
 {
     AnchorData the_anchor_;
-    std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
     bool is_valid_;
 
-    inline bool empty() const { return the_data_.empty(); }
+    inline bool empty() const { return parsed_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
     bool ValidateContent();
@@ -96,13 +92,12 @@ struct StatementOfOperations
 struct CashFlows
 {
     AnchorData the_anchor_;
-    std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
     bool is_valid_;
 
-    inline bool empty() const { return the_data_.empty(); }
+    inline bool empty() const { return parsed_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
     bool ValidateContent();
@@ -111,13 +106,12 @@ struct CashFlows
 struct StockholdersEquity
 {
     AnchorData the_anchor_;
-    std::string the_data_;
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
     bool is_valid_;
 
-    inline bool empty() const { return the_data_.empty(); }
+    inline bool empty() const { return parsed_data_.empty(); }
     inline bool has_anchor() const { return ! the_anchor_.anchor_content_.empty(); }
 
     bool ValidateContent();
@@ -144,7 +138,7 @@ struct FinancialStatements
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
 
-void CollectStatementValues (std::vector<sview>& lines, EE::EDGAR_Values& values);
+EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines);
 
 struct MultiplierData
 {
@@ -205,11 +199,5 @@ FinancialStatements ExtractFinancialStatements(sview financial_content);
 FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_content);
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
-
-std::string CollectTableContent(const std::string& html);
-
-std::string ExtractTextDataFromTable (CNode& a_table);
-
-std::string FilterFoundHTML (const std::string& new_row_data);
 
 #endif

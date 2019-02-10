@@ -299,41 +299,41 @@ std::string CollectFinancialStatementContent (sview document_content)
         return {};
     }
     std::string table_data;
-    table_data.reserve(START_WITH);
-    CDocument the_filing;
-    the_filing.parse(std::string{html});
-    CSelection all_tables = the_filing.find("table");
-
-    // loop through all tables in the document.
-
-    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
-    {
-        CNode a_table = all_tables.nodeAt(indx);
-
-        // now, for each table, see if table has financial statement content
-
-        bool use_this_table{false};
-
-        CSelection all_anchors = a_table.find("a");
-        if (all_anchors.nodeNum())
-        {
-            for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
-            {
-                CNode an_anchor = all_anchors.nodeAt(indx);
-
-                if (an_anchor.text() == "Table of Contents")
-                {
-                    use_this_table = true;
-                    break;
-                }
-            }
-        }
-        if (use_this_table)
-        {
-            table_data += ExtractTextDataFromTable(a_table);
-        }
-    }
-    std::cout << table_data.size() << '\n';
+//    table_data.reserve(START_WITH);
+//    CDocument the_filing;
+//    the_filing.parse(std::string{html});
+//    CSelection all_tables = the_filing.find("table");
+//
+//    // loop through all tables in the document.
+//
+//    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
+//    {
+//        CNode a_table = all_tables.nodeAt(indx);
+//
+//        // now, for each table, see if table has financial statement content
+//
+//        bool use_this_table{false};
+//
+//        CSelection all_anchors = a_table.find("a");
+//        if (all_anchors.nodeNum())
+//        {
+//            for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+//            {
+//                CNode an_anchor = all_anchors.nodeAt(indx);
+//
+//                if (an_anchor.text() == "Table of Contents")
+//                {
+//                    use_this_table = true;
+//                    break;
+//                }
+//            }
+//        }
+//        if (use_this_table)
+//        {
+//            table_data += ExtractTextDataFromTable(a_table);
+//        }
+//    }
+//    std::cout << table_data.size() << '\n';
     return table_data;
 }		/* -----  end of function CollectFinancialStatementContent  ----- */
 
@@ -562,7 +562,7 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
         std::cout.write(financial_statements.statement_of_operations_.parsed_data_.data(), 500);
         std::cout << "\n\nShareholder Equity\n";
         std::cout.write(financial_statements.stockholders_equity_.parsed_data_.data(), std::min(500UL,
-                   financial_statements.stockholders_equity_.the_data_.size()));
+                   financial_statements.stockholders_equity_.parsed_data_.size()));
 
         throw ExtractException("Can't find financial_statements. " + output_file_name.string());
     }
@@ -587,11 +587,10 @@ void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_dire
     if (balance_sheet != tables.end())
     {
         BalanceSheet bal_sheet;
-        bal_sheet.the_data_ = balance_sheet.to_sview();
-        bal_sheet.parsed_data_ = CollectTableContent(bal_sheet.the_data_);
+        bal_sheet.parsed_data_ = *balance_sheet;
         bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
         WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
-        CollectStatementValues(bal_sheet.lines_, bal_sheet.values_);
+        bal_sheet.values_ = CollectStatementValues(bal_sheet.lines_);
         if (bal_sheet.values_.empty())
         {
             throw ExtractException("Can't find values in balance sheet. " + output_file_name.string());

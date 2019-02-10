@@ -44,17 +44,11 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
-// gumbo-query
-
-#include "gq/Document.h"
-#include "gq/Selection.h"
-
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
 
 static const char* NONE = "none";
-static int START_WITH = 5000;
 
 // NOTE: position of '-' in regex is important
 
@@ -96,24 +90,20 @@ std::vector<sview> Find_HTML_Documents (sview file_content)
 
 void FinancialStatements::PrepareTableContent ()
 {
-    if (! balance_sheet_.the_data_.empty())
+    if (! balance_sheet_.empty())
     {
-        balance_sheet_.parsed_data_ = CollectTableContent(balance_sheet_.the_data_);
         balance_sheet_.lines_ = split_string(balance_sheet_.parsed_data_, '\n');
     }
-    if (! statement_of_operations_.the_data_.empty())
+    if (! statement_of_operations_.empty())
     {
-        statement_of_operations_.parsed_data_ = CollectTableContent(statement_of_operations_.the_data_);
         statement_of_operations_.lines_ = split_string(statement_of_operations_.parsed_data_, '\n');
     }
-    if (! cash_flows_.the_data_.empty())
+    if (! cash_flows_.empty())
     {
-        cash_flows_.parsed_data_ = CollectTableContent(cash_flows_.the_data_);
         cash_flows_.lines_ = split_string(cash_flows_.parsed_data_, '\n');
     }
-    if (! stockholders_equity_.the_data_.empty())
+    if (! stockholders_equity_.empty())
     {
-        stockholders_equity_.parsed_data_ = CollectTableContent(stockholders_equity_.the_data_);
         stockholders_equity_.lines_ = split_string(stockholders_equity_.parsed_data_, '\n');
     }
 }		/* -----  end of method FinancialStatements::PrepareTableContent  ----- */
@@ -133,20 +123,20 @@ bool FinancialDocumentFilter (sview html)
 {
     static const boost::regex regex_finance_statements{R"***(financial.+?statements)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_operations{R"***((?:state.*?of.*?oper)|(?:state.*?of.*?loss)|(?:state.*?of.*?income))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_cash_flow{R"***(state.*?of.*?cash flow)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
     if (boost::regex_search(html.cbegin(), html.cend(), regex_finance_statements))
     {
-        try
+        if (boost::regex_search(html.cbegin(), html.cend(), regex_operations))
         {
-            TablesFromHTML tables{html};
-            auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
-
-            return (balance_sheet != tables.end());
+            if (boost::regex_search(html.cbegin(), html.cend(), regex_cash_flow))
+            {
+                return true;
+            }
         }
-        catch (std::exception& e)
-        {
-            std::cout << "Fincancial document filter/balance sheet filter failed: " << e.what() << '\n';
-        } 
     }
     return false;
 }		/* -----  end of function FinancialDocumentFilter  ----- */
@@ -415,11 +405,11 @@ bool BalanceSheetFilter(sview table)
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
-    static const boost::regex assets{R"***((?:current|total).+?asset)***",
+    static const boost::regex assets{R"***((?:current|total)[^\t]+?asset[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex liabilities{R"***((?:current|total).+?liabilities)***",
+    static const boost::regex liabilities{R"***((?:current|total)[^\t]+?liabilities[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((?:holders. (?:equity|defici))|(?:common.+?share)|(?:common.+?stock))***",
+    static const boost::regex equity{R"***((?:holders[^\t]+?(?:equity|defici))|(?:common[^\t]+?share)|(?:common[^\t]+?stock)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -430,7 +420,6 @@ bool BalanceSheetFilter(sview table)
     }
     if (! boost::regex_search(table.cbegin(), table.cend(), liabilities, boost::regex_constants::match_not_dot_newline))
     {
-        auto parsed_data = CollectTableContent(std::string{table});
         return false;
     }
     if (! boost::regex_search(table.cbegin(), table.cend(), equity, boost::regex_constants::match_not_dot_newline))
@@ -445,21 +434,21 @@ bool BalanceSheetFilter(sview table)
 
     // this is a lot of extra work but go with it for now....
 
-    auto parsed_data = CollectTableContent(std::string{table});
-    static const boost::regex assets_p{R"***(^(?:current|total)[^\t]+?asset[^\t]*\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), assets_p, boost::regex_constants::match_not_dot_newline))
-    {
-        return false;
-    }
-
+//    auto parsed_data = CollectTableContent(std::string{table});
+//    static const boost::regex assets_p{R"***(^(?:current|total)[^\t]+?asset[^\t]*\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), assets_p, boost::regex_constants::match_not_dot_newline))
+//    {
+//        return false;
+//    }
+//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
-    auto lines = split_string(parsed_data, '\n');
+    auto lines = split_string(table, '\n');
     for (auto line : lines)
     {
-        if (boost::regex_search(line.cbegin(), line.cend(), assets_p))
+        if (boost::regex_search(line.cbegin(), line.cend(), assets))
         {
             if (line.size() < 150)
             {
@@ -481,15 +470,15 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***((?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss))***",
+    static const boost::regex income{R"***((?:(?:total|other|net)[^\t]*?(?:income|revenue|sales))|(?:operat[^\t]*?loss)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((?:operat|total|general).*?(?:expense|costs|loss|admin))***",
+    const boost::regex expenses{R"***((?:operat|total|general)[^\t]*?(?:expense|costs|loss|admin)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex net_income{R"***((?:net.*?gain)|(?:net.*?loss)|(?:net.*income))***",
+    static const boost::regex net_income{R"***((?:net[^\t]*?gain)|(?:net[^\t]*?loss)|(?:net[^\t]*income)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex shares_outstanding{R"***((?:share.*outstanding)|(?:per share)|(?:number.*?share))***",
+    static const boost::regex shares_outstanding{R"***((?:share[^\t]*outstanding)|(?:per share)|(?:number[^\t]*?share)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     if (! boost::regex_search(table.cbegin(), table.cend(), income, boost::regex_constants::match_not_dot_newline))
@@ -517,21 +506,21 @@ bool StatementOfOperationsFilter(sview table)
 
     // this is a lot of extra work but go with it for now....
 
-    auto parsed_data = CollectTableContent(std::string{table});
-    static const boost::regex income_p{R"***(^.*?(?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss)[^\t]*\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), income_p, boost::regex_constants::match_not_dot_newline))
-    {
-        return false;
-    }
-
+//    auto parsed_data = CollectTableContent(std::string{table});
+//    static const boost::regex income_p{R"***(^.*?(?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss)[^\t]*\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), income_p, boost::regex_constants::match_not_dot_newline))
+//    {
+//        return false;
+//    }
+//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
-    auto lines = split_string(parsed_data, '\n');
+    auto lines = split_string(table, '\n');
     for (auto line : lines)
     {
-        if (boost::regex_search(line.cbegin(), line.cend(), income_p))
+        if (boost::regex_search(line.cbegin(), line.cend(), income))
         {
             if (line.size() < 150)
             {
@@ -553,11 +542,11 @@ bool CashFlowsFilter(sview table)
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
 
-    static const boost::regex operating{R"***(operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating))***",
+    static const boost::regex operating{R"***(operating activities|(?:cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?operating)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?investing)***",
+    static const boost::regex investing{R"***(cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?investing[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex financing{R"***(financing activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?financing))***",
+    static const boost::regex financing{R"***(financing activities|(?:cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?financing)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -582,21 +571,21 @@ bool CashFlowsFilter(sview table)
 
     // this is a lot of extra work but go with it for now....
 
-    auto parsed_data = CollectTableContent(std::string{table});
-    static const boost::regex operating_p{R"***(^operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating)[^\t]*\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), operating_p, boost::regex_constants::match_not_dot_newline))
-    {
-        return false;
-    }
-
+//    auto parsed_data = CollectTableContent(std::string{table});
+//    static const boost::regex operating_p{R"***(^operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating)[^\t]*\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), operating_p, boost::regex_constants::match_not_dot_newline))
+//    {
+//        return false;
+//    }
+//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
-    auto lines = split_string(parsed_data, '\n');
+    auto lines = split_string(table, '\n');
     for (auto line : lines)
     {
-        if (boost::regex_search(line.cbegin(), line.cend(), operating_p))
+        if (boost::regex_search(line.cbegin(), line.cend(), operating))
         {
             if (line.size() < 150)
             {
@@ -652,25 +641,51 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
-    auto financial_document = FindFinancialContentUsingAnchors(file_content);
-    if (! financial_document.empty())
+    // we need to do this manually since the first hit we get
+    // may not be the actual content we want.
+
+    HTML_FromFile htmls{file_content};
+
+    auto look_for_top_level([] (auto html)
     {
-        auto financial_statements = ExtractFinancialStatementsUsingAnchors(financial_document);
-        if (financial_statements.has_data())
+        try
         {
-            financial_statements.PrepareTableContent();
-            return financial_statements;
+            AnchorsFromHTML anchors(html);
+            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
+            return financial_anchor != anchors.end();
+        }
+        catch(const std::domain_error& e)
+        {
+            std::cerr << "Problem with an anchor: " << e.what() << '\n';
+            return false;
+        }
+    });
+
+    for (auto html : htmls)
+    {
+        if (look_for_top_level(html))
+        {
+            auto financial_statements = ExtractFinancialStatementsUsingAnchors(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.PrepareTableContent();
+                return financial_statements;
+            }
         }
     }
 
-    financial_document = FindFinancialDocument(file_content);
-    if (! financial_document.empty())
+    // OK, we didn't have any success following anchors so do it the long way.
+
+    for (auto html : htmls)
     {
-        auto financial_statements = ExtractFinancialStatements(financial_document);
-        if (financial_statements.has_data())
+        if (FinancialDocumentFilter(html))
         {
-            financial_statements.PrepareTableContent();
-            return financial_statements;
+            auto financial_statements = ExtractFinancialStatements(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.PrepareTableContent();
+                return financial_statements;
+            }
         }
     }
     return {};
@@ -693,19 +708,19 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
     FinancialStatements the_tables;
     if (balance_sheet != tables.end())
     {
-        the_tables.balance_sheet_.the_data_ = *balance_sheet;
+        the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
     }
     if (statement_of_ops != tables.end())
     {
-        the_tables.statement_of_operations_.the_data_ = *statement_of_ops;
+        the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops;
     }
     if (cash_flows != tables.end())
     {
-        the_tables.cash_flows_.the_data_ = *cash_flows;
+        the_tables.cash_flows_.parsed_data_ = *cash_flows;
     }
     if (stockholders_equity != tables.end())
     {
-        the_tables.stockholders_equity_.the_data_ = *stockholders_equity;
+        the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
     }
 
     return the_tables;
@@ -738,7 +753,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
             if (balance_sheet != tables.end())
             {
-                the_tables.balance_sheet_.the_data_ = *balance_sheet;
+                the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
             }
         }
     }
@@ -756,7 +771,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             auto statement_of_ops  = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
             if (statement_of_ops  != tables.end())
             {
-                the_tables.statement_of_operations_.the_data_ = *statement_of_ops ;
+                the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops ;
             }
         }
     }
@@ -774,7 +789,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
             if (cash_flows != tables.end())
             {
-                the_tables.cash_flows_.the_data_ = *cash_flows;
+                the_tables.cash_flows_.parsed_data_ = *cash_flows;
             }
         }
     }
@@ -792,7 +807,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
             if (stockholders_equity != tables.end())
             {
-                the_tables.stockholders_equity_.the_data_ = *stockholders_equity;
+                the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
             }
         }
     }
@@ -825,162 +840,30 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
     }
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
-
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  CollectTableContent
- *  Description:
- * =====================================================================================
- */
-std::string CollectTableContent (const std::string& a_table)
-{
-    static const boost::regex regex_bogus_em_dash{R"***(&#151;)***"};
-    static const boost::regex regex_real_em_dash{R"***(&#8212;)***"};
-    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-    static const boost::regex regex_space_tab{R"***( \t)***"};
-    static const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
-    static const boost::regex regex_tabs_spaces{R"***(\t[ \t]+)***"};
-    static const boost::regex regex_dollar_tab{R"***(\$\t)***"};
-    static const boost::regex regex_leading_tab{R"***(^\t)***"};
-
-    const std::string pseudo_em_dash = "---";
-
-    // let's try this...
-
-    std::string temp = boost::regex_replace(a_table, regex_bogus_em_dash, pseudo_em_dash);
-    temp = boost::regex_replace(temp, regex_real_em_dash, pseudo_em_dash);
-
-    std::string table_data;
-    table_data.reserve(START_WITH);
-    CDocument the_filing;
-    the_filing.parse(temp);
-    CSelection all_tables = the_filing.find("table");
-
-    // loop through all tables in the html fragment
-    // (which mostly will contain just 1 table.)
-
-    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
-    {
-        // now, for each table, extract all the text
-
-        CNode a_table = all_tables.nodeAt(indx);
-        table_data += ExtractTextDataFromTable(a_table);
-    }
-
-    // after parsing, let's do a little cleanup
-
-    const std::string delete_this = "";
-    const std::string one_space = " ";
-    const std::string one_tab = R"***(\t)***";
-    const std::string just_paren = ")";
-    const std::string just_dollar = "$";
-
-    std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, delete_this);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_dollar_tab, just_dollar);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_tabs_spaces, one_tab);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_tab_before_paren, just_paren);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_space_tab, one_tab);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_leading_tab, delete_this);
-
-    return clean_table_data;
-}		/* -----  end of function CollectTableContent  ----- */
-
-
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  ExtractTextDataFromTable
- *  Description:  
- * =====================================================================================
- */
-
-std::string ExtractTextDataFromTable (CNode& a_table)
-{
-    std::string table_text;
-    table_text.reserve(START_WITH);
-
-    // now, the each table, find all rows in the table.
-
-    CSelection a_table_rows = a_table.find("tr");
-
-    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
-    {
-        CNode a_table_row = a_table_rows.nodeAt(indx);
-
-        // for each row in the table, find all the fields.
-
-        CSelection a_table_row_cells = a_table_row.find("td");
-
-        std::string new_row_data;
-        new_row_data.reserve(1000);
-        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
-        {
-            CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
-            std::string text = a_table_row_cell.text();
-            if (! text.empty())
-            {
-                new_row_data += text;
-                new_row_data += '\t';
-            }
-        }
-        auto new_data = FilterFoundHTML(new_row_data);
-        if (! new_data.empty())
-        {
-            table_text += new_data;
-            table_text += '\n';
-        }
-    }
-    if (table_text.empty())
-    {
-        throw std::domain_error("table has no HTML.");
-    }
-    table_text.shrink_to_fit();
-    return table_text;
-}		/* -----  end of function ExtractTextDataFromTable  ----- */
-
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  FilterFoundHTML
- *  Description:  Apply various filters to cut down on amount of undesired data
- * =====================================================================================
- */
-std::string FilterFoundHTML (const std::string& new_row_data)
-{
-    // at this point, I do not want any line breaks or returns from source data.
-    // (I'll add them where I want them.)
-
-    static const boost::regex regex_line_breaks{R"***([\x0a\x0d])***"};
-    const std::string delete_this = "";
-    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, delete_this);
-
-    return clean_row_data;
-}		/* -----  end of function FilterFoundHTML  ----- */
-
 void FinancialStatements::CollectValues ()
 {
     //TODO: set up iterator to return union of values from all statements.
     // instead of making a copy as done here.
 
-    if (! balance_sheet_.parsed_data_.empty())
+    if (! balance_sheet_.empty())
     {
-        CollectStatementValues(balance_sheet_.lines_, balance_sheet_.values_);
+        balance_sheet_.values_ = CollectStatementValues(balance_sheet_.lines_);
         std::copy(balance_sheet_.values_.begin(), balance_sheet_.values_.end(), std::back_inserter(values_));
     }
-    if (! statement_of_operations_.parsed_data_.empty())
+    if (! statement_of_operations_.empty())
     {
-        CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.values_);
+        statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_);
         std::copy(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
                 std::back_inserter(values_));
     }
-    if (! cash_flows_.parsed_data_.empty())
+    if (! cash_flows_.empty())
     {
-        CollectStatementValues(cash_flows_.lines_, cash_flows_.values_);
+        cash_flows_.values_ = CollectStatementValues(cash_flows_.lines_);
         std::copy(cash_flows_.values_.begin(), cash_flows_.values_.end(), std::back_inserter(values_));
     }
-    if (! stockholders_equity_.parsed_data_.empty())
+    if (! stockholders_equity_.empty())
     {
-        CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.values_);
+        stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_);
         std::copy(stockholders_equity_.values_.begin(), stockholders_equity_.values_.end(), std::back_inserter(values_));
     }
 }		/* -----  end of method FinancialStatements::CollectValues  ----- */
@@ -991,11 +874,13 @@ void FinancialStatements::CollectValues ()
  *  Description:  Collect name/values pair
  * =====================================================================================
  */
-void CollectStatementValues (std::vector<sview>& lines, EE::EDGAR_Values& values)
+EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
     
+    EE::EDGAR_Values values;
+
     std::for_each(
             lines.begin(),
             lines.end(),
@@ -1009,6 +894,7 @@ void CollectStatementValues (std::vector<sview>& lines, EE::EDGAR_Values& values
                 }
             }
         );
+    return values;
 }		/* -----  end of method CollectValues  ----- */
 
 bool BalanceSheet::ValidateContent ()

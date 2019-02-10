@@ -44,6 +44,8 @@ using sview = std::string_view;
 
 #include <boost/regex.hpp>
 
+class CNode;
+
 /*
  * =====================================================================================
  *        Class:  TablesFromHTML
@@ -56,7 +58,7 @@ public:
 
     class table_itor: public std::iterator<
                     std::forward_iterator_tag,      // iterator_category
-                    sview                           // value_type
+                    std::string                     // value_type
                     >
     {
         const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
@@ -64,8 +66,33 @@ public:
         boost::cregex_token_iterator doc_;
         boost::cregex_token_iterator end_;
 
+        // used to clean up the data
+
+        const boost::regex regex_bogus_em_dash{R"***(&#151;)***"};
+        const boost::regex regex_real_em_dash{R"***(&#8212;)***"};
+        const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+        const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+        const boost::regex regex_space_tab{R"***( \t)***"};
+        const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
+        const boost::regex regex_tabs_spaces{R"***(\t[ \t]+)***"};
+        const boost::regex regex_dollar_tab{R"***(\$\t)***"};
+        const boost::regex regex_leading_tab{R"***(^\t)***"};
+
+        const std::string pseudo_em_dash = "---";
+        const std::string delete_this = "";
+        const std::string one_space = " ";
+        const std::string one_tab = R"***(\t)***";
+        const std::string just_paren = ")";
+        const std::string just_dollar = "$";
+
+
         sview html_;
         mutable sview current_table_;
+        mutable std::string table_content_;
+
+        std::string CollectTableContent(sview html);
+        std::string ExtractTextDataFromTable (CNode& a_table);
+        std::string FilterFoundHTML (const std::string& new_row_data);
 
     public:
 
@@ -78,18 +105,18 @@ public:
         bool operator==(table_itor other) const { return doc_ == other.doc_; }
         bool operator!=(table_itor other) const { return !(*this == other); }
 
-        reference operator*() const { return current_table_; };
-        pointer operator->() const { return &current_table_; }
+        reference operator*() const { return table_content_; };
+        pointer operator->() const { return &table_content_; }
 
         sview to_sview() const { return current_table_; }
         bool TableHasMarkup (sview table);
     };
 
-      typedef sview					value_type;
+      typedef std::string       					value_type;
       typedef typename table_itor::pointer			pointer;
-      typedef typename table_itor::pointer	const_pointer;
+      typedef typename table_itor::pointer      	const_pointer;
       typedef typename table_itor::reference		reference;
-      typedef typename table_itor::reference	const_reference;
+      typedef typename table_itor::reference	    const_reference;
       typedef table_itor                          iterator;
       typedef table_itor                    const_iterator;
       typedef size_t					size_type;
