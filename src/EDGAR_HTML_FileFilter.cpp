@@ -700,27 +700,27 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
 {
     TablesFromHTML tables{financial_content};
 
-    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
-    auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
-    auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
-    auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
-
     FinancialStatements the_tables;
+
+    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
     if (balance_sheet != tables.end())
     {
         the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
-    }
-    if (statement_of_ops != tables.end())
-    {
-        the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops;
-    }
-    if (cash_flows != tables.end())
-    {
-        the_tables.cash_flows_.parsed_data_ = *cash_flows;
-    }
-    if (stockholders_equity != tables.end())
-    {
-        the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
+        auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
+        if (statement_of_ops != tables.end())
+        {
+            the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops;
+            auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
+            if (cash_flows != tables.end())
+            {
+                the_tables.cash_flows_.parsed_data_ = *cash_flows;
+                auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
+                if (stockholders_equity != tables.end())
+                {
+                    the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
+                }
+            }
+        }
     }
 
     return the_tables;
@@ -757,6 +757,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             }
         }
     }
+    else
+    {
+        return the_tables;
+    }
 
     auto stmt_of_ops_href = std::find_if(anchors.begin(), anchors.end(), StatementOfOperationsAnchorFilter);
     if (stmt_of_ops_href != anchors.end())
@@ -775,6 +779,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             }
         }
     }
+    else
+    {
+        return the_tables;
+    }
 
     auto cash_flows_href = std::find_if(anchors.begin(), anchors.end(), CashFlowsAnchorFilter);
     if (cash_flows_href != anchors.end())
@@ -792,6 +800,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
                 the_tables.cash_flows_.parsed_data_ = *cash_flows;
             }
         }
+    }
+    else
+    {
+        return the_tables;
     }
 
     auto sholder_equity_href = std::find_if(anchors.begin(), anchors.end(), StockholdersEquityAnchorFilter);
