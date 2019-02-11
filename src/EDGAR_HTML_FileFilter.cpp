@@ -121,11 +121,11 @@ bool FinancialStatements::ValidateContent ()
  */
 bool FinancialDocumentFilter (sview html)
 {
-    static const boost::regex regex_finance_statements{R"***(financial.+?statements)***",
+    static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_operations{R"***((?:state.*?of.*?oper)|(?:state.*?of.*?loss)|(?:state.*?of.*?income))***",
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_cash_flow{R"***(state.*?of.*?cash flow)***",
+    static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     if (boost::regex_search(html.cbegin(), html.cend(), regex_finance_statements))
@@ -166,7 +166,7 @@ sview FindFinancialDocument (sview file_content)
  */
 bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor)
 {
-    static const boost::regex regex_finance_statements{R"***(<a.*?financial\s+?statements.*?</a)***",
+    static const boost::regex regex_finance_statements{R"***(<a.*?financ.+?statement.*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -190,7 +190,7 @@ bool BalanceSheetAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_balance_sheet{R"***(balance sheet)***",
+    static const boost::regex regex_balance_sheet{R"***(balance\s+sheet)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -216,7 +216,7 @@ bool StatementOfOperationsAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_operations{R"***((?:state.*?of.*?oper)|(?:state.*?of.*?loss))***",
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -242,7 +242,7 @@ bool CashFlowsAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_cash_flow{R"***(cash flow)***",
+    static const boost::regex regex_cash_flow{R"***(cash\s+flow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -474,7 +474,7 @@ bool StatementOfOperationsFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((?:operat|total|general)[^\t]*?(?:expense|costs|loss|admin)[^\t]*\t)***",
+    const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***((?:net[^\t]*?gain)|(?:net[^\t]*?loss)|(?:net[^\t]*income)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -755,6 +755,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             {
                 the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
             }
+            else
+            {
+                return the_tables;
+            }
         }
     }
     else
@@ -776,6 +780,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             if (statement_of_ops  != tables.end())
             {
                 the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops ;
+            }
+            else
+            {
+                return the_tables;
             }
         }
     }
@@ -799,6 +807,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             {
                 the_tables.cash_flows_.parsed_data_ = *cash_flows;
             }
+            else
+            {
+                return the_tables;
+            }
         }
     }
     else
@@ -820,6 +832,10 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
             if (stockholders_equity != tables.end())
             {
                 the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
+            }
+            else
+            {
+                return the_tables;
             }
         }
     }

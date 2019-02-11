@@ -82,21 +82,15 @@ TablesFromHTML::table_itor::table_itor(sview html)
     if (doc_ != end_)
     {
         current_table_ = sview(doc_->first, doc_->length());
-        if (TableHasMarkup(current_table_))
+        try
         {
-            try
-            {
-                table_content_ = CollectTableContent(current_table_);
-            }
-            catch (std::domain_error& e)
-            {
-                // let's just keep going
-
-                operator++();
-            }
+            BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
+            table_content_ = CollectTableContent(current_table_);
         }
-        else
+        catch (std::logic_error& e)
         {
+            // let's ignore it and continue.
+
             operator++();
         }
     }
@@ -110,19 +104,17 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
         if (++doc_ != end_)
         {
             current_table_ = sview(doc_->first, doc_->length());
-            if (TableHasMarkup(current_table_))
+            try
             {
-                try
-                {
-                    table_content_ = CollectTableContent(current_table_);
-                    done = true;
-                }
-                catch (std::domain_error& e)
-                {
-                    // let's ignore it and continue.
+                BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
+                table_content_ = CollectTableContent(current_table_);
+                done = true;
+            }
+            catch (std::logic_error& e)
+            {
+                // let's ignore it and continue.
 
-                    continue;
-                }
+                continue;
             }
         }
         else

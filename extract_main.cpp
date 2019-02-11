@@ -111,6 +111,17 @@ int main(int argc, const char* argv[])
                     std::visit([document, &use_file, &output_directory](auto &&x)
                         {x.UseExtractor(document, output_directory, use_file.value());}, e);
                 }
+                catch(std::runtime_error& ex)
+                {
+                    if (std::string{ex.what()}.find("predefined") != std::string::npos)
+                    {
+                       std::cout << "\n***Exception error \n";
+                    }
+                    else
+                    {
+                        std::cerr << ex.what() << '\n';
+                    }
+                }
                 catch(std::exception& ex)
                 {
                     std::cerr << ex.what() << '\n';
