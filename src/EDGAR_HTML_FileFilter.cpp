@@ -216,7 +216,7 @@ bool StatementOfOperationsAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income))***",
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -409,7 +409,7 @@ bool BalanceSheetFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex liabilities{R"***((?:current|total)[^\t]+?liabilities[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex equity{R"***((?:holders[^\t]+?(?:equity|defici))|(?:common[^\t]+?share)|(?:common[^\t]+?stock)[^\t]*\t)***",
+    static const boost::regex equity{R"***((?:(?:members|holders)[^\t]+?(?:equity|defici))|(?:common[^\t]+?share)|(?:common[^\t]+?stock)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     // at this point, I'm only interested in internal hrefs.
@@ -470,15 +470,15 @@ bool StatementOfOperationsFilter(sview table)
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
 
-    static const boost::regex income{R"***((?:(?:total|other|net)[^\t]*?(?:income|revenue|sales))|(?:operat[^\t]*?loss)[^\t]*\t)***",
+    static const boost::regex income{R"***((?:total|other|net|operat)[^\t]*?(?:income|revenue|sales|loss)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin)[^\t]*\t)***",
+    const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex net_income{R"***((?:net[^\t]*?gain)|(?:net[^\t]*?loss)|(?:net[^\t]*income)[^\t]*\t)***",
+    static const boost::regex net_income{R"***(net[^\t]*?(?:gain|loss|income|earning)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex shares_outstanding{R"***((?:share[^\t]*outstanding)|(?:per share)|(?:number[^\t]*?share)[^\t]*\t)***",
+    static const boost::regex shares_outstanding{R"***((?:member[^\t]+?interest)|(?:share[^\t]*outstanding)|(?:per[^\t]+?share)|(?:number[^\t]*?share)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     if (! boost::regex_search(table.cbegin(), table.cend(), income, boost::regex_constants::match_not_dot_newline))
@@ -644,6 +644,8 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     // we need to do this manually since the first hit we get
     // may not be the actual content we want.
 
+    FinancialStatements financial_statements;
+
     HTML_FromFile htmls{file_content};
 
     auto look_for_top_level([] (auto html)
@@ -665,7 +667,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     {
         if (look_for_top_level(html))
         {
-            auto financial_statements = ExtractFinancialStatementsUsingAnchors(html);
+            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
             if (financial_statements.has_data())
             {
                 financial_statements.PrepareTableContent();
@@ -680,7 +682,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     {
         if (FinancialDocumentFilter(html))
         {
-            auto financial_statements = ExtractFinancialStatements(html);
+            financial_statements = ExtractFinancialStatements(html);
             if (financial_statements.has_data())
             {
                 financial_statements.PrepareTableContent();
@@ -688,7 +690,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             }
         }
     }
-    return {};
+    return financial_statements;
 }		/* -----  end of function FindFinancialStatements  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
