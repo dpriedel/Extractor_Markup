@@ -39,6 +39,7 @@
 
 #include "ExtractEDGAR_XBRLApp.h"
 
+#include <map>
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
@@ -52,6 +53,7 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <vector>
 // #include <parallel/algorithm>
 // #include <streambuf>
 
@@ -60,6 +62,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/basic_file_sink.h"
 
 #include <pqxx/pqxx>
 
@@ -188,44 +191,34 @@ ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (const std::vector<std::string>& toke
 
 void ExtractEDGAR_XBRLApp::ConfigureLogging()
 {
-//    loadConfiguration(); // load default configuration files, if present
-//    Application::initialize(self);
-//    // add your own initialization code here
-//
-//    if (! log_file_path_name_.empty())
-//    {
-//        logger_file_ = new Poco::SimpleFileChannel;
-//        logger_file_->setProperty("path", log_file_path_name_.string());
-//        logger_file_->setProperty("rotation", "2 M");
-//    }
-//    else
-//    {
-//        logger_file_ = new Poco::ConsoleChannel;
-//    }
-//
-//    decltype(auto) the_logger = Poco::Logger::root();
-//    the_logger.setChannel(logger_file_);
-//    the_logger.setLevel(logging_level_);
-//
-//    setLogger(the_logger);
-//
-//    the_logger.information("Command line:");
-//    std::ostringstream ostr;
-//    for (const auto& it : argv())
-//    {
-//        ostr << it << ' ';
-//    }
-//    the_logger.information(ostr.str());
-//    the_logger.information("Arguments to main():");
-//    auto args = argv();
-//    for (const auto& it : argv())
-//    {
-//        the_logger.information(it);
-//    }
-//    the_logger.information("Application properties:");
-//    printProperties("");
-//
-//    // set log level here since options will have been parsed before we get here.
+    // we need to set log level if specified and also log file.
+
+    // we are running before 'CheckArgs' so we need to do a little editiing ourselves.
+
+    std::map<std::string, spdlog::level::level_enum> levels{
+        {"none", spdlog::level::off},
+        {"error", spdlog::level::err},
+        {"information", spdlog::level::info},
+        {"debug", spdlog::level::debug}
+    };
+
+    auto which_level = levels.find(logging_level_);
+    if (which_level != levels.end())
+    {
+        spdlog::set_level(which_level->second);
+    }
+
+    if (! log_file_path_name_.empty())
+    {
+        fs::path log_dir = log_file_path_name_.parent_path();
+        if (! fs::exists(log_dir))
+        {
+            fs::create_directories(log_dir);
+        }
+
+        auto file_logger = spdlog::basic_logger_mt("filelogger", log_file_path_name_.c_str());
+        spdlog::set_default_logger(file_logger);
+    }
 }
 
 bool ExtractEDGAR_XBRLApp::Startup()
@@ -240,10 +233,21 @@ bool ExtractEDGAR_XBRLApp::Startup()
             ParseProgramOptions();
         else
             ParseProgramOptions(tokens_);
+        ConfigureLogging();
 		result = CheckArgs ();
 	}
+	catch(std::exception& e)
+	{
+        spdlog::error(catenate("Problem in startup: ", e.what(), '\n'));
+		//	we're outta here!
+
+		this->Shutdown();
+        result = false;
+    }
 	catch(...)
 	{
+        spdlog::error("Unexpectd problem during Starup processing\n");
+
 		//	we're outta here!
 
 		this->Shutdown();
@@ -863,6 +867,11 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
         {
             spdlog::error(catenate("Database error: ", e.what()));
             spdlog::error(catenate("Query was: ", e.query()));
+            ++error_counter;
+        }
+        catch(const std::exception& e)
+        {
+            spdlog::error(e.what());
             ++error_counter;
         }
     }
