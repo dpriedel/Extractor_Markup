@@ -50,19 +50,99 @@ namespace fs = std::filesystem;
 
 using namespace std::string_literals;
 
-ExtractException::ExtractException(const char* text)
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  EDGARException
+ *      Method:  EDGARException
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+EDGARException::EDGARException(const char* text)
     : std::runtime_error(text)
 {
+}  /* -----  end of method EDGARException::EDGARException  (constructor)  ----- */
 
-}
-
-ExtractException::ExtractException(const std::string& text)
+EDGARException::EDGARException(const std::string& text)
     : std::runtime_error(text)
 {
+}  /* -----  end of method EDGARException::EDGARException  (constructor)  ----- */
 
-}
 
-std::string LoadDataFileForUse(const char* file_name)
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  AssertionException
+ *      Method:  AssertionException
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+AssertionException::AssertionException(const char* text)
+    : std::invalid_argument(text)
+{
+}  /* -----  end of method AssertionException::AssertionException  (constructor)  ----- */
+
+AssertionException::AssertionException(const std::string& text)
+    : std::invalid_argument(text)
+{
+}  /* -----  end of method AssertionException::AssertionException  (constructor)  ----- */
+
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  XBRLException
+ *      Method:  XBRLException
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+XBRLException::XBRLException(const char* text)
+    : EDGARException(text)
+{
+}  /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
+
+XBRLException::XBRLException(const std::string& text)
+    : EDGARException(text)
+{
+}  /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
+
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  HTMLException
+ *      Method:  HTMLException
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+HTMLException::HTMLException(const char* text)
+    : EDGARException(text)
+{
+}  /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
+
+HTMLException::HTMLException(const std::string& text)
+    : EDGARException(text)
+{
+}  /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
+
+/*
+ *--------------------------------------------------------------------------------------
+ *       Class:  MaxFilesException
+ *      Method:  MaxFilesException
+ * Description:  constructor
+ *--------------------------------------------------------------------------------------
+ */
+MaxFilesException::MaxFilesException(const char* text)
+    : std::range_error(text)
+{
+}  /* -----  end of method MaxFilesException::MaxFilesException  (constructor)  ----- */
+
+MaxFilesException::MaxFilesException(const std::string& text)
+    : std::range_error(text)
+{
+}  /* -----  end of method MaxFilesException::MaxFilesException  (constructor)  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  LoadDataFileForUse
+ *  Description:  
+ * =====================================================================================
+ */
+std::string LoadDataFileForUse (const char* file_name)
 {
     std::string file_content(fs::file_size(file_name), '\0');
     std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
@@ -70,8 +150,14 @@ std::string LoadDataFileForUse(const char* file_name)
     input_file.close();
     
     return file_content;
-}
+}		/* -----  end of function LoadDataFileForUse  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  LocateDocumentSections
+ *  Description:  
+ * =====================================================================================
+ */
 std::vector<sview> LocateDocumentSections(sview file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
@@ -84,8 +170,14 @@ std::vector<sview> LocateDocumentSections(sview file_content)
     }
 
     return result;
-}
+}		/* -----  end of function LocateDocumentSections  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFileName
+ *  Description:  
+ * =====================================================================================
+ */
 sview FindFileName(sview document)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
@@ -97,9 +189,15 @@ sview FindFileName(sview document)
         const sview file_name(matches[1].first, matches[1].length());
         return file_name;
     }
-    throw ExtractException("Can't find file name in document.\n");
-}
+    throw EDGARException("Can't find file name in document.\n");
+}		/* -----  end of function FindFileName  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FindFileType
+ *  Description:  
+ * =====================================================================================
+ */
 sview FindFileType(sview document)
 {
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
@@ -111,8 +209,8 @@ sview FindFileType(sview document)
         const sview file_type(matches[1].first, matches[1].length());
         return file_type;
     }
-    throw ExtractException("Can't find file type in document.\n");
-}
+    throw EDGARException("Can't find file type in document.\n");
+}		/* -----  end of function FindFileType  ----- */
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -143,7 +241,7 @@ sview FindHTML (sview document)
         }
         else
         {
-            throw std::runtime_error("Can't find end of HTML in document.\n");
+            throw HTMLException("Can't find end of HTML in document.\n");
         }
 
         return document;
@@ -177,7 +275,7 @@ namespace boost
 
     void assertion_failed_msg (char const* expr, char const* msg, char const* function, char const* file, long line)
     {
-        throw std::logic_error(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
+        throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
                     " from file: ", file, " at line: ", line, ".\nassertion msg: ", msg));
     }		/* -----  end of function assertion_failed_mgs  ----- */
 
@@ -189,7 +287,7 @@ namespace boost
      */
     void assertion_failed (char const* expr, char const* function, char const* file, long line )
     {
-        throw std::logic_error(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
+        throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
                     " from file: ", file, " at line: ", line));
     }		/* -----  end of function assertion_failed  ----- */
 }

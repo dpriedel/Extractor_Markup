@@ -34,6 +34,7 @@
 
 
 #include "TablesFromFile.h"
+#include "ExtractEDGAR_Utils.h"
 
 using namespace std::string_literals;
 
@@ -87,7 +88,13 @@ TablesFromHTML::table_itor::table_itor(sview html)
             BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
             table_content_ = CollectTableContent(current_table_);
         }
-        catch (std::logic_error& e)
+        catch (AssertionException& e)
+        {
+            // let's ignore it and continue.
+
+            operator++();
+        }
+        catch (HTMLException& e)
         {
             // let's ignore it and continue.
 
@@ -110,7 +117,13 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
                 table_content_ = CollectTableContent(current_table_);
                 done = true;
             }
-            catch (std::logic_error& e)
+            catch (AssertionException& e)
+            {
+                // let's ignore it and continue.
+
+                continue;
+            }
+            catch (HTMLException& e)
             {
                 // let's ignore it and continue.
 
@@ -214,7 +227,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
     }
     if (table_text.empty())
     {
-        throw std::domain_error("table has no HTML.");
+        throw HTMLException("table has no HTML.");
     }
     table_text.shrink_to_fit();
     return table_text;

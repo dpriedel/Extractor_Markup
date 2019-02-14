@@ -89,38 +89,6 @@ struct line_only_whitespace : std::ctype<char>
     explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
 };
 
-// let's add tuples...
-// based on code techniques from C++17 STL Cookbook zipping tuples.
-// (works for any class which supports the '+' operator)
-
-template <typename ...Ts>
-std::tuple<Ts...> AddTs(std::tuple<Ts...> const & t1, std::tuple<Ts...> const & t2)
-{
-    auto z_([] (auto ...xs)
-    {
-        return [xs ...] (auto ...ys)
-        {
-            return std::make_tuple((xs + ys) ...);
-        };
-    });
-
-    return  std::apply(std::apply(z_, t1), t2);
-}
-
-// let's sum the contents of a single tuple
-// (from C++ Templates...second edition p.58
-// and C++17 STL Cookbook.
-
-template <typename ...Ts>
-auto SumT(const std::tuple<Ts...>& t)
-{
-    auto z_([] (auto ...ys)
-    {
-        return (... + ys);
-    });
-    return std::apply(z_, t);
-}
-
 bool ExtractEDGAR_XBRLApp::had_signal_ = false;
 
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
@@ -292,7 +260,7 @@ void ExtractEDGAR_XBRLApp::ParseProgramOptions ()
 {
 	auto options = po::parse_command_line(mArgc, mArgv, mNewOptions);
 	po::store(options, mVariableMap);
-	if (this->mArgc == 0	||	mVariableMap.count("help"))
+	if (this->mArgc == 1	||	mVariableMap.count("help") == 1)
 	{
 		std::cout << mNewOptions << "\n";
 		throw std::runtime_error("\nExiting after 'help'.");
@@ -305,7 +273,7 @@ void ExtractEDGAR_XBRLApp::ParseProgramOptions (const std::vector<std::string>& 
 {
 	auto options = po::command_line_parser(tokens).options(mNewOptions).run();
 	po::store(options, mVariableMap);
-	if (mVariableMap.count("help"))
+	if (mVariableMap.count("help") == 1)
 	{
 		std::cout << mNewOptions << "\n";
 		throw std::runtime_error("\nExiting after 'help'.");
@@ -416,14 +384,10 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
     }
 
     auto pos = std::find(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), resume_at_this_filename_);
-    if (pos != std::end(list_of_files_to_process_))
-    {
-        list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
-    }
-    else
-    {
-        throw std::range_error("File: " + resume_at_this_filename_ + " not found in list of files.");
-    }
+    BOOST_ASSERT_MSG(pos != std::end(list_of_files_to_process_),
+            ("File: " + resume_at_this_filename_ + " not found in list of files.").c_str());
+
+    list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
 
     spdlog::info(catenate("Resuming with: ", list_of_files_to_process_.size(), " files in list."));
 }		/* -----  end of method ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess  ----- */
@@ -464,55 +428,36 @@ void ExtractEDGAR_XBRLApp::BuildFilterList()
 
 void ExtractEDGAR_XBRLApp::Run()
 {
-    try
+    std::tuple<int, int, int> counters;
+
+    // for now, I know this is all we are doing.
+
+    if (! single_file_to_process_.empty())
     {
-        std::tuple<int, int, int> counters;
+        counters = this->LoadSingleFileToDB(single_file_to_process_);
+    }
 
-        // for now, I know this is all we are doing.
-
-        if (! single_file_to_process_.empty())
+    if (! list_of_files_to_process_.empty())
+    {
+        if (max_at_a_time_ < 1)
         {
-            counters = this->LoadSingleFileToDB(single_file_to_process_);
+            counters = this->LoadFilesFromListToDB();
         }
-
-        if (! list_of_files_to_process_.empty())
+        else
         {
-            if (max_at_a_time_ < 1)
-            {
-                counters = this->LoadFilesFromListToDB();
-            }
-            else
-            {
-                counters = this->LoadFilesFromListToDBConcurrently();
-            }
+            counters = this->LoadFilesFromListToDBConcurrently();
         }
-
-        if (! local_form_file_directory_.empty())
-        {
-            counters = this->ProcessDirectory();
-        }
-
-        auto [success_counter, skipped_counter, error_counter] = counters;
-
-        spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ",
-                success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
     }
-    catch (std::system_error& e)
+
+    if (! local_form_file_directory_.empty())
     {
-        // any system problems, we eventually abort, but only after finishing work in process.
+        counters = this->ProcessDirectory();
+    }
 
-        auto ec = e.code();
-        spdlog::info(catenate("Category: ", ec.category().name(), ". Value: ", ec.value(),
-                ". Message: ", ec.message()));
-    }
-    catch (std::exception& e)
-    {
-        std::cout << "Problem collecting files: " << e.what() << '\n';
-    }
-    catch (...)
-    {
-        std::cout << "Unknown problem collecting files." << '\n';
-    }
+    auto [success_counter, skipped_counter, error_counter] = counters;
+
+    spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ",
+            success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
 }		/* -----  end of method ExtractEDGAR_XBRLApp::Run  ----- */
 
 bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content,
@@ -545,7 +490,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::pat
         return LoadSingleFileToDB_XBRL(input_file_name);
     }
     return LoadSingleFileToDB_HTML(input_file_name);
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs::path& input_file_name)
 {
@@ -593,7 +538,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs
         return {1, 0, 0};
     }
     return {0, 1, 0};
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs::path& input_file_name)
 {
@@ -637,7 +582,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         return {1, 0, 0};
     }
     return {0, 1, 0};
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML  ----- */
+
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
 {
     int success_counter{0};
@@ -685,8 +631,10 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                     ++skipped_counter;
                 }
             }
-            catch(std::range_error& e)
+            catch(MaxFilesException& e)
             {
+                // reached our limit of files to process, so let's get out of here.
+
                 ++error_counter;
                 spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
@@ -707,7 +655,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
     std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
 
     return {success_counter, skipped_counter, error_counter};
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFilesFromListToDB  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
 {
@@ -756,8 +704,10 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                     ++skipped_counter;
                 }
             }
-            catch(std::range_error& e)
+            catch(MaxFilesException& e)
             {
+                // reached our limit of files to process, so let's get out of here.
+
                 ++error_counter;
                 spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                         " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
@@ -778,7 +728,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
     std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
 
     return {success_counter, skipped_counter, error_counter};
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::ProcessDirectory  ----- */
 
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
@@ -790,7 +740,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, 
         return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, file_content);
     }
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB  ----- */
 
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
@@ -809,7 +759,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_n
     auto label_data = ExtractFieldLabels(labels_xml);
 
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
         sview file_content)
@@ -821,7 +771,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
 //    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
     return true;
-}
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
@@ -858,7 +808,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
                 ++skipped_counter;
             }
         }
-        catch(const ExtractException& e)
+        catch(const EDGARException& e)
         {
             spdlog::error(e.what());
             ++error_counter;
@@ -882,8 +832,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
     }
 
     return {success_counter, skipped_counter, error_counter};
-}
-
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileAsync  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently()
 {
@@ -900,7 +849,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
     sigaction(SIGINT, &sa_new, &sa_old);
 
     // make exception handling a little bit better (I think).
-    // If some kind of system error occurs, it may affect more than 1
+    // If some kind of system error occurs, it may affect more than 1 of
     // our our tasks so let's check each of them and log any exceptions
     // which occur. We'll then rethrow our first exception.
 
@@ -1037,7 +986,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
                 counters = AddTs(counters, result);
             }
         }
-        catch (ExtractException& e)
+        catch (EDGARException& e)
         {
             // any problems, we'll document them and continue.
 
@@ -1081,7 +1030,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     return counters;
 
-}       // -----  end of method HTTPS_Downloader::DownloadFilesConcurrently  -----
+}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently  ----- */
 
 void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
 

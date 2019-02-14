@@ -54,17 +54,22 @@ int main(int argc, char** argv)
         }
 	}
 
-	catch (const std::exception& theProblem)
-	{
-		// poco_fatal(myApp->logger(), theProblem.what());
-		std::clog << "Something fundamental went wrong: " << theProblem.what() << std::endl;
-		result = 7;
-	}
-	catch (...)
-	{		// handle exception: unspecified
-        std::clog << "Something totally unexpected happened." << std::endl;
-		result = 9;
-	}
+    catch (std::system_error& e)
+    {
+        // any system problems, we eventually abort, but only after finishing work in process.
+
+        auto ec = e.code();
+        std::cerr << "Category: " << ec.category().name() << ". Value: " << ec.value() <<
+                ". Message: " << ec.message() << '\n';
+    }
+    catch (std::exception& e)
+    {
+        std::cout << "Problem collecting files: " << e.what() << '\n';
+    }
+    catch (...)
+    {
+        std::cout << "Unknown problem collecting files." << '\n';
+    }
 
 	return result;
 }

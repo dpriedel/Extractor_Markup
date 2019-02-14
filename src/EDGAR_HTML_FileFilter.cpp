@@ -40,11 +40,12 @@
 #include "EDGAR_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
+#include "SEC_Header.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
-#include "SEC_Header.h"
+#include "spdlog/spdlog.h"
 
 using namespace std::string_literals;
 
@@ -301,9 +302,9 @@ sview FindFinancialContentUsingAnchors (sview file_content)
             auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
             return financial_anchor != anchors.end();
         }
-        catch(const std::domain_error& e)
+        catch(const HTMLException& e)
         {
-            std::cerr << "Problem with an anchor: " << e.what() << '\n';
+            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
             return false;
         }
     });
@@ -347,7 +348,7 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
     auto found_it = std::find_if(anchors.begin(), anchors.end(), do_compare);
     if (found_it == anchors.end())
     {
-        throw std::runtime_error("Can't find destination anchor for: " + financial_anchor.href_);
+        throw HTMLException("Can't find destination anchor for: " + financial_anchor.href_);
     }
     return found_it;
 }		/* -----  end of function FindAnchorDestinations  ----- */
@@ -427,21 +428,6 @@ bool BalanceSheetFilter(sview table)
         return false;
     }
 
-    // let's experiment
-
-    // it looks like we may have found a match but it could just be some random wording since the
-    // above regexs are not terifically specific.
-
-    // this is a lot of extra work but go with it for now....
-
-//    auto parsed_data = CollectTableContent(std::string{table});
-//    static const boost::regex assets_p{R"***(^(?:current|total)[^\t]+?asset[^\t]*\t)***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), assets_p, boost::regex_constants::match_not_dot_newline))
-//    {
-//        return false;
-//    }
-//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
@@ -499,21 +485,6 @@ bool StatementOfOperationsFilter(sview table)
         return false;
     }
 
-    // let's experiment
-
-    // it looks like we may have found a match but it could just be some random wording since the
-    // above regexs are not terifically specific.
-
-    // this is a lot of extra work but go with it for now....
-
-//    auto parsed_data = CollectTableContent(std::string{table});
-//    static const boost::regex income_p{R"***(^.*?(?:(?:total|other|net).*?(?:income|revenue|sales))|(?:operat.*?loss)[^\t]*\t)***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), income_p, boost::regex_constants::match_not_dot_newline))
-//    {
-//        return false;
-//    }
-//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
@@ -564,21 +535,6 @@ bool CashFlowsFilter(sview table)
         return false;
     }
 
-    // let's experiment
-
-    // it looks like we may have found a match but it could just be some random wording since the
-    // above regexs are not terifically specific.
-
-    // this is a lot of extra work but go with it for now....
-
-//    auto parsed_data = CollectTableContent(std::string{table});
-//    static const boost::regex operating_p{R"***(^operating activities|(?:cash (?:flow[s]?|used|provided).*?(?:from|in|by).+?operating)[^\t]*\t)***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-//    if (! boost::regex_search(parsed_data.cbegin(), parsed_data.cend(), operating_p, boost::regex_constants::match_not_dot_newline))
-//    {
-//        return false;
-//    }
-//
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
@@ -656,9 +612,9 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
             return financial_anchor != anchors.end();
         }
-        catch(const std::domain_error& e)
+        catch(const HTMLException& e)
         {
-            std::cerr << "Problem with an anchor: " << e.what() << '\n';
+            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
             return false;
         }
     });

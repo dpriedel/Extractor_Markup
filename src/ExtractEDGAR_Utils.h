@@ -66,20 +66,93 @@ std::string catenate(Ts&&... ts)
     return result.str();
 }
 
+// let's add tuples...
+// based on code techniques from C++17 STL Cookbook zipping tuples.
+// (works for any class which supports the '+' operator)
+
+template <typename ...Ts>
+std::tuple<Ts...> AddTs(std::tuple<Ts...> const & t1, std::tuple<Ts...> const & t2)
+{
+    auto z_([] (auto ...xs)
+    {
+        return [xs ...] (auto ...ys)
+        {
+            return std::make_tuple((xs + ys) ...);
+        };
+    });
+
+    return  std::apply(std::apply(z_, t1), t2);
+}
+
+// let's sum the contents of a single tuple
+// (from C++ Templates...second edition p.58
+// and C++17 STL Cookbook.
+
+template <typename ...Ts>
+auto SumT(const std::tuple<Ts...>& t)
+{
+    auto z_([] (auto ...ys)
+    {
+        return (... + ys);
+    });
+    return std::apply(z_, t);
+}
+
 #include "ExtractEDGAR.h"
 
 std::string LoadDataFileForUse(const char* file_name);
 
 // so we can recognize our errors if we want to do something special
+// now that we have both XBRL and HTML based extractors, we need
+// a more elaborate exception setup.
 
-class ExtractException : public std::runtime_error
+class EDGARException : public std::runtime_error
 {
 public:
 
-    explicit ExtractException(const char* what);
+    explicit EDGARException(const char* what);
 
-    explicit ExtractException(const std::string& what);
+    explicit EDGARException(const std::string& what);
 };
+
+class AssertionException : public std::invalid_argument
+{
+public:
+
+    explicit AssertionException(const char* what);
+
+    explicit AssertionException(const std::string& what);
+};
+
+class XBRLException : public EDGARException 
+{
+public:
+
+    explicit XBRLException(const char* what);
+
+    explicit XBRLException(const std::string& what);
+};
+
+class HTMLException : public EDGARException 
+{
+public:
+
+    explicit HTMLException(const char* what);
+
+    explicit HTMLException(const std::string& what);
+};
+
+// for clarity's sake
+
+class MaxFilesException : public std::range_error
+{
+public:
+
+    explicit MaxFilesException(const char* what);
+
+    explicit MaxFilesException(const std::string& what);
+};
+
 
 // function to split a string on a delimiter and return a vector of string-views
 

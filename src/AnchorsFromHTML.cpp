@@ -35,6 +35,7 @@
 
 
 #include "AnchorsFromHTML.h"
+#include "ExtractEDGAR_Utils.h"
 
 #include <boost/regex.hpp>
 
@@ -126,7 +127,7 @@ std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char*
     {
         // this should not happen -- we have an incomplete anchor element.
 
-        throw std::domain_error("Missing anchor end.");
+        throw HTMLException("Missing anchor end.");
     }
     auto anchor{ExtractDataFromAnchor(anchor_begin_match[0].first, anchor_end , html_)};
     return std::optional<AnchorData>{anchor};

@@ -355,7 +355,7 @@ std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
             auto pos = href.find('#');
             if (pos == sview::npos)
             {
-                throw ExtractException("Can't find href label start.");
+                throw XBRLException("Can't find href label start.");
             }
             href.remove_prefix(pos + 1);
 
@@ -466,7 +466,7 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
         }
         else
         {
-            throw ExtractException("Can't find 'context' section in file.");
+            throw XBRLException("Can't find 'context' section in file.");
         }
     }
 
@@ -521,7 +521,7 @@ sview TrimExcessXML(sview document)
         document.remove_suffix(document.length() - xbrl_end_loc);
         return document;
     }
-    throw ExtractException("Can't find end of XBLR in document.\n");
+    throw XBRLException("Can't find end of XBLR in document.\n");
 
 }
 
@@ -531,8 +531,7 @@ pugi::xml_document ParseXMLContent(sview document)
     auto result = doc.load_buffer(document.data(), document.size(), pugi::parse_default | pugi::parse_wnorm_attribute);
     if (! result)
     {
-        throw ExtractException{"Error description: "s + result.description() + "\nError offset: "s
-            + std::to_string(result.offset) +"\n" };
+        throw XBRLException{catenate("Error description: ", result.description(), "\nError offset: ", result.offset, '\n')};
     }
 
     return doc;
