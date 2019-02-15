@@ -522,10 +522,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs
         auto context_data = ExtractContextDefinitions(instance_xml);
         auto label_data = ExtractFieldLabels(labels_xml);
 
-        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_))
-        {
-            did_load = true;
-        }
+        did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
     }
     catch(const std::exception& e)
     {
@@ -565,11 +562,8 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: "
                     + input_file_name.string()).c_str());
 
-        did_load = true;
-//        if (LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_))
-//        {
-//            did_load = true;
-//        }
+//        did_load = true;
+        did_load = LoadDataToDB(SEC_fields, the_tables.ListValues(), replace_DB_content_);
     }
     catch(const std::exception& e)
     {
@@ -617,14 +611,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                 bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
                 if (use_file)
                 {
-                    if (LoadFileFromFolderToDB(file_name, SEC_fields, file_content))
-                    {
-                        ++success_counter;
-                    }
-                    else
-                    {
-                        ++skipped_counter;
-                    }
+                    LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
                 }
                 else
                 {
@@ -690,14 +677,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                 bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
                 if (use_file)
                 {
-                    if (LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content))
-                    {
-                        ++success_counter;
-                    }
-                    else
-                    {
-                        ++skipped_counter;
-                    }
+                    LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
                 }
                 else
                 {
@@ -769,8 +749,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
 
     the_tables.CollectValues();
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
-//    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_, &logger());
-    return true;
+    return LoadDataToDB(SEC_fields, the_tables.ListValues(), replace_DB_content_);
 }		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
@@ -799,14 +778,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
     {
         try
         {
-            if (LoadFileFromFolderToDB(file_name, SEC_fields, file_content))
-            {
-                ++success_counter;
-            }
-            else
-            {
-                ++skipped_counter;
-            }
+            LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
         }
         catch(const EDGARException& e)
         {

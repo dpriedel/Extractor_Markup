@@ -43,9 +43,12 @@
 #include "SEC_Header.h"
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/format.hpp>
 #include <boost/regex.hpp>
 
 #include "spdlog/spdlog.h"
+
+#include <pqxx/pqxx>
 
 using namespace std::string_literals;
 
@@ -903,3 +906,86 @@ bool StockholdersEquity::ValidateContent ()
     return false;
 }		/* -----  end of method StockholdersEquity::ValidateContent  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  LoadDataToDB
+ *  Description:  
+ * =====================================================================================
+ */
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, bool replace_content)
+{
+    // start stuffing the database.
+
+    pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::work trxn{c};
+
+	auto check_for_existing_content_cmd = boost::format("SELECT count(*) FROM html_extracts.edgar_filing_id WHERE"
+        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
+			% trxn.esc(SEC_fields.at("cik"))
+			% trxn.esc(SEC_fields.at("form_type"))
+			% trxn.esc(SEC_fields.at("quarter_ending"))
+			;
+    auto row = trxn.exec1(check_for_existing_content_cmd.str());
+//    trxn.commit();
+	auto have_data = row[0].as<int>();
+    if (have_data != 0 && ! replace_content)
+    {
+        spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
+        c.disconnect();
+        return false;
+    }
+
+//    pqxx::work trxn{c};
+
+	auto filing_ID_cmd = boost::format("DELETE FROM html_extracts.edgar_filing_id WHERE"
+        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
+			% trxn.esc(SEC_fields.at("cik"))
+			% trxn.esc(SEC_fields.at("form_type"))
+			% trxn.esc(SEC_fields.at("quarter_ending"))
+			;
+    trxn.exec(filing_ID_cmd.str());
+
+	filing_ID_cmd = boost::format("INSERT INTO html_extracts.edgar_filing_id"
+        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
+        " shares_outstanding)"
+		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%') RETURNING filing_ID")
+		% trxn.esc(SEC_fields.at("cik"))
+		% trxn.esc(SEC_fields.at("company_name"))
+		% trxn.esc(SEC_fields.at("file_name"))
+        % ""
+		% trxn.esc(SEC_fields.at("sic"))
+		% trxn.esc(SEC_fields.at("form_type"))
+		% trxn.esc(SEC_fields.at("date_filed"))
+		% trxn.esc(SEC_fields.at("quarter_ending"))
+        % 0
+		;
+    // std::cout << filing_ID_cmd << '\n';
+    auto res = trxn.exec(filing_ID_cmd.str());
+//    trxn.commit();
+
+	std::string filing_ID;
+	res[0]["filing_ID"].to(filing_ID);
+
+    // now, the goal of all this...save all the financial values for the given time period.
+
+//    pqxx::work trxn{c};
+    int counter = 0;
+    for (const auto&[label, value] : filing_fields)
+    {
+        ++counter;
+    	auto detail_cmd = boost::format("INSERT INTO html_extracts.edgar_filing_data"
+            " (filing_ID, html_label, html_value)"
+            " VALUES ('%1%', '%2%', '%3%')")
+    			% trxn.esc(filing_ID)
+    			% trxn.esc(label)
+    			% trxn.esc(value)
+    			;
+        // std::cout << detail_cmd << '\n';
+        trxn.exec(detail_cmd.str());
+    }
+
+    trxn.commit();
+    c.disconnect();
+
+    return true;
+}		/* -----  end of function LoadDataToDB  ----- */

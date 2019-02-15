@@ -200,4 +200,6 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, bool replace_content);
+
 #endif
