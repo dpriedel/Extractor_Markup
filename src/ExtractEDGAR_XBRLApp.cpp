@@ -477,7 +477,7 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
         auto x = forms_processed.fetch_add(1);
         if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
         {
-            throw std::range_error("Exceeded file limit: " + std::to_string(max_forms_to_process_) + '\n');
+            throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
         }
     }
     return use_file;
@@ -608,8 +608,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
                 SEC_data.ExtractHeaderFields();
                 decltype(auto) SEC_fields = SEC_data.GetFields();
 
-                bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-                if (use_file)
+                if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
                 {
                     LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
                 }
@@ -674,8 +673,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
                 SEC_data.ExtractHeaderFields();
                 decltype(auto) SEC_fields = SEC_data.GetFields();
 
-                bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-                if (use_file)
+                if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
                 {
                     LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
                 }
@@ -773,8 +771,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
     SEC_Header SEC_data; SEC_data.UseData(file_content);
     SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields = SEC_data.GetFields();
 
-    bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
-    if (use_file)
+    if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
     {
         try
         {
