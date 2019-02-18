@@ -675,15 +675,16 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
             if (cash_flows != tables.end())
             {
                 the_tables.cash_flows_.parsed_data_ = *cash_flows;
-                auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
-                if (stockholders_equity != tables.end())
-                {
-                    the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
-                }
+//                auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
+//                if (stockholders_equity != tables.end())
+//                {
+//                    the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
+//                }
             }
         }
     }
 
+    the_tables.html = financial_content;
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatements  ----- */
 
@@ -779,28 +780,29 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
         return the_tables;
     }
 
-    auto sholder_equity_href = std::find_if(anchors.begin(), anchors.end(), StockholdersEquityAnchorFilter);
-    if (sholder_equity_href != anchors.end())
-    {
-        auto sholder_equity_dest = FindDestinationAnchor(*sholder_equity_href, anchors);
-        if (sholder_equity_dest != anchors.end())
-        {
-            the_tables.stockholders_equity_.the_anchor_ = *sholder_equity_dest;
+//    auto sholder_equity_href = std::find_if(anchors.begin(), anchors.end(), StockholdersEquityAnchorFilter);
+//    if (sholder_equity_href != anchors.end())
+//    {
+//        auto sholder_equity_dest = FindDestinationAnchor(*sholder_equity_href, anchors);
+//        if (sholder_equity_dest != anchors.end())
+//        {
+//            the_tables.stockholders_equity_.the_anchor_ = *sholder_equity_dest;
+//
+//            TablesFromHTML tables{sview(sholder_equity_dest->anchor_content_.data(),
+//                    financial_content.end() - sholder_equity_dest->anchor_content_.begin())};
+//            auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
+//            if (stockholders_equity != tables.end())
+//            {
+//                the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
+//            }
+//            else
+//            {
+//                return the_tables;
+//            }
+//        }
+//    }
 
-            TablesFromHTML tables{sview(sholder_equity_dest->anchor_content_.data(),
-                    financial_content.end() - sholder_equity_dest->anchor_content_.begin())};
-            auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
-            if (stockholders_equity != tables.end())
-            {
-                the_tables.stockholders_equity_.parsed_data_ = *stockholders_equity;
-            }
-            else
-            {
-                return the_tables;
-            }
-        }
-    }
-
+    the_tables.html = financial_content;
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatementsUsingAnchors  ----- */
 /* 

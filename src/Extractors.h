@@ -50,6 +50,7 @@ using sview = std::string_view;
 #include "gq/Node.h"
 
 #include "ExtractEDGAR.h"
+#include "EDGAR_HTML_FileFilter.h"
 
 namespace fs = std::filesystem;
 /* namespace hana = boost::hana; */
@@ -121,6 +122,19 @@ struct BalanceSheet_data
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
+struct UnitsAndShares_data
+{
+    struct UnitsAndShares
+    {
+        int units = 0;
+        int shares = 0;
+    };
+
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+
+    UnitsAndShares FindData(const FinancialStatements& financial_statements);
+};
+
 // this filter will export all document sections.
 
 struct ALL_data
@@ -142,7 +156,7 @@ struct ALL_data
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
 using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data,
-      FinancialStatements_data, BalanceSheet_data, ALL_data>;
+      FinancialStatements_data, BalanceSheet_data, UnitsAndShares_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors(int argc, const char* argv[]);

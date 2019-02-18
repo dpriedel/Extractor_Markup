@@ -39,14 +39,23 @@
 #include "ExtractEDGAR_XBRL.h"
 
 #include <iostream>
+#include <filesystem>
+#include <string>
+#include <string_view>
+#include <variant>
+#include <vector>
+
+using sview = std::string_view;
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
-#include "HTML_FromFile.h"
-#include "TablesFromFile.h"
+#include "spdlog/spdlog.h"
+
 #include "EDGAR_HTML_FileFilter.h"
 #include "ExtractEDGAR_Utils.h"
+#include "HTML_FromFile.h"
+#include "TablesFromFile.h"
 
 // gumbo-query
 
@@ -371,7 +380,8 @@ FilterList SelectExtractors (int argc, const char* argv[])
 //    filters.emplace_back(HTM_data{});
 //    filters.emplace_back(Count_SS{});
 //    filters.emplace_back(BalanceSheet_data{});
-    filters.emplace_back(FinancialStatements_data{});
+//    filters.emplace_back(FinancialStatements_data{});
+    filters.emplace_back(UnitsAndShares_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -564,7 +574,7 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
         std::cout.write(financial_statements.stockholders_equity_.parsed_data_.data(), std::min(500UL,
                    financial_statements.stockholders_equity_.parsed_data_.size()));
 
-        throw ExtractException("Can't find financial_statements. " + output_file_name.string());
+        throw HTMLException("Can't find financial_statements. " + output_file_name.string());
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 
@@ -593,10 +603,99 @@ void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_dire
         bal_sheet.values_ = CollectStatementValues(bal_sheet.lines_);
         if (bal_sheet.values_.empty())
         {
-            throw ExtractException("Can't find values in balance sheet. " + output_file_name.string());
+            throw HTMLException("Can't find values in balance sheet. " + output_file_name.string());
         }
     }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
+
+void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+{
+    // need to find the 'multiplier' factor to use with numbers extracted from the financial content.
+    // also, the number of shares outstanding for the time period.
+
+    // we use a 2-phase scan.
+    // first, try to find based on anchors.
+    // if that doesn't work, then scan content directly.
+
+    // we need to do this manually since the first hit we get
+    // may not be the actual content we want.
+
+    UnitsAndShares results;
+
+    FinancialStatements financial_statements;
+
+    HTML_FromFile htmls{document};
+
+    auto look_for_top_level([] (auto html)
+    {
+        try
+        {
+            AnchorsFromHTML anchors(html);
+            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
+            return financial_anchor != anchors.end();
+        }
+        catch(const HTMLException& e)
+        {
+            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
+            return false;
+        }
+    });
+
+    for (auto html : htmls)
+    {
+        if (look_for_top_level(html))
+        {
+            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
+            if (financial_statements.has_data())
+            {
+                results = FindData(financial_statements);
+                std::cout << "Found using anchors: " << results.units << '\t' << results.shares << '\n';
+                return;
+            }
+        }
+    }
+
+    // OK, we didn't have any success following anchors so do it the long way.
+
+    for (auto html : htmls)
+    {
+        if (FinancialDocumentFilter(html))
+        {
+            financial_statements = ExtractFinancialStatements(html);
+            if (financial_statements.has_data())
+            {
+                results = FindData(financial_statements);
+                std::cout << "Found the hard way: " << results.units << '\t' << results.shares << '\n';
+            }
+        }
+    }
+    return ;
+}		/* -----  end of method UnitsAndShares_data::UseExtractor  ----- */
+
+UnitsAndShares_data::UnitsAndShares UnitsAndShares_data::FindData (const FinancialStatements& financial_statements)
+{
+    // to find multipliers we can take advantage of anchors if any
+    // otherwise, we just need to scan the html document to try and find them.
+    
+    if (financial_statements.balance_sheet_.has_anchor())
+    {
+        // if one has anchor so must all of them.
+
+        AnchorList anchors;
+        anchors.push_back(financial_statements.balance_sheet_.the_anchor_);
+        anchors.push_back(financial_statements.statement_of_operations_.the_anchor_);
+        anchors.push_back(financial_statements.cash_flows_.the_anchor_);
+
+        auto multipliers = FindDollarMultipliers(anchors);
+        BOOST_ASSERT_MSG(! multipliers.empty(), "Have anchors but no multipliers.\n");
+
+        return UnitsAndShares{1000, 0};
+    }
+
+    // for shares, we need to look through the extracted table content.
+    //
+    return {};
+}		/* -----  end of method UnitsAndShares_data::FindData  ----- */
 
 void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {

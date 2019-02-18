@@ -67,6 +67,7 @@ struct BalanceSheet
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    int multiplier_;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -81,6 +82,7 @@ struct StatementOfOperations
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    int multiplier_;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -95,6 +97,7 @@ struct CashFlows
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    int multiplier_;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -109,6 +112,7 @@ struct StockholdersEquity
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    int multiplier_;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -124,6 +128,7 @@ struct FinancialStatements
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
     EE::EDGAR_Values values_;
+    sview html;
 
     bool has_data() const
     {
