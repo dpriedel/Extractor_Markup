@@ -620,8 +620,6 @@ void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_d
     // we need to do this manually since the first hit we get
     // may not be the actual content we want.
 
-    UnitsAndShares results;
-
     FinancialStatements financial_statements;
 
     HTML_FromFile htmls{document};
@@ -648,8 +646,8 @@ void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_d
             financial_statements = ExtractFinancialStatementsUsingAnchors(html);
             if (financial_statements.has_data())
             {
-                results = FindData(financial_statements);
-                std::cout << "Found using anchors: " << results.units << '\t' << results.shares << '\n';
+                FindData(financial_statements);
+                std::cout << "Found using anchors\n";
                 return;
             }
         }
@@ -664,15 +662,15 @@ void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_d
             financial_statements = ExtractFinancialStatements(html);
             if (financial_statements.has_data())
             {
-                results = FindData(financial_statements);
-                std::cout << "Found the hard way: " << results.units << '\t' << results.shares << '\n';
+                FindData(financial_statements);
+                std::cout << "Found the hard way\n";
             }
         }
     }
     return ;
 }		/* -----  end of method UnitsAndShares_data::UseExtractor  ----- */
 
-UnitsAndShares_data::UnitsAndShares UnitsAndShares_data::FindData (const FinancialStatements& financial_statements)
+void UnitsAndShares_data::FindData (FinancialStatements& financial_statements)
 {
     // to find multipliers we can take advantage of anchors if any
     // otherwise, we just need to scan the html document to try and find them.
@@ -688,13 +686,18 @@ UnitsAndShares_data::UnitsAndShares UnitsAndShares_data::FindData (const Financi
 
         auto multipliers = FindDollarMultipliers(anchors);
         BOOST_ASSERT_MSG(! multipliers.empty(), "Have anchors but no multipliers.\n");
+        BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
 
-        return UnitsAndShares{1000, 0};
+        financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
+        financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
+        financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+    }
+    else
+    {
     }
 
     // for shares, we need to look through the extracted table content.
     //
-    return {};
 }		/* -----  end of method UnitsAndShares_data::FindData  ----- */
 
 void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)

@@ -124,15 +124,9 @@ struct BalanceSheet_data
 
 struct UnitsAndShares_data
 {
-    struct UnitsAndShares
-    {
-        int units = 0;
-        int shares = 0;
-    };
-
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
-    UnitsAndShares FindData(const FinancialStatements& financial_statements);
+    void FindData(FinancialStatements& financial_statements);
 };
 
 // this filter will export all document sections.

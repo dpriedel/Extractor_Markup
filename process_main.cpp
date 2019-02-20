@@ -41,6 +41,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace fs = std::filesystem;

@@ -386,13 +386,30 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
                 found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
-            multipliers.emplace_back(MultiplierData{multiplier, a.html_document_});
+            int value;
+            if (multiplier == "thousands")
+            {
+                value = 1000;
+            }
+            else if (multiplier == "millions")
+            {
+                value = 1000000;
+            }
+            else if (multiplier == "billions")
+            {
+                value = 1000000000;
+            }
+            else
+            {
+                value = 1;
+            }
+            multipliers.emplace_back(MultiplierData{multiplier, a.html_document_, value});
         }
         else
         {
             // no multiplier specified so assume 'none'
 
-            multipliers.emplace_back(MultiplierData{{}, a.html_document_});
+            multipliers.emplace_back(MultiplierData{{}, a.html_document_, 1});
         }
     }
     return multipliers;

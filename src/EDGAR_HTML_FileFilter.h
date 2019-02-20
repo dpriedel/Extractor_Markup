@@ -67,7 +67,7 @@ struct BalanceSheet
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
-    int multiplier_;
+    int multiplier_ = 0;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -82,7 +82,7 @@ struct StatementOfOperations
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
-    int multiplier_;
+    int multiplier_ = 0;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -97,7 +97,7 @@ struct CashFlows
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
-    int multiplier_;
+    int multiplier_ = 0;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -112,7 +112,7 @@ struct StockholdersEquity
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
-    int multiplier_;
+    int multiplier_ = 0;
     bool is_valid_;
 
     inline bool empty() const { return parsed_data_.empty(); }
@@ -129,6 +129,7 @@ struct FinancialStatements
     StockholdersEquity stockholders_equity_;
     EE::EDGAR_Values values_;
     sview html;
+    int outstanding_shares_ = 0;
 
     bool has_data() const
     {
@@ -147,18 +148,19 @@ EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines);
 
 struct MultiplierData
 {
-    sview multiplier;
-    sview html_document;
+    sview multiplier_;
+    sview html_document_;
+    int multiplier_value_ = 0;
 };
 
 inline bool operator==(const MultiplierData& lhs, const MultiplierData& rhs)
 {
-    return lhs.multiplier == rhs.multiplier && lhs.html_document == rhs.html_document;
+    return lhs.multiplier_ == rhs.multiplier_ && lhs.html_document_ == rhs.html_document_;
 }
 
 inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
 {
-    return lhs.multiplier < rhs.multiplier || lhs.html_document < rhs.html_document;
+    return lhs.multiplier_ < rhs.multiplier_ || lhs.html_document_ < rhs.html_document_;
 }
 
 using MultDataList = std::vector<MultiplierData>;
