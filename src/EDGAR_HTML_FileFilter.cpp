@@ -171,7 +171,7 @@ sview FindFinancialDocument (sview file_content)
  */
 bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor)
 {
-    static const boost::regex regex_finance_statements{R"***(<a.*?financ.+?statement.*?</a)***",
+    static const boost::regex regex_finance_statements{R"***(<a.*?(?:financ.+?statement)|(?:balance\s+sheet).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -247,7 +247,7 @@ bool CashFlowsAnchorFilter(const AnchorData& an_anchor)
 {
     // we need to just keep the anchors related to the 4 sections we are interested in
 
-    static const boost::regex regex_cash_flow{R"***(cash\s+flow)***",
+    static const boost::regex regex_cash_flow{R"***((?:cash\s+flow)|(?:statement.+?cash)|(?:cashflow))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // at this point, I'm only interested in internal hrefs.
@@ -376,46 +376,48 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***((thousands|millions|billions).*?dollar)***",
+//    static const boost::regex regex_dollar_mults{R"***(\(.*?(?:in )?(thousands|millions|billions)(?:.*?dollar)?.*?\))***",
+//    static const boost::regex regex_dollar_mults{R"***(\(.*?(thousands|millions|billions).*?\))***",
+    static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
 
     for (const auto& a : financial_anchors)
     {
-        if (bool found_it = boost::regex_search(a.anchor_content_.begin(), a.html_document_.end(), matches, regex_dollar_mults);
-                found_it)
+        if (bool found_it = boost::regex_search(a.anchor_content_.begin(), a.html_document_.end(), matches,
+                    regex_dollar_mults); found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
-            int value;
-            if (multiplier == "thousands")
-            {
-                value = 1000;
-            }
-            else if (multiplier == "millions")
-            {
-                value = 1000000;
-            }
-            else if (multiplier == "billions")
-            {
-                value = 1000000000;
-            }
-            else
-            {
-                value = 1;
-            }
+            int value = TranslateMultiplier(multiplier);
             multipliers.emplace_back(MultiplierData{multiplier, a.html_document_, value});
-        }
-        else
-        {
-            // no multiplier specified so assume 'none'
-
-            multipliers.emplace_back(MultiplierData{{}, a.html_document_, 1});
         }
     }
     return multipliers;
 }		/* -----  end of function FindDollarMultipliers  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  TranslateMultiplier
+ *  Description:  
+ * =====================================================================================
+ */
+int TranslateMultiplier(sview multiplier)
+{
+    if (multiplier == "thousands")
+    {
+        return 1000;
+    }
+    if (multiplier == "millions")
+    {
+        return 1'000'000;
+    }
+    if (multiplier == "billions")
+    {
+        return 1'000'000'000;
+    }
+    return 1;
+}		/* -----  end of function TranslateMultiplier  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  BalanceSheetFilter
@@ -702,7 +704,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
         }
     }
 
-    the_tables.html = financial_content;
+    the_tables.html_ = financial_content;
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatements  ----- */
 
@@ -820,7 +822,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
 //        }
 //    }
 
-    the_tables.html = financial_content;
+    the_tables.html_ = financial_content;
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatementsUsingAnchors  ----- */
 /* 
@@ -940,7 +942,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
     pqxx::work trxn{c};
 
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.edgar_filing_id WHERE"
-        " cik = '{1}' AND form_type = '{2}' AND period_ending = '{3}'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
 			trxn.esc(SEC_fields.at("quarter_ending")))
@@ -958,7 +960,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 //    pqxx::work trxn{c};
 
 	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.edgar_filing_id WHERE"
-        " cik = '{1}' AND form_type = '{2}' AND period_ending = '{3}'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
 			trxn.esc(SEC_fields.at("quarter_ending")))
@@ -968,7 +970,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.edgar_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding)"
-		" VALUES ('{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
+		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
 		trxn.esc(SEC_fields.at("file_name")),
@@ -995,7 +997,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
         ++counter;
     	auto detail_cmd = fmt::format("INSERT INTO html_extracts.edgar_filing_data"
             " (filing_ID, html_label, html_value)"
-            " VALUES ('{1}', '{2}', '{3}')",
+            " VALUES ('{0}', '{1}', '{2}')",
     			trxn.esc(filing_ID),
     			trxn.esc(label),
     			trxn.esc(value))

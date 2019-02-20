@@ -93,7 +93,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
     // for now, let's assume we are going to to a full replace of the data for each filing.
 
 	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
-        " cik = '{1}' AND form_type = '{2}' AND period_ending = '{3}'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(fields.at("cik")),
 			trxn.esc(fields.at("form_type")),
 			trxn.esc(period_end_date))
@@ -102,7 +102,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 
 	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
-		" VALUES ('{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
+		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
 		trxn.esc(fields.at("cik")),
 		trxn.esc(fields.at("company_name")),
 		trxn.esc(fields.at("file_name")),
@@ -137,7 +137,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 //        std::cout << std::endl;
         ++counter;
     	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_data"
-            " (filing_ID, xbrl_label, xbrl_value) VALUES ('{1}', '{2}', '{3}')",
+            " (filing_ID, xbrl_label, xbrl_value) VALUES ('{0}', '{1}', '{2}')",
     			trxn.esc(filing_ID),
     			trxn.esc(second_level_nodes.name()),
     			trxn.esc(second_level_nodes.child_value()))

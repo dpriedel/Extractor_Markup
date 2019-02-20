@@ -664,10 +664,10 @@ void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_d
             {
                 FindData(financial_statements);
                 std::cout << "Found the hard way\n";
+                return;
             }
         }
     }
-    return ;
 }		/* -----  end of method UnitsAndShares_data::UseExtractor  ----- */
 
 void UnitsAndShares_data::FindData (FinancialStatements& financial_statements)
@@ -685,15 +685,81 @@ void UnitsAndShares_data::FindData (FinancialStatements& financial_statements)
         anchors.push_back(financial_statements.cash_flows_.the_anchor_);
 
         auto multipliers = FindDollarMultipliers(anchors);
-        BOOST_ASSERT_MSG(! multipliers.empty(), "Have anchors but no multipliers.\n");
-        BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
+        if (multipliers.size() > 0)
+        {
+            BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
+            financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
+            financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
+            financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+        }
+        else
+        {
+            spdlog::info("Have anchors but no multipliers found. Using default.\n");
+            // go with default.
 
-        financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
-        financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
-        financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+            financial_statements.balance_sheet_.multiplier_ = 1;
+            financial_statements.statement_of_operations_.multiplier_ = 1;
+            financial_statements.cash_flows_.multiplier_ = 1;
+        }
     }
     else
     {
+        // let's try looking in the parsed data first.
+
+//        static const boost::regex regex_dollar_mults{R"***(\(.*?(?:in )?(thousands|millions|billions)(?:.*?dollar)?.*?\))***",
+        static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
+
+        boost::smatch matches;
+
+        if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+        {
+            sview multiplier(matches[1].str());
+            int value = TranslateMultiplier(multiplier);
+            financial_statements.balance_sheet_.multiplier_ = value;
+        }
+        if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
+                    financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+        {
+            sview multiplier(matches[1].str());
+            int value = TranslateMultiplier(multiplier);
+            financial_statements.statement_of_operations_.multiplier_ = value;
+        }
+        if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
+                    financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+        {
+            sview multiplier(matches[1].str());
+            int value = TranslateMultiplier(multiplier);
+            financial_statements.cash_flows_.multiplier_ = value;
+        }
+        else
+        {
+            // no multiplier specified so let's try the really long way
+
+            boost::cmatch matches;
+
+            if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
+                        financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
+            {
+                sview multiplier(matches[1].first, matches[1].length());
+                int value = TranslateMultiplier(multiplier);
+                //  for now, assume all the same
+                financial_statements.balance_sheet_.multiplier_ = value;
+                financial_statements.statement_of_operations_.multiplier_ = value;
+                financial_statements.cash_flows_.multiplier_ = value;
+            }
+            else
+            {
+                spdlog::info("Can't find any dolloar mulitpliers. Using default.\n");
+
+                // let's just go with 1 -- a likely value in this case
+                //
+                financial_statements.balance_sheet_.multiplier_ = 1;
+                financial_statements.statement_of_operations_.multiplier_ = 1;
+                financial_statements.cash_flows_.multiplier_ = 1;
+            }
+        }
     }
 
     // for shares, we need to look through the extracted table content.

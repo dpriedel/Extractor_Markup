@@ -128,7 +128,7 @@ struct FinancialStatements
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
     EE::EDGAR_Values values_;
-    sview html;
+    sview html_;
     int outstanding_shares_ = 0;
 
     bool has_data() const
@@ -164,6 +164,8 @@ inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
 }
 
 using MultDataList = std::vector<MultiplierData>;
+
+int TranslateMultiplier(sview multiplier);
 
 bool FinancialDocumentFilter (sview html);
 
