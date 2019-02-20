@@ -39,14 +39,14 @@
 #include <iostream>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/format.hpp>
+//#include <boost/format.hpp>
 #include <boost/regex.hpp>
 
 namespace bg = boost::gregorian;
 
+#include "fmt/core.h"
 #include <pqxx/pqxx>
 
-#include "Poco/Logger.h"
 
 #include "ExtractEDGAR_XBRL.h"
 #include "SEC_Header.h"
@@ -92,28 +92,28 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 
     // for now, let's assume we are going to to a full replace of the data for each filing.
 
-	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
-        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
-			% trxn.esc(fields.at("cik"))
-			% trxn.esc(fields.at("form_type"))
-			% trxn.esc(period_end_date)
+	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
+        " cik = '{1}' AND form_type = '{2}' AND period_ending = '{3}'",
+			trxn.esc(fields.at("cik")),
+			trxn.esc(fields.at("form_type")),
+			trxn.esc(period_end_date))
 			;
-    trxn.exec(filing_ID_cmd.str());
+    trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
-		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%') RETURNING filing_ID")
-		% trxn.esc(fields.at("cik"))
-		% trxn.esc(fields.at("company_name"))
-		% trxn.esc(fields.at("file_name"))
-        % trxn.esc(trading_symbol)
-		% trxn.esc(fields.at("sic"))
-		% trxn.esc(fields.at("form_type"))
-		% trxn.esc(fields.at("date_filed"))
-		% trxn.esc(period_end_date)
-		% trxn.esc(shares_outstanding)
+		" VALUES ('{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
+		trxn.esc(fields.at("cik")),
+		trxn.esc(fields.at("company_name")),
+		trxn.esc(fields.at("file_name")),
+        trxn.esc(trading_symbol),
+		trxn.esc(fields.at("sic")),
+		trxn.esc(fields.at("form_type")),
+		trxn.esc(fields.at("date_filed")),
+		trxn.esc(period_end_date),
+		trxn.esc(shares_outstanding))
 		;
-    auto res = trxn.exec(filing_ID_cmd.str());
+    auto res = trxn.exec(filing_ID_cmd);
     trxn.commit();
 
 	std::string filing_ID;
@@ -132,17 +132,17 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
         // if (second_level_nodes.attribute("contextRef").value() != context_ID)
         //     continue;
         // std::cout << "here...\n";
-        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
-            << second_level_nodes.attribute("contextRef").value() ;
-        std::cout << std::endl;
+//        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
+//            << second_level_nodes.attribute("contextRef").value() ;
+//        std::cout << std::endl;
         ++counter;
-    	auto detail_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_data"
-            " (filing_ID, xbrl_label, xbrl_value) VALUES ('%1%', '%2%', '%3%')")
-    			% trxn.esc(filing_ID)
-    			% trxn.esc(second_level_nodes.name())
-    			% trxn.esc(second_level_nodes.child_value())
+    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_data"
+            " (filing_ID, xbrl_label, xbrl_value) VALUES ('{1}', '{2}', '{3}')",
+    			trxn.esc(filing_ID),
+    			trxn.esc(second_level_nodes.name()),
+    			trxn.esc(second_level_nodes.child_value()))
     			;
-        details.exec(detail_cmd.str());
+        details.exec(detail_cmd);
     }
 
     details.commit();
