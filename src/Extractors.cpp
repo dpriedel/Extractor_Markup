@@ -40,8 +40,10 @@
 
 #include <iostream>
 #include <filesystem>
+#include <charconv>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <variant>
 #include <vector>
 
@@ -370,6 +372,8 @@ std::string CollectFinancialStatementContent (sview document_content)
 
 FilterList SelectExtractors (int argc, const char* argv[])
 {
+    // NOTE: we can have an arbitrary number of filters selected.
+
     FilterList filters;
 
 //    filters.emplace_back(XBRL_data{});
@@ -381,7 +385,8 @@ FilterList SelectExtractors (int argc, const char* argv[])
 //    filters.emplace_back(Count_SS{});
 //    filters.emplace_back(BalanceSheet_data{});
 //    filters.emplace_back(FinancialStatements_data{});
-    filters.emplace_back(UnitsAndShares_data{});
+//    filters.emplace_back(Multiplier_data{});
+    filters.emplace_back(Shares_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -608,7 +613,7 @@ void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_dire
     }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
-void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void Multiplier_data::UseExtractor (sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     // need to find the 'multiplier' factor to use with numbers extracted from the financial content.
     // also, the number of shares outstanding for the time period.
@@ -668,9 +673,9 @@ void UnitsAndShares_data::UseExtractor (sview document, const fs::path& output_d
             }
         }
     }
-}		/* -----  end of method UnitsAndShares_data::UseExtractor  ----- */
+}		/* -----  end of method Multiplier_data::UseExtractor  ----- */
 
-void UnitsAndShares_data::FindData (FinancialStatements& financial_statements)
+void Multiplier_data::FindData (FinancialStatements& financial_statements)
 {
     // to find multipliers we can take advantage of anchors if any
     // otherwise, we just need to scan the html document to try and find them.
@@ -701,70 +706,131 @@ void UnitsAndShares_data::FindData (FinancialStatements& financial_statements)
             financial_statements.statement_of_operations_.multiplier_ = 1;
             financial_statements.cash_flows_.multiplier_ = 1;
         }
+        return;
     }
-    else
-    {
-        // let's try looking in the parsed data first.
+    // let's try looking in the parsed data first.
+    // we may or may not find all of our values there so we need to keep track.
 
 //        static const boost::regex regex_dollar_mults{R"***(\(.*?(?:in )?(thousands|millions|billions)(?:.*?dollar)?.*?\))***",
-        static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
-            boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
-        boost::smatch matches;
+    int how_many_matches{0};
+    boost::smatch matches;
 
-        if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+    if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+                financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+    {
+        sview multiplier(matches[1].str());
+        int value = TranslateMultiplier(multiplier);
+        financial_statements.balance_sheet_.multiplier_ = value;
+        ++how_many_matches;
+    }
+    if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
+                financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+    {
+        sview multiplier(matches[1].str());
+        int value = TranslateMultiplier(multiplier);
+        financial_statements.statement_of_operations_.multiplier_ = value;
+        ++how_many_matches;
+    }
+    if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
+                financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
+    {
+        sview multiplier(matches[1].str());
+        int value = TranslateMultiplier(multiplier);
+        financial_statements.cash_flows_.multiplier_ = value;
+        ++how_many_matches;
+    }
+    if (how_many_matches < 3)
+    {
+        // fill in any missing values with first value found and hope for the best.
+
+        boost::cmatch matches;
+
+        if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
+                    financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
-            sview multiplier(matches[1].str());
+            sview multiplier(matches[1].first, matches[1].length());
             int value = TranslateMultiplier(multiplier);
-            financial_statements.balance_sheet_.multiplier_ = value;
-        }
-        if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
-                    financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
-        {
-            sview multiplier(matches[1].str());
-            int value = TranslateMultiplier(multiplier);
-            financial_statements.statement_of_operations_.multiplier_ = value;
-        }
-        if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
-                    financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
-        {
-            sview multiplier(matches[1].str());
-            int value = TranslateMultiplier(multiplier);
-            financial_statements.cash_flows_.multiplier_ = value;
+
+            //  fill in any missing values
+
+            if (financial_statements.balance_sheet_.multiplier_ == 0)
+            {
+                financial_statements.balance_sheet_.multiplier_ = value;
+            }
+            if (financial_statements.statement_of_operations_.multiplier_ == 0)
+            {
+                financial_statements.statement_of_operations_.multiplier_ = value;
+            }
+            if (financial_statements.cash_flows_.multiplier_ == 0)
+            {
+                financial_statements.cash_flows_.multiplier_ = value;
+            }
         }
         else
         {
-            // no multiplier specified so let's try the really long way
+            spdlog::info("Can't find any dolloar mulitpliers. Using default.\n");
 
-            boost::cmatch matches;
-
-            if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
-                        financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
-            {
-                sview multiplier(matches[1].first, matches[1].length());
-                int value = TranslateMultiplier(multiplier);
-                //  for now, assume all the same
-                financial_statements.balance_sheet_.multiplier_ = value;
-                financial_statements.statement_of_operations_.multiplier_ = value;
-                financial_statements.cash_flows_.multiplier_ = value;
-            }
-            else
-            {
-                spdlog::info("Can't find any dolloar mulitpliers. Using default.\n");
-
-                // let's just go with 1 -- a likely value in this case
-                //
-                financial_statements.balance_sheet_.multiplier_ = 1;
-                financial_statements.statement_of_operations_.multiplier_ = 1;
-                financial_statements.cash_flows_.multiplier_ = 1;
-            }
+            // let's just go with 1 -- a likely value in this case
+            //
+            financial_statements.balance_sheet_.multiplier_ = 1;
+            financial_statements.statement_of_operations_.multiplier_ = 1;
+            financial_statements.cash_flows_.multiplier_ = 1;
         }
     }
 
-    // for shares, we need to look through the extracted table content.
-    //
-}		/* -----  end of method UnitsAndShares_data::FindData  ----- */
+// for shares, we need to look through the extracted table content.
+//
+}		/* -----  end of method Multiplier_data::FindData  ----- */
+
+void Shares_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+{
+    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    output_file_name.replace_extension(".txt");
+
+    static const boost::regex regex_shares{R"***(^[^\t]*?(?:number.+?shares)|(?:shares.+?outstand)[^\t]*?$)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    auto financial_statements = FindAndExtractFinancialStatements(document);
+    if (financial_statements.has_data())
+    {
+        // let's use the statement of operations as the preferred source.
+        // we'll just look thru its values for our key.
+
+        auto match_key([&regex_shares](const auto& item)
+            {
+                return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
+            });
+        auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(),
+                financial_statements.statement_of_operations_.values_.end(), match_key);
+        if (found_it != financial_statements.statement_of_operations_.values_.end())
+        {
+            std::string shares_outstanding{found_it->second};
+
+            // need to replace any commas we might have.
+
+            const std::string delete_this = "";
+            const boost::regex regex_comma{R"***(,)***"};
+            shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
+
+            if (auto [p, ec] =std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
+                        financial_statements.outstanding_shares_); ec == std::errc())
+            {
+                WriteDataToFile(output_file_name, "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
+            }
+            else
+            {
+                throw EDGARException(catenate("Problem converting shares outstanding: ",
+                            std::make_error_code(ec).message(), '\n'));
+            }
+        }
+        else
+        {
+            throw EDGARException("Can't find shares outstanding.\n");
+        }
+    }
+}		/* -----  end of method Shares_data::UseExtractor  ----- */
 
 void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {

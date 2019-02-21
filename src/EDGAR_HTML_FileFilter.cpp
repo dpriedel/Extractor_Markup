@@ -650,6 +650,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             if (financial_statements.has_data())
             {
                 financial_statements.PrepareTableContent();
+                financial_statements.CollectValues();
                 return financial_statements;
             }
         }
@@ -665,6 +666,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             if (financial_statements.has_data())
             {
                 financial_statements.PrepareTableContent();
+                financial_statements.CollectValues();
                 return financial_statements;
             }
         }
@@ -906,7 +908,7 @@ EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines)
             }
         );
     return values;
-}		/* -----  end of method CollectValues  ----- */
+}		/* -----  end of method CollectStatementValues  ----- */
 
 bool BalanceSheet::ValidateContent ()
 {

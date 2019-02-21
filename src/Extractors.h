@@ -122,7 +122,14 @@ struct BalanceSheet_data
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 };
 
-struct UnitsAndShares_data
+struct Multiplier_data
+{
+    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+
+    void FindData(FinancialStatements& financial_statements);
+};
+
+struct Shares_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
@@ -150,7 +157,7 @@ struct ALL_data
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
 using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data,
-      FinancialStatements_data, BalanceSheet_data, UnitsAndShares_data, ALL_data>;
+      FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors(int argc, const char* argv[]);
