@@ -569,15 +569,15 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
     }
     else
     {
-        std::cout << "\n\nBalance Sheet\n";
-        std::cout.write(financial_statements.balance_sheet_.parsed_data_.data(), 500);
-        std::cout << "\n\nCash Flow\n";
-        std::cout.write(financial_statements.cash_flows_.parsed_data_.data(), 500);
-        std::cout << "\n\nStmt of Operations\n";
-        std::cout.write(financial_statements.statement_of_operations_.parsed_data_.data(), 500);
-        std::cout << "\n\nShareholder Equity\n";
-        std::cout.write(financial_statements.stockholders_equity_.parsed_data_.data(), std::min(500UL,
-                   financial_statements.stockholders_equity_.parsed_data_.size()));
+//        std::cout << "\n\nBalance Sheet\n";
+//        std::cout.write(financial_statements.balance_sheet_.parsed_data_.data(), 500);
+//        std::cout << "\n\nCash Flow\n";
+//        std::cout.write(financial_statements.cash_flows_.parsed_data_.data(), 500);
+//        std::cout << "\n\nStmt of Operations\n";
+//        std::cout.write(financial_statements.statement_of_operations_.parsed_data_.data(), 500);
+//        std::cout << "\n\nShareholder Equity\n";
+//        std::cout.write(financial_statements.stockholders_equity_.parsed_data_.data(), std::min(500UL,
+//                   financial_statements.stockholders_equity_.parsed_data_.size()));
 
         throw HTMLException("Can't find financial_statements. " + output_file_name.string());
     }
@@ -627,8 +627,6 @@ void Multiplier_data::UseExtractor (sview document, const fs::path& output_direc
 
     FinancialStatements financial_statements;
 
-    HTML_FromFile htmls{document};
-
     auto look_for_top_level([] (auto html)
     {
         try
@@ -644,38 +642,32 @@ void Multiplier_data::UseExtractor (sview document, const fs::path& output_direc
         }
     });
 
-    for (auto html : htmls)
+    if (look_for_top_level(document))
     {
-        if (look_for_top_level(html))
+        financial_statements = ExtractFinancialStatementsUsingAnchors(document);
+        if (financial_statements.has_data())
         {
-            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
-            if (financial_statements.has_data())
-            {
-                FindData(financial_statements);
-                std::cout << "Found using anchors\n";
-                return;
-            }
+            FindMultipliers(financial_statements);
+            std::cout << "Found using anchors\n";
+            return;
         }
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
 
-    for (auto html : htmls)
+    if (FinancialDocumentFilter(document))
     {
-        if (FinancialDocumentFilter(html))
+        financial_statements = ExtractFinancialStatements(document);
+        if (financial_statements.has_data())
         {
-            financial_statements = ExtractFinancialStatements(html);
-            if (financial_statements.has_data())
-            {
-                FindData(financial_statements);
-                std::cout << "Found the hard way\n";
-                return;
-            }
+            FindMultipliers(financial_statements);
+            std::cout << "Found the hard way\n";
+            return;
         }
     }
 }		/* -----  end of method Multiplier_data::UseExtractor  ----- */
 
-void Multiplier_data::FindData (FinancialStatements& financial_statements)
+void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements)
 {
     // to find multipliers we can take advantage of anchors if any
     // otherwise, we just need to scan the html document to try and find them.
@@ -780,21 +772,22 @@ void Multiplier_data::FindData (FinancialStatements& financial_statements)
             financial_statements.cash_flows_.multiplier_ = 1;
         }
     }
-
-// for shares, we need to look through the extracted table content.
-//
-}		/* -----  end of method Multiplier_data::FindData  ----- */
+}		/* -----  end of method Multiplier_data::FindMultipliers  ----- */
 
 void Shares_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     auto output_file_name = FindFileName(output_directory, document, regex_fname);
     output_file_name.replace_extension(".txt");
 
-    static const boost::regex regex_shares{R"***(^[^\t]*?(?:number.+?shares)|(?:shares.+?outstand)[^\t]*?$)***",
+    static const boost::regex regex_shares{R"***((?:number.+?shares)|(?:shares.*?outstand))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_shares_bal{R"***(^.*common stock.*?authorized.*?([0-9,]{3,}(?:\.[0-9]+)?).*(?:issue|outstand).*?\t)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
     auto financial_statements = FindAndExtractFinancialStatements(document);
     if (financial_statements.has_data())
     {
+        std::string shares_outstanding;
         // let's use the statement of operations as the preferred source.
         // we'll just look thru its values for our key.
 
@@ -806,8 +799,23 @@ void Shares_data::UseExtractor(sview document, const fs::path& output_directory,
                 financial_statements.statement_of_operations_.values_.end(), match_key);
         if (found_it != financial_statements.statement_of_operations_.values_.end())
         {
-            std::string shares_outstanding{found_it->second};
-
+            shares_outstanding = found_it->second;
+        }
+        else
+        {
+            // need to look for alternate form in balance sheet data.
+            
+            boost::smatch matches;
+            bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal);
+            if (found_it)
+            {
+                shares_outstanding = matches.str(1);
+            }
+        }
+        if (! shares_outstanding.empty())
+        {
+            std::cout << shares_outstanding << '\n';
             // need to replace any commas we might have.
 
             const std::string delete_this = "";
@@ -817,7 +825,8 @@ void Shares_data::UseExtractor(sview document, const fs::path& output_directory,
             if (auto [p, ec] =std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
                         financial_statements.outstanding_shares_); ec == std::errc())
             {
-                WriteDataToFile(output_file_name, "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
+                WriteDataToFile(output_file_name,
+                        "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
             }
             else
             {

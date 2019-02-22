@@ -126,14 +126,14 @@ struct Multiplier_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
-    void FindData(FinancialStatements& financial_statements);
+    void FindMultipliers(FinancialStatements& financial_statements);
 };
 
 struct Shares_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
-    void FindData(FinancialStatements& financial_statements);
+    void FindMultipliers(FinancialStatements& financial_statements);
 };
 
 // this filter will export all document sections.

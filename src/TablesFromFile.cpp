@@ -211,7 +211,18 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
         for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
         {
             CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
-            std::string text = a_table_row_cell.text();
+            CSelection a_table_cell_paras = a_table_row_cell.find("p");
+            std::string text;
+            for(int indx = 0; indx < a_table_cell_paras.nodeNum(); ++indx)
+            {
+                CNode a_table_cell_para = a_table_cell_paras.nodeAt(indx);
+                text += ' ';
+                text += a_table_cell_para.text();
+            }
+            if (text.empty())
+            {
+                text = a_table_row_cell.text();
+            }
             if (! text.empty())
             {
                 new_row_data += text;
