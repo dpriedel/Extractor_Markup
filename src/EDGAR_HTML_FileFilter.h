@@ -140,11 +140,16 @@ struct FinancialStatements
     void PrepareTableContent();
     bool ValidateContent();
     void CollectValues();
+    void FindMultipliers();
+    void FindSharesOutstanding();
 
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
 
 EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines);
+
+void FindMultipliersUsingAnchors(FinancialStatements& financial_statements);
+void FindMultipliersUsingContent(FinancialStatements& financial_statements);
 
 struct MultiplierData
 {
