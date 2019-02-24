@@ -39,15 +39,19 @@
 #ifndef  _EDGAR_HTML_FILEFILTER_
 #define  _EDGAR_HTML_FILEFILTER_
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <vector>
 
+#include <boost/regex.hpp>
+
 #include "ExtractEDGAR.h"
 #include "ExtractEDGAR_Utils.h"
 #include "AnchorsFromHTML.h"
+#include "TablesFromFile.h"
 
 using sview = std::string_view;
 
@@ -178,14 +182,6 @@ sview FindFinancialDocument (sview file_content);
 
 bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor);
 
-bool StockholdersEquityAnchorFilter(const AnchorData& an_anchor);
-
-bool CashFlowsAnchorFilter(const AnchorData& an_anchor);
-
-bool StatementOfOperationsAnchorFilter(const AnchorData& an_anchor);
-
-bool BalanceSheetAnchorFilter(const AnchorData& an_anchor);
-
 sview FindFinancialContentUsingAnchors (sview file_content);
 
 AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors);
@@ -211,6 +207,57 @@ FinancialStatements FindAndExtractFinancialStatements(sview file_content);
 FinancialStatements ExtractFinancialStatements(sview financial_content);
 
 FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_content);
+
+// let's take advantage of the fact that we defined all of these structs to have the
+// same fields, field name, and methods...a little templating is good for us !
+
+// need to construct predicates on the fly.
+
+inline auto MakeStatementTypeAnchorFilter(const boost::regex& stmt_anchor_regex)
+{
+    return ([&stmt_anchor_regex](const AnchorData& an_anchor)
+        {
+            if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
+            {
+                return false;
+            }
+
+            const auto& anchor = an_anchor.anchor_content_;
+
+            return boost::regex_search(anchor.cbegin(), anchor.cend(), stmt_anchor_regex);
+        });
+}
+
+// function pointer for our main filter
+
+typedef bool(StmtTypeFilter)(sview);
+
+// here's the guts of the routine.
+
+template<typename StatementType>
+bool FindStatementContent(sview financial_content, StatementType& stmt_type, AnchorsFromHTML anchors,
+        const boost::regex& stmt_anchor_regex, StmtTypeFilter stmt_type_filter)
+{
+    auto stmt_href = std::find_if(anchors.begin(), anchors.end(), MakeStatementTypeAnchorFilter(stmt_anchor_regex));
+    if (stmt_href != anchors.end())
+    {
+        auto stmt_dest = FindDestinationAnchor(*stmt_href, anchors);
+        if (stmt_dest != anchors.end())
+        {
+            stmt_type.the_anchor_ = *stmt_dest;
+
+            TablesFromHTML tables{sview{stmt_dest->anchor_content_.data(),
+                financial_content.size() - (stmt_dest->anchor_content_.data() - financial_content.data())}};
+            auto stmt = std::find_if(tables.begin(), tables.end(), stmt_type_filter);
+            if (stmt != tables.end())
+            {
+                stmt_type.parsed_data_ = *stmt;
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
