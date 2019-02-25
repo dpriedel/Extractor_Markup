@@ -143,7 +143,6 @@ struct FinancialStatements
 
     void PrepareTableContent();
     bool ValidateContent();
-    void CollectValues();
     void FindMultipliers();
     void FindSharesOutstanding();
 
@@ -178,8 +177,6 @@ int TranslateMultiplier(sview multiplier);
 
 bool FinancialDocumentFilter (sview html);
 
-sview FindFinancialDocument (sview file_content);
-
 bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor);
 
 sview FindFinancialContentUsingAnchors (sview file_content);
@@ -200,6 +197,8 @@ bool CashFlowsFilter(sview table);
 
 bool StockholdersEquityFilter(sview table);
 
+bool ApplyStatementFilter(const std::vector<const boost::regex*> regexs, sview table);
+
 // uses a 2-phase approach to look for financial statements.
 
 FinancialStatements FindAndExtractFinancialStatements(sview file_content);
@@ -213,7 +212,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
 
 // need to construct predicates on the fly.
 
-inline auto MakeStatementTypeAnchorFilter(const boost::regex& stmt_anchor_regex)
+inline auto MakeAnchorFilterForStatementType(const boost::regex& stmt_anchor_regex)
 {
     return ([&stmt_anchor_regex](const AnchorData& an_anchor)
         {
@@ -241,7 +240,7 @@ StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anch
 {
     StatementType stmt_type;
 
-    auto stmt_href = std::find_if(anchors.begin(), anchors.end(), MakeStatementTypeAnchorFilter(stmt_anchor_regex));
+    auto stmt_href = std::find_if(anchors.begin(), anchors.end(), MakeAnchorFilterForStatementType(stmt_anchor_regex));
     if (stmt_href != anchors.end())
     {
         auto stmt_dest = FindDestinationAnchor(*stmt_href, anchors);
