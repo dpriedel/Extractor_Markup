@@ -624,9 +624,9 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
     static const boost::regex regex_balance_sheet{R"***(balance\s+sheet)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    bool found_stmt = FindStatementContent<>(financial_content, the_tables.balance_sheet_, anchors,
-            regex_balance_sheet, BalanceSheetFilter);
-    if (! found_stmt)
+    the_tables.balance_sheet_ = FindStatementContent<BalanceSheet>(financial_content, anchors, regex_balance_sheet,
+            BalanceSheetFilter);
+    if (the_tables.balance_sheet_.empty())
     {
         return the_tables;
     }
@@ -634,17 +634,17 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
     static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    found_stmt = FindStatementContent<>(financial_content, the_tables.statement_of_operations_, anchors,
-            regex_operations, StatementOfOperationsFilter);
-    if (! found_stmt)
+    the_tables.statement_of_operations_ = FindStatementContent<StatementOfOperations>(financial_content,
+            anchors, regex_operations, StatementOfOperationsFilter);
+    if (the_tables.statement_of_operations_.empty())
     {
         return the_tables;
     }
+
     static const boost::regex regex_cash_flow{R"***((?:cash\s+flow)|(?:statement.+?cash)|(?:cashflow))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    found_stmt = FindStatementContent<>(financial_content, the_tables.cash_flows_, anchors,
-            regex_cash_flow, CashFlowsFilter);
+    the_tables.cash_flows_ = FindStatementContent<CashFlows>(financial_content, anchors, regex_cash_flow, CashFlowsFilter);
 
 //    static const boost::regex regex_equity{R"***((?:stockh|shareh).*?equit)***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};

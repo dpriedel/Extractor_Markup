@@ -233,11 +233,14 @@ inline auto MakeStatementTypeAnchorFilter(const boost::regex& stmt_anchor_regex)
 typedef bool(StmtTypeFilter)(sview);
 
 // here's the guts of the routine.
+// using 'template normal programming' as from: https://www.youtube.com/watch?v=vwrXHznaYLA
 
 template<typename StatementType>
-bool FindStatementContent(sview financial_content, StatementType& stmt_type, AnchorsFromHTML anchors,
+StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anchors,
         const boost::regex& stmt_anchor_regex, StmtTypeFilter stmt_type_filter)
 {
+    StatementType stmt_type;
+
     auto stmt_href = std::find_if(anchors.begin(), anchors.end(), MakeStatementTypeAnchorFilter(stmt_anchor_regex));
     if (stmt_href != anchors.end())
     {
@@ -252,11 +255,11 @@ bool FindStatementContent(sview financial_content, StatementType& stmt_type, Anc
             if (stmt != tables.end())
             {
                 stmt_type.parsed_data_ = *stmt;
-                return true;
+                return stmt_type;
             }
         }
     }
-    return false;
+    return stmt_type;
 }
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
