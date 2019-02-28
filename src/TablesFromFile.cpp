@@ -250,8 +250,7 @@ std::string TablesFromHTML::table_itor::FilterFoundHTML (const std::string& new_
     // (I'll add them where I want them.)
 
     static const boost::regex regex_line_breaks{R"***([\x0a\x0d])***"};
-    const std::string delete_this = "";
-    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, delete_this);
+    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, one_space);
 
     return clean_row_data;
 }		/* -----  end of function TablesFromHTML::table_itor::FilterFoundHTML  ----- */

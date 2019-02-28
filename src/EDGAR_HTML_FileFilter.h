@@ -133,7 +133,7 @@ struct FinancialStatements
     StockholdersEquity stockholders_equity_;
     EE::EDGAR_Values values_;
     sview html_;
-    int outstanding_shares_ = 0;
+    long int outstanding_shares_ = 0;
 
     bool has_data() const
     {
@@ -176,8 +176,6 @@ using MultDataList = std::vector<MultiplierData>;
 int TranslateMultiplier(sview multiplier);
 
 bool FinancialDocumentFilter (sview html);
-
-bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor);
 
 sview FindFinancialContentUsingAnchors (sview file_content);
 

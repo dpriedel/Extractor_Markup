@@ -151,29 +151,6 @@ bool FinancialDocumentFilter (sview html)
     }
     return false;
 }		/* -----  end of function FinancialDocumentFilter  ----- */
-
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  FinancialDocumentFilterUsingAnchors 
- *  Description:  
- * =====================================================================================
- */
-bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor)
-{
-    static const boost::regex regex_finance_statements{R"***(<a.*?(?:financ.+?statement)|(?:balance\s+sheet).*?</a)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    // at this point, I'm only interested in internal hrefs.
-    
-    if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
-    {
-        return false;
-    }
-
-    const auto& anchor = an_anchor.anchor_content_;
-
-    return (boost::regex_search(anchor.cbegin(), anchor.cend(), regex_finance_statements));
-}		/* -----  end of function FinancialDocumentFilterUsingAnchors  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FindFinancialContentUsingAnchors
@@ -182,14 +159,19 @@ bool FinancialDocumentFilterUsingAnchors (const AnchorData& an_anchor)
  */
 sview FindFinancialContentUsingAnchors (sview file_content)
 {
+    static const boost::regex regex_finance_statements
+    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+
     HTML_FromFile htmls{file_content};
 
-    auto look_for_top_level([] (auto html)
+    auto look_for_top_level([&document_anchor_filter] (auto html)
     {
         try
         {
             AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
+            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
             return financial_anchor != anchors.end();
         }
         catch(const HTMLException& e)
@@ -459,23 +441,28 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*> regexs, sview 
  */
 FinancialStatements FindAndExtractFinancialStatements (sview file_content)
 {
-    // we use a 2-phase scan.
+    // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
     // we need to do the loops manually since the first match we get
     // may not be the actual content we want.
 
+    static const boost::regex regex_finance_statements
+    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+
     FinancialStatements financial_statements;
 
     HTML_FromFile htmls{file_content};
 
-    auto look_for_top_level([] (auto html)
+    auto look_for_top_level([&document_anchor_filter] (auto html)
     {
         try
         {
             AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), FinancialDocumentFilterUsingAnchors);
+            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
             return financial_anchor != anchors.end();
         }
         catch(const HTMLException& e)
@@ -492,9 +479,10 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             financial_statements = ExtractFinancialStatementsUsingAnchors(html);
             if (financial_statements.has_data())
             {
+                financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
-                financial_statements.FindSharesOutstanding();
+//                financial_statements.FindMultipliers();
+//                financial_statements.FindSharesOutstanding();
                 return financial_statements;
             }
         }
@@ -509,9 +497,10 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             financial_statements = ExtractFinancialStatements(html);
             if (financial_statements.has_data())
             {
+                financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
-                financial_statements.FindSharesOutstanding();
+//                financial_statements.FindMultipliers();
+//                financial_statements.FindSharesOutstanding();
                 return financial_statements;
             }
         }
@@ -551,7 +540,6 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
         }
     }
 
-    the_tables.html_ = financial_content;
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatements  ----- */
 
@@ -567,7 +555,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
 
     AnchorsFromHTML anchors(financial_content);
 
-    static const boost::regex regex_balance_sheet{R"***(balance\s+sheet)***",
+    static const boost::regex regex_balance_sheet{R"***((?:balance\s+sheet)|(?:financial.*?position))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     the_tables.balance_sheet_ = FindStatementContent<BalanceSheet>(financial_content, anchors, regex_balance_sheet,
