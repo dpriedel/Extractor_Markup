@@ -39,7 +39,6 @@
 
 #include "ExtractEDGAR_XBRLApp.h"
 
-#include <map>
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
@@ -50,6 +49,7 @@
 #include <future>
 #include <iterator>
 #include <iterator>
+#include <map>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -558,7 +558,6 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find any HTML financial tables: "
                     + input_file_name.string()).c_str());
 
-        the_tables.CollectValues();
         BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: "
                     + input_file_name.string()).c_str());
 
@@ -745,7 +744,6 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
     auto the_tables = FindAndExtractFinancialStatements(file_content);
     BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find any HTML financial tables: " + file_name).c_str());
 
-    the_tables.CollectValues();
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
     return LoadDataToDB(SEC_fields, the_tables.ListValues(), replace_DB_content_);
 }		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML  ----- */
