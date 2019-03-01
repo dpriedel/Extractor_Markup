@@ -43,8 +43,8 @@
 
 #include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/format.hpp>
 
+#include "fmt/core.h"
 #include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
@@ -547,13 +547,13 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
     pqxx::work trxn{c};
 
-	auto check_for_existing_content_cmd = boost::format("SELECT count(*) FROM xbrl_extracts.edgar_filing_id WHERE"
-        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
-			% trxn.esc(SEC_fields.at("cik"))
-			% trxn.esc(SEC_fields.at("form_type"))
-			% trxn.esc(filing_fields.period_end_date)
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM xbrl_extracts.edgar_filing_id WHERE"
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+			trxn.esc(SEC_fields.at("cik")),
+			trxn.esc(SEC_fields.at("form_type")),
+			trxn.esc(filing_fields.period_end_date))
 			;
-    auto row = trxn.exec1(check_for_existing_content_cmd.str());
+    auto row = trxn.exec1(check_for_existing_content_cmd);
 //    trxn.commit();
 	auto have_data = row[0].as<int>();
     if (have_data != 0 && ! replace_content)
@@ -565,31 +565,31 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 
 //    pqxx::work trxn{c};
 
-	auto filing_ID_cmd = boost::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
-        " cik = '%1%' AND form_type = '%2%' AND period_ending = '%3%'")
-			% trxn.esc(SEC_fields.at("cik"))
-			% trxn.esc(SEC_fields.at("form_type"))
-			% trxn.esc(filing_fields.period_end_date)
+	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+			trxn.esc(SEC_fields.at("cik")),
+			trxn.esc(SEC_fields.at("form_type")),
+			trxn.esc(filing_fields.period_end_date))
 			;
-    trxn.exec(filing_ID_cmd.str());
+    trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding)"
-		" VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%', '%10%') RETURNING filing_ID")
-		% trxn.esc(SEC_fields.at("cik"))
-		% trxn.esc(SEC_fields.at("company_name"))
-		% trxn.esc(SEC_fields.at("file_name"))
-        % trxn.esc(filing_fields.trading_symbol)
-		% trxn.esc(SEC_fields.at("sic"))
-		% trxn.esc(SEC_fields.at("form_type"))
-		% trxn.esc(SEC_fields.at("date_filed"))
-		% trxn.esc(filing_fields.period_end_date)
-		% trxn.esc(filing_fields.period_context_ID)
-		% trxn.esc(filing_fields.shares_outstanding)
+		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
+		trxn.esc(SEC_fields.at("cik")),
+		trxn.esc(SEC_fields.at("company_name")),
+		trxn.esc(SEC_fields.at("file_name")),
+        trxn.esc(filing_fields.trading_symbol),
+		trxn.esc(SEC_fields.at("sic")),
+		trxn.esc(SEC_fields.at("form_type")),
+		trxn.esc(SEC_fields.at("date_filed")),
+		trxn.esc(filing_fields.period_end_date),
+		trxn.esc(filing_fields.period_context_ID),
+		trxn.esc(filing_fields.shares_outstanding))
 		;
     // std::cout << filing_ID_cmd << '\n';
-    auto res = trxn.exec(filing_ID_cmd.str());
+    auto res = trxn.exec(filing_ID_cmd);
 //    trxn.commit();
 
 	std::string filing_ID;
@@ -602,21 +602,21 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-    	auto detail_cmd = boost::format("INSERT INTO xbrl_extracts.edgar_filing_data"
+    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_data"
             " (filing_ID, xbrl_label, user_label, xbrl_value, context_ID, period_begin, period_end, units, decimals)"
-            " VALUES ('%1%', '%2%', '%3%', '%4%', '%5%', '%6%', '%7%', '%8%', '%9%')")
-    			% trxn.esc(filing_ID)
-    			% trxn.esc(label)
-    			% trxn.esc(FindOrDefault(label_fields, label, "Missing Value"))
-    			% trxn.esc(value)
-    			% trxn.esc(context_ID)
-                % trxn.esc(context_fields.at(context_ID).begin)
-                % trxn.esc(context_fields.at(context_ID).end)
-    			% trxn.esc(units)
-    			% trxn.esc(decimals)
+            " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')",
+    			trxn.esc(filing_ID),
+    			trxn.esc(label),
+    			trxn.esc(FindOrDefault(label_fields, label, "Missing Value")),
+    			trxn.esc(value),
+    			trxn.esc(context_ID),
+                trxn.esc(context_fields.at(context_ID).begin),
+                trxn.esc(context_fields.at(context_ID).end),
+    			trxn.esc(units),
+    			trxn.esc(decimals))
     			;
         // std::cout << detail_cmd << '\n';
-        trxn.exec(detail_cmd.str());
+        trxn.exec(detail_cmd);
     }
 
     trxn.commit();
