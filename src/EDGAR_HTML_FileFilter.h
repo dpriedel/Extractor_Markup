@@ -195,7 +195,7 @@ bool CashFlowsFilter(sview table);
 
 bool StockholdersEquityFilter(sview table);
 
-bool ApplyStatementFilter(const std::vector<const boost::regex*> regexs, sview table);
+bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, sview table, int matches_needed);
 
 // uses a 2-phase approach to look for financial statements.
 

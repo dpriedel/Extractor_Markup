@@ -788,15 +788,15 @@ void Shares_data::UseExtractor(sview document, const fs::path& output_directory,
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_auth
-        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized.*?[0-9,]{5,}(?:\.[0-9]+)?)|(?:[0-9,]{5,}(?:\.[0-9]+)?.*?authorized)).*?([0-9,]{5,}(?:\.[0-9]+)?)[^\t]*?\t)***",
+        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized.*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}.*?authorized)).*?([1-9][0-9,]{4,})[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_iss
-        {R"***(^.*?common (?:stock|shares).*?(?:issued.*?([0-9,]{5,}(?:\.[0-9]+)?))|(?:([0-9,]{5,}(?:\.[0-9]+)?).*?issued)[^\t]*?\t)***",
+        {R"***(^.*?common (?:stock|shares).*?(?:issued.*?([1-9][0-9,]{4,}))|(?:([1-9][0-9,]{4,}).*?issued)[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_weighted_avg
-        {R"***((?:(?:weighted average common shares)|(?:weighted average shares outstand)|(?:weighted average number.*?shares)|(?:income.*?divided by)).*?([0-9,]{5,}(?:\.[0-9]+)?))***",
+        {R"***((?:(?:weighted average common shares)|(?:average shares outstand)|(?:weighted average number.*?shares)|(?:income.*?divided by)).*?([1-9][0-9,]{4,}))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     auto financial_statements = FindAndExtractFinancialStatements(document);
@@ -813,29 +813,38 @@ void Shares_data::UseExtractor(sview document, const fs::path& output_directory,
         {
             shares_outstanding = matches.str(1);
         }
+        else if (found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_iss); found_it)
+        {
+                shares_outstanding = matches.str(1);
+        }
         else
         {
-            // need to look for alternate form in balance sheet data.
-                
-            bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_iss);
-            if (found_it)
+            // let's try the statement of operations as.
+            // we'll just look thru its values for our key.
+
+            auto match_key([&regex_shares](const auto& item)
+                {
+                    return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
+                });
+            auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(),
+                    financial_statements.statement_of_operations_.values_.end(), match_key);
+            if (found_it != financial_statements.statement_of_operations_.values_.end())
             {
-                shares_outstanding = matches.str(1);
+                shares_outstanding = found_it->second;
             }
             else
             {
                 // brute force it....
 
-                const boost::regex regex_weighted_avg_text
-                    {R"***(weighted average)***", boost::regex_constants::normal | boost::regex_constants::icase};
+            const boost::regex regex_weighted_avg_text {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***",
+                    boost::regex_constants::normal | boost::regex_constants::icase};
 
                 TablesFromHTML tables{financial_statements.html_};
                 for (auto table : tables)
                 {
                     boost::smatch matches;
-                    bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches,
-                            regex_weighted_avg);
+                    auto found_it = boost::regex_search(table.cbegin(), table.cend(), matches, regex_weighted_avg);
                     if (found_it)
                     {
                         shares_outstanding = matches.str(1);

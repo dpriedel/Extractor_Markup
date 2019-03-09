@@ -221,6 +221,16 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
             }
             if (text.empty())
             {
+                CSelection a_table_cell_divs= a_table_row_cell.find("div");
+                for(int indx = 0; indx < a_table_cell_divs.nodeNum(); ++indx)
+                {
+                    CNode a_table_cell_div = a_table_cell_divs.nodeAt(indx);
+                    text += ' ';
+                    text += a_table_cell_div.text();
+                }
+            }
+            if (text.empty())
+            {
                 text = a_table_row_cell.text();
             }
             if (! text.empty())
@@ -236,9 +246,9 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
             table_text += '\n';
         }
     }
-    if (table_text.empty())
+    if (table_text.size() < 100)
     {
-        throw HTMLException("table has no HTML.");
+        throw HTMLException("table has little or no HTML.");
     }
     table_text.shrink_to_fit();
     return table_text;

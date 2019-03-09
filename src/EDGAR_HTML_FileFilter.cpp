@@ -134,7 +134,7 @@ bool FinancialDocumentFilter (sview html)
 {
     static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income))***",
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -159,20 +159,51 @@ bool FinancialDocumentFilter (sview html)
  */
 sview FindFinancialContentUsingAnchors (sview file_content)
 {
+    // sometimes we don't have a top level anchor but we do have
+    // anchors for individual statements.
+
     static const boost::regex regex_finance_statements
-    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
+    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+    static const boost::regex regex_finance_statements_bal
+    {R"***(<a.*?(?:balance\s+sheet).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_finance_statements_ops
+    {R"***(<a.*?((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning)).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_finance_statements_cash
+    {R"***(<a.*?(?:statement|statements)\s+?of.*?(?:cash\s+flow).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    const auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+    const auto document_anchor_filter1 = MakeAnchorFilterForStatementType(regex_finance_statements_bal);
+    const auto document_anchor_filter2 = MakeAnchorFilterForStatementType(regex_finance_statements_ops);
+    const auto document_anchor_filter3 = MakeAnchorFilterForStatementType(regex_finance_statements_cash);
+    
+    std::vector<std::add_pointer<decltype(document_anchor_filter)>::type> document_anchor_filters
+        {&document_anchor_filter, &document_anchor_filter1, &document_anchor_filter2, &document_anchor_filter3};
 
     HTML_FromFile htmls{file_content};
 
-    auto look_for_top_level([&document_anchor_filter] (auto html)
+    auto anchor_filter_matcher([&document_anchor_filters](const auto& anchor)
+        {
+            for (auto& filter : document_anchor_filters)
+            {
+                if ((*filter)(anchor))
+                {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+    auto look_for_top_level([&anchor_filter_matcher] (auto html)
     {
         try
         {
             AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
-            return financial_anchor != anchors.end();
+            int how_many_matches = std::count_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
+            return how_many_matches >= 3;
         }
         catch(const HTMLException& e)
         {
@@ -295,17 +326,23 @@ bool BalanceSheetFilter(sview table)
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
 
-    static const boost::regex assets{R"***((?:current|total)[^\t]+?asset[^\t]*\t)***",
+//    static const boost::regex assets{R"***((?:current|total)[^\t]+?asset[^\t]*\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex liabilities{R"***((?:current|total)[^\t]+?liabilities[^\t]*\t)***",
+//        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex assets{R"***(total[^\t]+?asset[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex liabilities{R"***((?:current|total)[^\t]+?liabilities[^\t]*\t)***",
+    static const boost::regex liabilities{R"***(total[^\t]+?liabilities[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex equity
         {R"***((?:(?:members|holders)[^\t]+?(?:equity|defici))|(?:common[^\t]+?share)|(?:common[^\t]+?stock)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex prepaid{R"***(prepaid[^\t]+?expense[^\t]*\t)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
-    std::vector<const boost::regex*> regexs{&assets, &liabilities, &equity};
+    std::vector<const boost::regex*> regexs{&assets, &liabilities, &equity, &prepaid};
 
-    return ApplyStatementFilter(regexs, table);
+    return ApplyStatementFilter(regexs, table, 3);
     
 }		/* -----  end of function BalanceSheetFilter  ----- */
 
@@ -324,7 +361,7 @@ bool StatementOfOperationsFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
+    static const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net[^\t]*?(?:gain|loss|income|earning)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -334,7 +371,7 @@ bool StatementOfOperationsFilter(sview table)
     
     std::vector<const boost::regex*> regexs{&income, &expenses, &net_income, &shares_outstanding};
 
-    return ApplyStatementFilter(regexs, table);
+    return ApplyStatementFilter(regexs, table, regexs.size());
 }		/* -----  end of function StatementOfOperationsFilter  ----- */
 
 /* 
@@ -359,7 +396,7 @@ bool CashFlowsFilter(sview table)
     
     std::vector<const boost::regex*> regexs{&operating, &financing};
 
-    return ApplyStatementFilter(regexs, table);
+    return ApplyStatementFilter(regexs, table, regexs.size());
 }		/* -----  end of function CashFlowsFilter  ----- */
 
 /* 
@@ -392,7 +429,7 @@ bool StockholdersEquityFilter(sview table)
 //    {
 //        return false;
 //    }
-    return true;
+    return false;
 }		/* -----  end of function StockholdersEquityFilter  ----- */
 
 /* 
@@ -401,15 +438,15 @@ bool StockholdersEquityFilter(sview table)
  *  Description:  
  * =====================================================================================
  */
-bool ApplyStatementFilter (const std::vector<const boost::regex*> regexs, sview table)
+bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, sview table, int matches_needed)
 {
-    auto matcher([table](auto regex)
+    auto matcher([table](const boost::regex* regex)
         {
             return boost::regex_search(table.begin(), table.end(), *regex, boost::regex_constants::match_not_dot_newline);
         });
-    bool result = std::all_of(regexs.begin(), regexs.end(), matcher);
+    int how_many_matches = std::count_if(regexs.begin(), regexs.end(), matcher);
 
-    if (! result)
+    if (how_many_matches < matches_needed)
     {
         return false;
     }
@@ -418,7 +455,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*> regexs, sview 
     // to contain our match criteria.
 
     auto lines = split_string(table, '\n');
-    auto regex = *regexs[0];
+    auto regex = *regexs[1];
 
     for (auto line : lines)
     {
@@ -751,10 +788,10 @@ void FinancialStatements::FindSharesOutstanding()
             // brute force it....
 
             const boost::regex regex_weighted_avg_text
-                {R"***(weighted average)***", boost::regex_constants::normal | boost::regex_constants::icase};
+                {R"***(weighted average[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
             TablesFromHTML tables{html_};
-            for (auto table : tables)
+            for (const auto& table : tables)
             {
                 boost::smatch matches;
                 bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches,
@@ -772,7 +809,7 @@ void FinancialStatements::FindSharesOutstanding()
     {
         // need to replace any commas we might have.
 
-        const std::string delete_this = "";
+        const std::string delete_this{""};
         const boost::regex regex_comma{R"***(,)***"};
         shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
 
