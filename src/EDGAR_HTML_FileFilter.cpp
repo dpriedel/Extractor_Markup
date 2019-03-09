@@ -52,6 +52,7 @@
 #include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
+#include <pqxx/stream_to>
 
 using namespace std::string_literals;
 
@@ -960,20 +961,20 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 
 //    pqxx::work trxn{c};
     int counter = 0;
+    pqxx::stream_to inserter{trxn, "html_extracts.edgar_filing_data",
+        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+
     for (const auto&[label, value] : filing_fields)
     {
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO html_extracts.edgar_filing_data"
-            " (filing_ID, html_label, html_value)"
-            " VALUES ('{0}', '{1}', '{2}')",
-    			trxn.esc(filing_ID),
-    			trxn.esc(label),
-    			trxn.esc(value))
-    			;
-        // std::cout << detail_cmd << '\n';
-        trxn.exec(detail_cmd);
+        inserter << std::make_tuple(
+            filing_ID,
+            trxn.esc(label),
+            trxn.esc(value)
+            );
     }
 
+    inserter.complete();
     trxn.commit();
     c.disconnect();
 
