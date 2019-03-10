@@ -99,6 +99,8 @@ protected:
     bool LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
     bool LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
     bool LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+    void Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
+        int& error_counter, const std::string& file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);

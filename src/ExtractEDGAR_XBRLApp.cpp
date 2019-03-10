@@ -585,62 +585,69 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
 
     std::atomic<int> forms_processed{0};
 
-    auto process_file([this, &forms_processed, &success_counter, & skipped_counter, & error_counter](const auto& file_name)
+    auto process_file([this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto& file_name)
     {
-        if (fs::is_regular_file(file_name))
-        {
-            try
-            {
-                if (filename_has_form_)
-                {
-                    if (! FormIsInFileName(form_list_, file_name))
-                    {
-                        ++skipped_counter;
-                        return;
-                    }
-                }
-                spdlog::debug(catenate("Scanning file: ", file_name));
-                const std::string file_content(LoadDataFileForUse(file_name.c_str()));
-
-                SEC_Header SEC_data;
-                SEC_data.UseData(file_content);
-                SEC_data.ExtractHeaderFields();
-                decltype(auto) SEC_fields = SEC_data.GetFields();
-
-                if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
-                {
-                    LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
-                }
-                else
-                {
-                    ++skipped_counter;
-                }
-            }
-            catch(MaxFilesException& e)
-            {
-                // reached our limit of files to process, so let's get out of here.
-
-                ++error_counter;
-                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
-                        " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, "."));
-                throw;
-            }
-            catch(std::exception& e)
-            {
-                ++error_counter;
-                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
-                        " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, "."));
-                spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
-            }
-        }
+        Do_SingleFile(forms_processed, success_counter, skipped_counter, error_counter, file_name);
     });
 
     std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
 
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFilesFromListToDB  ----- */
+
+void ExtractEDGAR_XBRLApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
+        int& error_counter, const std::string& file_name)
+{
+
+    if (fs::is_regular_file(file_name))
+    {
+        try
+        {
+            if (filename_has_form_)
+            {
+                if (! FormIsInFileName(form_list_, file_name))
+                {
+                    ++skipped_counter;
+                    return;
+                }
+            }
+            spdlog::debug(catenate("Scanning file: ", file_name));
+            const std::string file_content(LoadDataFileForUse(file_name.c_str()));
+
+            SEC_Header SEC_data;
+            SEC_data.UseData(file_content);
+            SEC_data.ExtractHeaderFields();
+            decltype(auto) SEC_fields = SEC_data.GetFields();
+
+            if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
+            {
+                LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
+            }
+            else
+            {
+                ++skipped_counter;
+            }
+        }
+        catch(MaxFilesException& e)
+        {
+            // reached our limit of files to process, so let's get out of here.
+
+            ++error_counter;
+            spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                    " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
+                    ". Errors: ", error_counter, "."));
+            throw;
+        }
+        catch(std::exception& e)
+        {
+            ++error_counter;
+            spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                    " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
+                    ". Errors: ", error_counter, "."));
+            spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
+        }
+    }
+}		/* -----  end of method ExtractEDGAR_XBRLApp::Do_SingleFile  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
 {
@@ -650,59 +657,18 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
 
     std::atomic<int> forms_processed{0};
 
-    auto test_file([this, &forms_processed, &success_counter, & skipped_counter, & error_counter](const auto& dir_ent)
+    auto process_file([this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto& dir_ent)
     {
         if (dir_ent.status().type() == fs::file_type::regular)
         {
-            try
-            {
-                if (filename_has_form_)
-                {
-                    if (! FormIsInFileName(form_list_, dir_ent.path().string()))
-                    {
-                        ++skipped_counter;
-                        return;
-                    }
-                }
-                spdlog::debug(catenate("Scanning file: ", dir_ent.path().string()));
-                const std::string file_content(LoadDataFileForUse(dir_ent.path().c_str()));
+            const std::string file_name{dir_ent.path().string()};
 
-                SEC_Header SEC_data;
-                SEC_data.UseData(file_content);
-                SEC_data.ExtractHeaderFields();
-                decltype(auto) SEC_fields = SEC_data.GetFields();
-
-                if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
-                {
-                    LoadFileFromFolderToDB(dir_ent.path(), SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
-                }
-                else
-                {
-                    ++skipped_counter;
-                }
-            }
-            catch(MaxFilesException& e)
-            {
-                // reached our limit of files to process, so let's get out of here.
-
-                ++error_counter;
-                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
-                        " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, "."));
-                throw;
-            }
-            catch(std::exception& e)
-            {
-                ++error_counter;
-                spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
-                        " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
-                        ". Errors: ", error_counter, "."));
-                spdlog::error(catenate("Problem processing file: ", dir_ent.path().string(), ". ", e.what()));
-            }
+            Do_SingleFile(forms_processed, success_counter, skipped_counter, error_counter, file_name);
         }
     });
 
-    std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(), test_file);
+    std::for_each(fs::recursive_directory_iterator(local_form_file_directory_), fs::recursive_directory_iterator(),
+            process_file);
 
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractEDGAR_XBRLApp::ProcessDirectory  ----- */
