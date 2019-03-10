@@ -184,18 +184,13 @@ sview FindFinancialContentUsingAnchors (sview file_content)
     std::vector<std::add_pointer<decltype(document_anchor_filter)>::type> document_anchor_filters
         {&document_anchor_filter, &document_anchor_filter1, &document_anchor_filter2, &document_anchor_filter3};
 
-    HTML_FromFile htmls{file_content};
-
     auto anchor_filter_matcher([&document_anchor_filters](const auto& anchor)
         {
-            for (auto& filter : document_anchor_filters)
-            {
-                if ((*filter)(anchor))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return std::any_of(document_anchor_filters.begin(),
+                    document_anchor_filters.end(),
+                    [&anchor] (const auto& filter) { return (*filter)(anchor); }
+                );
+
         });
 
     auto look_for_top_level([&anchor_filter_matcher] (auto html)
@@ -212,6 +207,8 @@ sview FindFinancialContentUsingAnchors (sview file_content)
             return false;
         }
     });
+
+    HTML_FromFile htmls{file_content};
 
     auto financial_content = std::find_if(htmls.begin(),
             htmls.end(),
@@ -362,8 +359,9 @@ bool StatementOfOperationsFilter(sview table)
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex expenses{R"***(other income|(?:(?:operating|total).*?(?:expense|costs)))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex expenses
+        {R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net[^\t]*?(?:gain|loss|income|earning)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex shares_outstanding
