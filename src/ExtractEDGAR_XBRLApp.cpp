@@ -598,7 +598,6 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
 void ExtractEDGAR_XBRLApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, const std::string& file_name)
 {
-
     if (fs::is_regular_file(file_name))
     {
         try

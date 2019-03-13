@@ -37,6 +37,7 @@
 // =====================================================================================
 
 #include <charconv>
+#include <iostream>
 #include <system_error>
 
 #include "EDGAR_HTML_FileFilter.h"
@@ -752,51 +753,77 @@ void FinancialStatements::FindSharesOutstanding()
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_auth
-        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized.*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}.*?authorized)).*? ([1-9][0-9,]{4,})[^\t]*?\t)***",
+        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized[^\t]*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}[^\t]*?authorized))[^\t]*?([1-9][0-9,]{4,})[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_iss
-        {R"***(^.*?common (?:stock|shares).*?(?:issued.*?([1-9][0-9,]{4,}))|(?:([1-9][0-9,]{4,}).*?issued)[^\t]*?\t)***",
+        {R"***(^.*?common (?:stock|shares)[^\t]*?(?:issued[^\t]*?([1-9][0-9,]{3,}[0-9]))|(?:([1-9][0-9,]{3,}[0-9])[^\t]*?issued)[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_weighted_avg
-        {R"***((?:(?:weighted average common shares)|(?:average shares outstand)|(?:weighted average number.*?shares)|(?:income.*?divided by)).*?([1-9][0-9,]{4,}))***",
+        {R"***((?:(?:weighted.average common shares)|(?:average shares outstand)|(?:weighted.average number.*?shares)|(?:income.*?divided by)).*?\t([1-9][0-9,]+))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-
     std::string shares_outstanding;
 
-    boost::smatch matches;
-    bool found_it = boost::regex_search(balance_sheet_.parsed_data_.cbegin(), balance_sheet_.parsed_data_.cend(),
-            matches, regex_shares_bal_auth);
+    bool use_multiplier{false};
+
+    boost::cmatch matches;
+
+    auto auth_match([&regex_shares_bal_auth, &matches](const auto& item)
+        {
+            return boost::regex_search(item.begin(), item.end(), matches, regex_shares_bal_auth);
+        });
+    auto iss_match([&regex_shares_bal_iss, &matches](const auto& item)
+        {
+            return boost::regex_search(item.begin(), item.end(), matches, regex_shares_bal_iss);
+        });
+
+    bool found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), auth_match) != balance_sheet_.lines_.end();
     if (found_it)
     {
         shares_outstanding = matches.str(1);
     }
+    else if (found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), iss_match) != balance_sheet_.lines_.end(); found_it)
+    {
+            shares_outstanding = matches.str(1);
+    }
     else
     {
-        // need to look for alternate form in balance sheet data.
-            
-        bool found_it = boost::regex_search(balance_sheet_.parsed_data_.cbegin(), balance_sheet_.parsed_data_.cend(),
-                matches, regex_shares_bal_iss);
-        if (found_it)
+
+        // let's try the statement of operations as.
+        // we'll just look thru its values for our key.
+
+        auto match_key([&regex_shares](const auto& item)
+            {
+                return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
+            });
+        auto found_it = std::find_if(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(), match_key);
+        if (found_it != statement_of_operations_.values_.end())
         {
-            shares_outstanding = matches.str(1);
+            shares_outstanding = found_it->second;
+            use_multiplier = true;
         }
         else
         {
             // brute force it....
 
             const boost::regex regex_weighted_avg_text
-                {R"***(weighted average[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***", boost::regex_constants::normal | boost::regex_constants::icase};
+                {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{2,}(?:\.[0-9]+)?)\t)***",
+                    boost::regex_constants::normal | boost::regex_constants::icase};
+
+            boost::cmatch matches;
+            auto weighted_match([&regex_weighted_avg, &matches](auto line)
+                {
+                    return boost::regex_search(line.begin(), line.end(), matches, regex_weighted_avg);
+                });
 
             TablesFromHTML tables{html_};
             for (const auto& table : tables)
             {
-                boost::smatch matches;
-                bool found_it = boost::regex_search(table.cbegin(), table.cend(), matches,
-                        regex_weighted_avg);
-                if (found_it)
+                auto lines = split_string(table, '\n');
+                if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
                 {
+                    use_multiplier = true;
                     shares_outstanding = matches.str(1);
                     break;
                 }
@@ -817,6 +844,12 @@ void FinancialStatements::FindSharesOutstanding()
         {
             throw EDGARException(catenate("Problem converting shares outstanding: ",
                         std::make_error_code(ec).message(), '\n'));
+        }
+        // apply multiplier if we got our value from a table value rather than a table label.
+
+        if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
+        {
+            outstanding_shares_ *= statement_of_operations_.multiplier_;
         }
     }
     else

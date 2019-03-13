@@ -802,86 +802,88 @@ void Shares_data::UseExtractor(sview document, const fs::path& output_directory,
     auto financial_statements = FindAndExtractFinancialStatements(document);
     if (financial_statements.has_data())
     {
-        std::string shares_outstanding;
-        // let's use the statement of operations as the preferred source.
-        // we'll just look thru its values for our key.
-
-        boost::smatch matches;
-        bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-                financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_auth);
-        if (found_it)
-        {
-            shares_outstanding = matches.str(1);
-        }
-        else if (found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_iss); found_it)
-        {
-                shares_outstanding = matches.str(1);
-        }
-        else
-        {
-            // let's try the statement of operations as.
-            // we'll just look thru its values for our key.
-
-            auto match_key([&regex_shares](const auto& item)
-                {
-                    return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
-                });
-            auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(),
-                    financial_statements.statement_of_operations_.values_.end(), match_key);
-            if (found_it != financial_statements.statement_of_operations_.values_.end())
-            {
-                shares_outstanding = found_it->second;
-            }
-            else
-            {
-                // brute force it....
-
-            const boost::regex regex_weighted_avg_text {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***",
-                    boost::regex_constants::normal | boost::regex_constants::icase};
-
-                TablesFromHTML tables{financial_statements.html_};
-                for (auto table : tables)
-                {
-                    boost::smatch matches;
-                    auto found_it = boost::regex_search(table.cbegin(), table.cend(), matches, regex_weighted_avg);
-                    if (found_it)
-                    {
-                        shares_outstanding = matches.str(1);
-                        break;
-                    }
-                }
-            }
-        }
-        if (! shares_outstanding.empty())
-        {
-            std::cout << shares_outstanding << '\n';
-            // need to replace any commas we might have.
-
-            const std::string delete_this = "";
-            const boost::regex regex_comma{R"***(,)***"};
-            shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
-
-            if (auto [p, ec] =std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
-                        financial_statements.outstanding_shares_); ec == std::errc())
-            {
-                WriteDataToFile(output_file_name,
-                        "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
-            }
-            else
-            {
-                throw EDGARException(catenate("Problem converting shares outstanding: ",
-                            std::make_error_code(ec).message(), '\n'));
-            }
-        }
-        else
-        {
-            WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
-                    "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
-                    "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
-                    "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
-            throw EDGARException("Can't find shares outstanding.\n");
-        }
+        std::cout << "shares outstanding: " << financial_statements.outstanding_shares_ << '\n';
+//        std::string shares_outstanding;
+//        // let's use the statement of operations as the preferred source.
+//        // we'll just look thru its values for our key.
+//
+//        boost::smatch matches;
+//        bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+//                financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_auth);
+//        if (found_it)
+//        {
+//            shares_outstanding = matches.str(1);
+//        }
+//        else if (found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+//                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_iss); found_it)
+//        {
+//                shares_outstanding = matches.str(1);
+//        }
+//        else
+//        {
+//            // let's try the statement of operations as.
+//            // we'll just look thru its values for our key.
+//
+//            auto match_key([&regex_shares](const auto& item)
+//                {
+//                    return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
+//                });
+//            auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(),
+//                    financial_statements.statement_of_operations_.values_.end(), match_key);
+//            if (found_it != financial_statements.statement_of_operations_.values_.end())
+//            {
+//                shares_outstanding = found_it->second;
+//            }
+//            else
+//            {
+//                // brute force it....
+//
+//            const boost::regex regex_weighted_avg_text
+//                {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***",
+//                    boost::regex_constants::normal | boost::regex_constants::icase};
+//
+//                TablesFromHTML tables{financial_statements.html_};
+//                for (auto table : tables)
+//                {
+//                    boost::smatch matches;
+//                    auto found_it = boost::regex_search(table.cbegin(), table.cend(), matches, regex_weighted_avg);
+//                    if (found_it)
+//                    {
+//                        shares_outstanding = matches.str(1);
+//                        break;
+//                    }
+//                }
+//            }
+//        }
+//        if (! shares_outstanding.empty())
+//        {
+//            std::cout << shares_outstanding << '\n';
+//            // need to replace any commas we might have.
+//
+//            const std::string delete_this = "";
+//            const boost::regex regex_comma{R"***(,)***"};
+//            shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
+//
+//            if (auto [p, ec] =std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
+//                        financial_statements.outstanding_shares_); ec == std::errc())
+//            {
+//                WriteDataToFile(output_file_name,
+//                        "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
+//            }
+//            else
+//            {
+//                throw EDGARException(catenate("Problem converting shares outstanding: ",
+//                            std::make_error_code(ec).message(), '\n'));
+//            }
+//        }
+//        else
+//        {
+//            WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
+//                    "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
+//                    "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
+//                    "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
+//            throw EDGARException("Can't find shares outstanding.\n");
+//        }
     }
 }		/* -----  end of method Shares_data::UseExtractor  ----- */
 
