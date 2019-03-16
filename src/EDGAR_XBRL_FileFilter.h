@@ -36,19 +36,14 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#ifndef  EDGAR_XBRL_FileFilter_INC
-#define  EDGAR_XBRL_FileFilter_INC
+#ifndef  EDGAR_XBRL_FILEFILTER_INC
+#define  EDGAR_XBRL_FILEFILTER_INC
 
 #include <exception>
 #include <map>
 #include <string_view>
 #include <tuple>
 #include <vector>
-
-namespace Poco
-{
-    class Logger;
-};
 
 using sview = std::string_view;
 
@@ -143,4 +138,4 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content);
 
-#endif   /* ----- #ifndef EDGAR_XBRL_FileFilter_INC  ----- */
+#endif   /* ----- #ifndef EDGAR_XBRL_FILEFILTER_INC  ----- */

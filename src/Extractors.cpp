@@ -904,6 +904,7 @@ void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements
         if (shares != "0")
         {
             financial_statements.outstanding_shares_ = std::stoll(shares);
+            std::cout << "Found in XBRL\n";
             return;
         }
     }

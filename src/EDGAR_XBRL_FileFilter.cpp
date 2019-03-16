@@ -538,6 +538,12 @@ pugi::xml_document ParseXMLContent(sview document)
 }
 
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  LoadDataToDB
+ *  Description:  
+ * =====================================================================================
+ */
 bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
     const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
     const EE::ContextPeriod& context_fields, bool replace_content)
@@ -623,4 +629,5 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     c.disconnect();
 
     return true;
-}
+}		/* -----  end of function LoadDataToDB  ----- */
+

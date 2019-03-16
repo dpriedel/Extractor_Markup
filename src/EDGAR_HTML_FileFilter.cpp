@@ -41,7 +41,7 @@
 #include <system_error>
 
 #include "EDGAR_HTML_FileFilter.h"
-//#include "EDGAR_XBRL_FileFilter.h"
+#include "EDGAR_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
 #include "SEC_Header.h"
 #include "TablesFromFile.h"
@@ -519,7 +519,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
                 financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
                 financial_statements.FindMultipliers();
-                financial_statements.FindSharesOutstanding();
+                financial_statements.FindSharesOutstanding(file_content);
                 return financial_statements;
             }
         }
@@ -537,7 +537,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
                 financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
                 financial_statements.FindMultipliers();
-                financial_statements.FindSharesOutstanding();
+                financial_statements.FindSharesOutstanding(file_content);
                 return financial_statements;
             }
         }
@@ -747,9 +747,25 @@ void FindMultipliersUsingContent(FinancialStatements& financial_statements)
     }
 }		/* -----  end of function FindMultipliersUsingContent  ----- */
 
-void FinancialStatements::FindSharesOutstanding()
+void FinancialStatements::FindSharesOutstanding(sview file_content)
 {
-    const boost::regex regex_shares{R"***((?:common.+?shares)|(?:common.+?stock)|(?:number.+?shares)|(?:share.*?outstand))***",
+    // let's try this first...
+
+    if (FileHasXBRL{}(EE::SEC_Header_fields{}, file_content))
+    {
+        auto documents = LocateDocumentSections(file_content);
+        auto instance_doc = LocateInstanceDocument(documents);
+        auto instance_xml = ParseXMLContent(instance_doc);
+        auto filing_data = ExtractFilingData(instance_xml);
+        auto shares = filing_data.shares_outstanding;
+        if (shares != "0")
+        {
+            outstanding_shares_ = std::stoll(shares);
+            return;
+        }
+    }
+    
+    const boost::regex regex_shares{R"***(average[^\t]+(?:common.+?shares)|(?:common.+?stock)|(?:number.+?shares)|(?:share.*?outstand))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_auth
@@ -757,7 +773,7 @@ void FinancialStatements::FindSharesOutstanding()
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_iss
-        {R"***(^.*?common (?:stock|shares)[^\t]*?(?:issued[^\t]*?([1-9][0-9,]{3,}[0-9]))|(?:([1-9][0-9,]{3,}[0-9])[^\t]*?issued)[^\t]*?\t)***",
+        {R"***(^[^\t]*?(?:common (?:stock|shares)[^\t]*?)(?:(?:issued[^\t]*?([1-9][0-9,]{3,}[0-9]))|(?:([1-9][0-9,]{3,}[0-9])[^\t]*?issued))[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_weighted_avg
@@ -769,21 +785,23 @@ void FinancialStatements::FindSharesOutstanding()
 
     boost::cmatch matches;
 
-    auto auth_match([&regex_shares_bal_auth, &matches](const auto& item)
+    auto auth_match([&regex_shares_bal_auth, &matches](const auto& line)
         {
-            return boost::regex_search(item.begin(), item.end(), matches, regex_shares_bal_auth);
+            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_auth);
         });
-    auto iss_match([&regex_shares_bal_iss, &matches](const auto& item)
+    auto iss_match([&regex_shares_bal_iss, &matches](const auto& line)
         {
-            return boost::regex_search(item.begin(), item.end(), matches, regex_shares_bal_iss);
+            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_iss);
         });
 
-    bool found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), auth_match) != balance_sheet_.lines_.end();
+    bool found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), auth_match)
+        != balance_sheet_.lines_.end();
     if (found_it)
     {
         shares_outstanding = matches.str(1);
     }
-    else if (found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), iss_match) != balance_sheet_.lines_.end(); found_it)
+    else if (found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), iss_match)
+            != balance_sheet_.lines_.end(); found_it)
     {
             shares_outstanding = matches.str(1);
     }
@@ -797,7 +815,8 @@ void FinancialStatements::FindSharesOutstanding()
             {
                 return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
             });
-        auto found_it = std::find_if(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(), match_key);
+        auto found_it = std::find_if(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
+                match_key);
         if (found_it != statement_of_operations_.values_.end())
         {
             shares_outstanding = found_it->second;
@@ -938,8 +957,10 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 {
     // start stuffing the database.
 
-    pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
-    pqxx::work trxn{c};
+    return true;
+
+    pqxx::connection cnxn{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::work trxn{cnxn};
 
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.edgar_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
@@ -953,7 +974,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
     if (have_data != 0 && ! replace_content)
     {
         spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
-        c.disconnect();
+        cnxn.disconnect();
         return false;
     }
 
@@ -1007,7 +1028,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 
     inserter.complete();
     trxn.commit();
-    c.disconnect();
+    cnxn.disconnect();
 
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */

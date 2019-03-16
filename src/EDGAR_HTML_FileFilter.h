@@ -144,7 +144,7 @@ struct FinancialStatements
     void PrepareTableContent();
     bool ValidateContent();
     void FindMultipliers();
-    void FindSharesOutstanding();
+    void FindSharesOutstanding(sview file_content);
 
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
