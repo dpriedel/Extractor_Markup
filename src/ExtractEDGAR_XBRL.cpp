@@ -149,23 +149,23 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
     std::cout << "Found: " << counter << "\n ****** \n";
 }
 
-std::string ConvertPeriodEndDateToContextName(sview period_end_date)
-
-{
-    //  our given date is yyyy-mm-dd.
-
-    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
-        "October", "November", "December"};
-
-    std::string result{"cx_"};
-    result.append(period_end_date.data() + 8, 2);
-    result +=  '_';
-    result += month_names[std::stoi(std::string{period_end_date.substr(5, 2)})];
-    result += '_';
-    result.append(period_end_date.data(), 4);
-
-    return result;
-}
+//std::string ConvertPeriodEndDateToContextName(sview period_end_date)
+//
+//{
+//    //  our given date is yyyy-mm-dd.
+//
+//    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
+//        "October", "November", "December"};
+//
+//    std::string result{"cx_"};
+//    result.append(period_end_date.data() + 8, 2);
+//    result +=  '_';
+//    result += month_names[std::stoi(std::string{period_end_date.substr(5, 2)})];
+//    result += '_';
+//    result.append(period_end_date.data(), 4);
+//
+//    return result;
+//}
 
 void ParseTheXML_Labels(const sview document, const EE::SEC_Header_fields& fields)
 {

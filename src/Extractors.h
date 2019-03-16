@@ -57,7 +57,9 @@ namespace fs = std::filesystem;
 
 // for use with ranges.
 
-std::vector<sview> FindDocumentSections(sview file_content);
+using DocumentList = std::vector<sview>;
+
+DocumentList FindDocumentSections(sview file_content);
 
 sview FindFileNameInSection(sview document);
 
@@ -80,24 +82,24 @@ std::string CollectFinancialStatementContent (sview document_content);
 
 struct XBRL_data
 {
-    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct XBRL_Label_data
 {
-    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
 };
 
 struct Count_SS
 {
     int SS_counter = 0;
 
-    void UseExtractor(sview document, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct DocumentCounter
@@ -109,17 +111,17 @@ struct DocumentCounter
 
 struct HTM_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct FinancialStatements_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct BalanceSheet_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 struct Multiplier_data
@@ -133,14 +135,14 @@ struct Shares_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
-    void FindMultipliers(FinancialStatements& financial_statements);
+    void FindSharesOutstanding(sview file_content, FinancialStatements& financial_statements, const EE::SEC_Header_fields& fields);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.

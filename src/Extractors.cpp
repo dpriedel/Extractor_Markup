@@ -55,6 +55,7 @@ using sview = std::string_view;
 #include "spdlog/spdlog.h"
 
 #include "EDGAR_HTML_FileFilter.h"
+#include "EDGAR_XBRL_FileFilter.h"
 #include "ExtractEDGAR_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
@@ -84,11 +85,11 @@ const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
  *  Description:
  * =====================================================================================
  */
-std::vector<sview> FindDocumentSections(sview file_content)
+DocumentList FindDocumentSections(sview file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
-    std::vector<sview> documents;
+    DocumentList documents;
     std::transform(boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc),
             boost::cregex_token_iterator{},
             std::back_inserter(documents),
@@ -390,176 +391,207 @@ FilterList SelectExtractors (int argc, const char* argv[])
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
-void XBRL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void XBRL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
     {
-        auto output_file_name = FindFileName(output_directory, document, regex_fname);
-        auto file_type = FindFileType(document, regex_ftype);
-
-        // now, we need to drop the extraneous XML surrounding the data we need.
-
-        document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
-
-        auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-        if (xbrl_end_loc != sview::npos)
+        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
         {
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        }
-        else
-        {
-            throw std::runtime_error("Can't find end of XBRL in document.\n");
-        }
+            auto output_file_name = FindFileName(output_directory, document, regex_fname);
+            auto file_type = FindFileType(document, regex_ftype);
 
-        if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
-        {
+            // now, we need to drop the extraneous XML surrounding the data we need.
 
-            std::cout << "got one" << '\n';
+            document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
-            // ParseTheXMl(document, fields);
+            auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+            if (xbrl_end_loc != sview::npos)
+            {
+                document.remove_suffix(document.length() - xbrl_end_loc);
+            }
+            else
+            {
+                throw std::runtime_error("Can't find end of XBRL in document.\n");
+            }
+
+            if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
+            {
+
+                std::cout << "got one" << '\n';
+
+                // ParseTheXMl(document, fields);
+            }
+            WriteDataToFile(output_file_name, document);
         }
-        WriteDataToFile(output_file_name, document);
     }
 }
 
-void XBRL_Label_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
     {
-        auto output_file_name = FindFileName(output_directory, document, regex_fname);
-        auto file_type = FindFileType(document, regex_ftype);
-
-        // now, we need to drop the extraneous XML surrounding the data we need.
-
-        document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
-
-        auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-        if (xbrl_end_loc != sview::npos)
+        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
         {
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        }
-        else
-        {
-            throw std::runtime_error("Can't find end of XBRL in document.\n");
-        }
+            auto output_file_name = FindFileName(output_directory, document, regex_fname);
+            auto file_type = FindFileType(document, regex_ftype);
 
-        if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
-        {
+            // now, we need to drop the extraneous XML surrounding the data we need.
 
-            std::cout << "got one" << '\n';
+            document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
-            ParseTheXML_Labels(document, fields);
+            auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+            if (xbrl_end_loc != sview::npos)
+            {
+                document.remove_suffix(document.length() - xbrl_end_loc);
+            }
+            else
+            {
+                throw std::runtime_error("Can't find end of XBRL in document.\n");
+            }
+
+            if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
+            {
+
+                std::cout << "got one" << '\n';
+
+                ParseTheXML_Labels(document, fields);
+            }
+            WriteDataToFile(output_file_name, document);
         }
-        WriteDataToFile(output_file_name, document);
     }
 }
 
-void SS_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void SS_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    if (auto ss_loc = document.find(R"***(.xls)***"); ss_loc != sview::npos)
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
     {
-        std::cout << "spread sheet\n";
-
-        auto output_file_name = FindFileName(output_directory, document, regex_fname);
-
-        // now, we just need to drop the extraneous XML surrounding the data we need.
-
-        auto x = document.find(R"***(<TEXT>)***", ss_loc + 1);
-        // skip 1 more lines.
-
-        x = document.find('\n', x + 1);
-        // x = document.find('\n', x + 1);
-
-        document.remove_prefix(x);
-
-        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != sview::npos)
+        if (auto ss_loc = document.find(R"***(.xls)***"); ss_loc != sview::npos)
         {
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        }
-        else
-        {
-            throw std::runtime_error("Can't find end of spread sheet in document.\n");
-        }
+            std::cout << "spread sheet\n";
 
-        WriteDataToFile(output_file_name, document);
+            auto output_file_name = FindFileName(output_directory, document, regex_fname);
+
+            // now, we just need to drop the extraneous XML surrounding the data we need.
+
+            auto x = document.find(R"***(<TEXT>)***", ss_loc + 1);
+            // skip 1 more lines.
+
+            x = document.find('\n', x + 1);
+            // x = document.find('\n', x + 1);
+
+            document.remove_prefix(x);
+
+            auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+            if (xbrl_end_loc != sview::npos)
+            {
+                document.remove_suffix(document.length() - xbrl_end_loc);
+            }
+            else
+            {
+                throw std::runtime_error("Can't find end of spread sheet in document.\n");
+            }
+
+            WriteDataToFile(output_file_name, document);
+        }
     }
 }
 
-void Count_SS::UseExtractor (sview document,  const fs::path&, const EE::SEC_Header_fields& fields)
+void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EE::SEC_Header_fields& fields)
 {
-    if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
     {
-        ++SS_counter;
+        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+        {
+            ++SS_counter;
+        }
     }
 }		/* -----  end of method Count_SS::UseExtractor  ----- */
 
 
-void DocumentCounter::UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields& fields)
+void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields& fields)
 {
-    ++document_counter;
-}
+    auto documents = FindDocumentSections(file_content);
 
-
-void HTM_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
-{
-    auto output_file_name = FindFileName(output_directory, document, regex_fname);
-    if (output_file_name.extension() == ".htm")
+    for (auto& document : documents)
     {
-        std::cout << "got htm" << '\n';
-
-        // now, we just need to drop the extraneous XMLS surrounding the data we need.
-
-        auto x = document.find(R"***(<TEXT>)***");
-
-        // skip 1 more line.
-
-        x = document.find('\n', x + 1);
-
-        document.remove_prefix(x);
-
-        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != sview::npos)
-        {
-            document.remove_suffix(document.length() - xbrl_end_loc);
-        }
-        else
-        {
-            throw std::runtime_error("Can't find end of HTML in document.\n");
-        }
-
-        // we only care about data in tables so let's extract those.
-
-        std::string tables;
-        CDocument the_filing;
-        the_filing.parse(std::string{document});
-        CSelection c = the_filing.find("table");
-
-        for (int indx = 0 ; indx < c.nodeNum(); ++indx)
-        {
-            CNode pNode = c.nodeAt(indx);
-
-            // use the 'Outer' functions to include the table tags in the extracted content.
-
-            tables.append(std::string{document.substr(pNode.startPosOuter(), pNode.endPosOuter() - pNode.startPosOuter())});
-        }
-        std::cout << tables.size() << '\n';
-
-
-        WriteDataToFile(output_file_name, tables);
+        ++document_counter;
     }
 }
 
-void FinancialStatements_data::UseExtractor (sview document, const fs::path& output_directory,
+
+void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+{
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
+    {
+        auto output_file_name = FindFileName(output_directory, document, regex_fname);
+        if (output_file_name.extension() == ".htm")
+        {
+            std::cout << "got htm" << '\n';
+
+            // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+            auto x = document.find(R"***(<TEXT>)***");
+
+            // skip 1 more line.
+
+            x = document.find('\n', x + 1);
+
+            document.remove_prefix(x);
+
+            auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+            if (xbrl_end_loc != sview::npos)
+            {
+                document.remove_suffix(document.length() - xbrl_end_loc);
+            }
+            else
+            {
+                throw std::runtime_error("Can't find end of HTML in document.\n");
+            }
+
+            // we only care about data in tables so let's extract those.
+
+            std::string tables;
+            CDocument the_filing;
+            the_filing.parse(std::string{document});
+            CSelection c = the_filing.find("table");
+
+            for (int indx = 0 ; indx < c.nodeNum(); ++indx)
+            {
+                CNode pNode = c.nodeAt(indx);
+
+                // use the 'Outer' functions to include the table tags in the extracted content.
+
+                tables.append(std::string{document.substr(pNode.startPosOuter(), pNode.endPosOuter() - pNode.startPosOuter())});
+            }
+            std::cout << tables.size() << '\n';
+
+
+            WriteDataToFile(output_file_name, tables);
+        }
+    }
+}
+
+void FinancialStatements_data::UseExtractor (sview file_content, const fs::path& output_directory,
         const EE::SEC_Header_fields& fields)
 {
     // we locate the HTML document in the file which contains the financial statements.
     // we then convert that to text and save the output.
 
-    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+    auto financial_statements = FindAndExtractFinancialStatements(file_content);
+
+    auto output_file_name = FindFileName(output_directory, financial_statements.html_, regex_fname);
     output_file_name.replace_extension(".txt");
 
-    auto financial_statements = FindAndExtractFinancialStatements(document);
     if (financial_statements.has_data())
     {
         WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
@@ -583,46 +615,43 @@ void FinancialStatements_data::UseExtractor (sview document, const fs::path& out
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 
-void BalanceSheet_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
     // we are being given a DOCUMENT from the file so we need to scan it for HTML
     // then scan that for tables then scan that for a balance sheet.
 
-    auto output_file_name = FindFileName(output_directory, document, regex_fname);
-    output_file_name.replace_extension(".txt");
-
-    auto financial_content = FindHTML(document);
-    if (financial_content.empty() || ! FinancialDocumentFilter(financial_content))
-    {
-        // just doesn't have any html...
-        return;
-    }
-    TablesFromHTML tables{financial_content};
-    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
-    if (balance_sheet != tables.end())
-    {
-        BalanceSheet bal_sheet;
-        bal_sheet.parsed_data_ = *balance_sheet;
-        bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
-        WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
-        bal_sheet.values_ = CollectStatementValues(bal_sheet.lines_);
-        if (bal_sheet.values_.empty())
-        {
-            throw HTMLException("Can't find values in balance sheet. " + output_file_name.string());
-        }
-    }
+//    auto output_file_name = FindFileName(output_directory, document, regex_fname);
+//    output_file_name.replace_extension(".txt");
+//
+//    auto financial_content = FindHTML(document);
+//    if (financial_content.empty() || ! FinancialDocumentFilter(financial_content))
+//    {
+//        // just doesn't have any html...
+//        return;
+//    }
+//    TablesFromHTML tables{financial_content};
+//    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
+//    if (balance_sheet != tables.end())
+//    {
+//        BalanceSheet bal_sheet;
+//        bal_sheet.parsed_data_ = *balance_sheet;
+//        bal_sheet.lines_ = split_string(bal_sheet.parsed_data_, '\n');
+//        WriteDataToFile(output_file_name, bal_sheet.parsed_data_);
+//        bal_sheet.values_ = CollectStatementValues(bal_sheet.lines_);
+//        if (bal_sheet.values_.empty())
+//        {
+//            throw HTMLException("Can't find values in balance sheet. " + output_file_name.string());
+//        }
+//    }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
-void Multiplier_data::UseExtractor (sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void Multiplier_data::UseExtractor (sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    // need to find the 'multiplier' factor to use with numbers extracted from the financial content.
-    // also, the number of shares outstanding for the time period.
-
-    // we use a 2-phase scan.
+    // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
-    // we need to do this manually since the first hit we get
+    // we need to do the loops manually since the first match we get
     // may not be the actual content we want.
 
     static const boost::regex regex_finance_statements
@@ -632,7 +661,9 @@ void Multiplier_data::UseExtractor (sview document, const fs::path& output_direc
 
     FinancialStatements financial_statements;
 
-    auto look_for_top_level([document_anchor_filter] (auto html)
+    HTML_FromFile htmls{file_content};
+
+    auto look_for_top_level([&document_anchor_filter] (auto html)
     {
         try
         {
@@ -647,27 +678,37 @@ void Multiplier_data::UseExtractor (sview document, const fs::path& output_direc
         }
     });
 
-    if (look_for_top_level(document))
+    for (auto html : htmls)
     {
-        financial_statements = ExtractFinancialStatementsUsingAnchors(document);
-        if (financial_statements.has_data())
+        if (look_for_top_level(html))
         {
-            FindMultipliers(financial_statements);
-            std::cout << "Found using anchors\n";
-            return;
+            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = html;
+                financial_statements.PrepareTableContent();
+                FindMultipliers(financial_statements);
+                std::cout << "Found using anchors\n";
+                return;
+            }
         }
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
 
-    if (FinancialDocumentFilter(document))
+    for (auto html : htmls)
     {
-        financial_statements = ExtractFinancialStatements(document);
-        if (financial_statements.has_data())
+        if (FinancialDocumentFilter(html))
         {
-            FindMultipliers(financial_statements);
-            std::cout << "Found the hard way\n";
-            return;
+            financial_statements = ExtractFinancialStatements(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = html;
+                financial_statements.PrepareTableContent();
+                FindMultipliers(financial_statements);
+                std::cout << "Found the hard way\n";
+                return;
+            }
         }
     }
 }		/* -----  end of method Multiplier_data::UseExtractor  ----- */
@@ -779,138 +820,235 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     }
 }		/* -----  end of method Multiplier_data::FindMultipliers  ----- */
 
-void Shares_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void Shares_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
 {
-    auto output_file_name = FindFileName(output_directory, document, regex_fname);
-    output_file_name.replace_extension(".txt");
+    // we use a 2-ph<ase scan.
+    // first, try to find based on anchors.
+    // if that doesn't work, then scan content directly.
 
-    const boost::regex regex_shares{R"***((?:common.+?shares)|(?:common.+?stock)|(?:number.+?shares)|(?:share.*?outstand))***",
+    // we need to do the loops manually since the first match we get
+    // may not be the actual content we want.
+
+    static const boost::regex regex_finance_statements
+    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+
+    FinancialStatements financial_statements;
+
+    HTML_FromFile htmls{file_content};
+
+    auto look_for_top_level([&document_anchor_filter] (auto html)
+    {
+        try
+        {
+            AnchorsFromHTML anchors(html);
+            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
+            return financial_anchor != anchors.end();
+        }
+        catch(const HTMLException& e)
+        {
+            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
+            return false;
+        }
+    });
+
+    for (auto html : htmls)
+    {
+        if (look_for_top_level(html))
+        {
+            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = html;
+                financial_statements.PrepareTableContent();
+                financial_statements.FindMultipliers();
+                FindSharesOutstanding(file_content, financial_statements, fields);
+                std::cout << "Found using anchors\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
+                return;
+            }
+        }
+    }
+
+    // OK, we didn't have any success following anchors so do it the long way.
+
+    for (auto html : htmls)
+    {
+        if (FinancialDocumentFilter(html))
+        {
+            financial_statements = ExtractFinancialStatements(html);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = html;
+                financial_statements.PrepareTableContent();
+                financial_statements.FindMultipliers();
+                FindSharesOutstanding(file_content, financial_statements, fields);
+                std::cout << "Found the hard way\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
+                return;
+            }
+        }
+    }
+}
+
+void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements& financial_statements, const EE::SEC_Header_fields& fields)
+{
+    // let's try this first...
+
+    if (FileHasXBRL{}(fields, file_content))
+    {
+        auto documents = LocateDocumentSections(file_content);
+        auto instance_doc = LocateInstanceDocument(documents);
+        auto instance_xml = ParseXMLContent(instance_doc);
+        auto filing_data = ExtractFilingData(instance_xml);
+        auto shares = filing_data.shares_outstanding;
+        if (shares != "0")
+        {
+            financial_statements.outstanding_shares_ = std::stoll(shares);
+            return;
+        }
+    }
+    
+    const boost::regex regex_shares{R"***(average[^\t]+(?:common.+?shares)|(?:common.+?stock)|(?:number.+?shares)|(?:share.*?outstand))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_auth
-        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized.*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}.*?authorized)).*?([1-9][0-9,]{4,})[^\t]*?\t)***",
+        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized[^\t]*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}[^\t]*?authorized))[^\t]*?([1-9][0-9,]{4,})[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_shares_bal_iss
-        {R"***(^.*?common (?:stock|shares).*?(?:issued.*?([1-9][0-9,]{4,}))|(?:([1-9][0-9,]{4,}).*?issued)[^\t]*?\t)***",
+        {R"***(^[^\t]*?(?:common (?:stock|shares)[^\t]*?)(?:(?:issued[^\t]*?([1-9][0-9,]{3,}[0-9]))|(?:([1-9][0-9,]{3,}[0-9])[^\t]*?issued))[^\t]*?\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_weighted_avg
-        {R"***((?:(?:weighted average common shares)|(?:average shares outstand)|(?:weighted average number.*?shares)|(?:income.*?divided by)).*?([1-9][0-9,]{4,}))***",
+        {R"***((?:(?:weighted.average common shares)|(?:average shares outstand)|(?:weighted.average number.*?shares)|(?:income.*?divided by)).*?\t([1-9][0-9,]+))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    std::string shares_outstanding;
 
-    auto financial_statements = FindAndExtractFinancialStatements(document);
-    if (financial_statements.has_data())
+    bool use_multiplier{false};
+
+    boost::cmatch matches;
+
+    auto auth_match([&regex_shares_bal_auth, &matches](const auto& line)
+        {
+            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_auth);
+        });
+    auto iss_match([&regex_shares_bal_iss, &matches](const auto& line)
+        {
+            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_iss);
+        });
+
+    bool found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), auth_match)
+        != financial_statements.balance_sheet_.lines_.end();
+    if (found_it)
     {
-        std::cout << "shares outstanding: " << financial_statements.outstanding_shares_ << '\n';
-//        std::string shares_outstanding;
-//        // let's use the statement of operations as the preferred source.
-//        // we'll just look thru its values for our key.
-//
-//        boost::smatch matches;
-//        bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-//                financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_auth);
-//        if (found_it)
-//        {
-//            shares_outstanding = matches.str(1);
-//        }
-//        else if (found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-//                    financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_shares_bal_iss); found_it)
-//        {
-//                shares_outstanding = matches.str(1);
-//        }
-//        else
-//        {
-//            // let's try the statement of operations as.
-//            // we'll just look thru its values for our key.
-//
-//            auto match_key([&regex_shares](const auto& item)
-//                {
-//                    return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
-//                });
-//            auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(),
-//                    financial_statements.statement_of_operations_.values_.end(), match_key);
-//            if (found_it != financial_statements.statement_of_operations_.values_.end())
-//            {
-//                shares_outstanding = found_it->second;
-//            }
-//            else
-//            {
-//                // brute force it....
-//
-//            const boost::regex regex_weighted_avg_text
-//                {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{4,}(?:\.[0-9]+)?)\t)***",
-//                    boost::regex_constants::normal | boost::regex_constants::icase};
-//
-//                TablesFromHTML tables{financial_statements.html_};
-//                for (auto table : tables)
-//                {
-//                    boost::smatch matches;
-//                    auto found_it = boost::regex_search(table.cbegin(), table.cend(), matches, regex_weighted_avg);
-//                    if (found_it)
-//                    {
-//                        shares_outstanding = matches.str(1);
-//                        break;
-//                    }
-//                }
-//            }
-//        }
-//        if (! shares_outstanding.empty())
-//        {
-//            std::cout << shares_outstanding << '\n';
-//            // need to replace any commas we might have.
-//
-//            const std::string delete_this = "";
-//            const boost::regex regex_comma{R"***(,)***"};
-//            shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
-//
-//            if (auto [p, ec] =std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
-//                        financial_statements.outstanding_shares_); ec == std::errc())
-//            {
-//                WriteDataToFile(output_file_name,
-//                        "\nShares outstanding\t"s + std::to_string(financial_statements.outstanding_shares_) + '\n');
-//            }
-//            else
-//            {
-//                throw EDGARException(catenate("Problem converting shares outstanding: ",
-//                            std::make_error_code(ec).message(), '\n'));
-//            }
-//        }
-//        else
-//        {
-//            WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
-//                    "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
-//                    "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
-//                    "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
-//            throw EDGARException("Can't find shares outstanding.\n");
-//        }
+        shares_outstanding = matches.str(1);
     }
-}		/* -----  end of method Shares_data::UseExtractor  ----- */
-
-void ALL_data::UseExtractor(sview document, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
-{
-    auto output_file_name = FindFileName(output_directory, document, regex_fname);
-    std::cout << "got another" << '\n';
-
-    // now, we just need to drop the extraneous XMLS surrounding the data we need.
-
-    auto x = document.find(R"***(<TEXT>)***");
-
-    // skip 1 more line.
-
-    x = document.find('\n', x + 1);
-
-    document.remove_prefix(x);
-
-    auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-    if (xbrl_end_loc != sview::npos)
+    else if (found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), iss_match)
+            != financial_statements.balance_sheet_.lines_.end(); found_it)
     {
-        document.remove_suffix(document.length() - xbrl_end_loc);
+        shares_outstanding = matches.str(1);
     }
     else
     {
-        throw std::runtime_error("Can't find end of XBRL in document.\n");
+
+        // let's try the statement of operations as.
+        // we'll just look thru its values for our key.
+
+        auto match_key([&regex_shares](const auto& item)
+            {
+                return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
+            });
+        auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(), financial_statements.statement_of_operations_.values_.end(),
+                match_key);
+        if (found_it != financial_statements.statement_of_operations_.values_.end())
+        {
+            shares_outstanding = found_it->second;
+            use_multiplier = true;
+        }
+        else
+        {
+            // brute force it....
+
+            const boost::regex regex_weighted_avg_text
+                {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{2,}(?:\.[0-9]+)?)\t)***",
+                    boost::regex_constants::normal | boost::regex_constants::icase};
+
+            boost::cmatch matches;
+            auto weighted_match([&regex_weighted_avg, &matches](auto line)
+                {
+                    return boost::regex_search(line.begin(), line.end(), matches, regex_weighted_avg);
+                });
+
+            TablesFromHTML tables{financial_statements.html_};
+            for (const auto& table : tables)
+            {
+                auto lines = split_string(table, '\n');
+                if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
+                {
+                    use_multiplier = true;
+                    shares_outstanding = matches.str(1);
+                    break;
+                }
+            }
+        }
     }
 
-    WriteDataToFile(output_file_name, document);
+    if (! shares_outstanding.empty())
+    {
+        // need to replace any commas we might have.
+
+        const std::string delete_this{""};
+        const boost::regex regex_comma{R"***(,)***"};
+        shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
+
+        if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
+                    financial_statements.outstanding_shares_); ec != std::errc())
+        {
+            throw EDGARException(catenate("Problem converting shares outstanding: ",
+                        std::make_error_code(ec).message(), '\n'));
+        }
+        // apply multiplier if we got our value from a table value rather than a table label.
+
+        if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
+        {
+            financial_statements.outstanding_shares_ *= financial_statements.statement_of_operations_.multiplier_;
+        }
+    }
+    else
+    {
+        throw EDGARException("Can't find shares outstanding.\n");
+    }
+}		/* -----  end of method Shares_data::UseExtractor  ----- */
+
+void ALL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+{
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
+    {
+        auto output_file_name = FindFileName(output_directory, document, regex_fname);
+        std::cout << "got another" << '\n';
+
+        // now, we just need to drop the extraneous XMLS surrounding the data we need.
+
+        auto x = document.find(R"***(<TEXT>)***");
+
+        // skip 1 more line.
+
+        x = document.find('\n', x + 1);
+
+        document.remove_prefix(x);
+
+        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        if (xbrl_end_loc != sview::npos)
+        {
+            document.remove_suffix(document.length() - xbrl_end_loc);
+        }
+        else
+        {
+            throw std::runtime_error("Can't find end of XBRL in document.\n");
+        }
+
+        WriteDataToFile(output_file_name, document);
+    }
 }
