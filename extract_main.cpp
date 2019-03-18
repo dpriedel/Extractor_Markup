@@ -99,33 +99,27 @@ int main(int argc, const char* argv[])
 
         auto the_filters = SelectExtractors(argc, argv);
 
-        auto documents = FindDocumentSections(file_content);
-        std::cout << documents.size() << '\n';
-
-        for (auto document : documents)
+        for(auto& e : the_filters)
         {
-            for(auto& e : the_filters)
+            try
             {
-                try
+                std::visit([file_content, &use_file, &output_directory](auto &&x)
+                    {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
+            }
+            catch(std::runtime_error& ex)
+            {
+                if (std::string{ex.what()}.find("predefined") != std::string::npos)
                 {
-                    std::visit([document, &use_file, &output_directory](auto &&x)
-                        {x.UseExtractor(document, output_directory, use_file.value());}, e);
+                   std::cout << "\n***Exception error \n";
                 }
-                catch(std::runtime_error& ex)
-                {
-                    if (std::string{ex.what()}.find("predefined") != std::string::npos)
-                    {
-                       std::cout << "\n***Exception error \n";
-                    }
-                    else
-                    {
-                        std::cerr << ex.what() << '\n';
-                    }
-                }
-                catch(std::exception& ex)
+                else
                 {
                     std::cerr << ex.what() << '\n';
                 }
+            }
+            catch(std::exception& ex)
+            {
+                std::cerr << ex.what() << '\n';
             }
         }
         // let's see if we got a count...

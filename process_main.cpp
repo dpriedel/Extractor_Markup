@@ -121,21 +121,16 @@ int main(int argc, const char* argv[])
             
             if (use_file)
             {
-                for (auto doc = boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(),
-                            regex_doc); doc != boost::cregex_token_iterator{}; ++doc)
+                for(auto& e : the_filters)
                 {
-                    sview document(doc->first, doc->length());
-                    for(auto& e : the_filters)
+                    try
                     {
-                        try
-                        {
-                            std::visit([document, &use_file](auto &&x)
-                                {x.UseExtractor(document, output_directory, use_file.value());}, e);
-                        }
-                        catch(std::exception& ex)
-                        {
-                            std::cerr << ex.what() << '\n';
-                        }
+                        std::visit([file_content, &use_file](auto &&x)
+                            {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
+                    }
+                    catch(std::exception& ex)
+                    {
+                        std::cerr << ex.what() << '\n';
                     }
                 }
             }
