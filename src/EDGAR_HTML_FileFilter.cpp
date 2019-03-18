@@ -125,7 +125,6 @@ bool FinancialStatements::ValidateContent ()
 {
     return false;
 }		/* -----  end of method FinancialStatements::ValidateContent  ----- */
-
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FinancialDocumentFilter
@@ -482,50 +481,27 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
-    // we need to do the loops manually since the first match we get
-    // may not be the actual content we want.
-
-    static const boost::regex regex_finance_statements
-    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
-
     FinancialStatements financial_statements;
 
-    HTML_FromFile htmls{file_content};
-
-    auto look_for_top_level([&document_anchor_filter] (auto html)
+    auto financial_content = FindFinancialContentUsingAnchors(file_content);
+    if (! financial_content.empty())
     {
-        try
+        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content);
+        if (financial_statements.has_data())
         {
-            AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
-            return financial_anchor != anchors.end();
-        }
-        catch(const HTMLException& e)
-        {
-            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
-            return false;
-        }
-    });
-
-    for (auto html : htmls)
-    {
-        if (look_for_top_level(html))
-        {
-            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
-            if (financial_statements.has_data())
-            {
-                financial_statements.html_ = html;
-                financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
-                financial_statements.FindSharesOutstanding(file_content);
-                return financial_statements;
-            }
+            financial_statements.html_ = financial_content;
+            financial_statements.PrepareTableContent();
+            financial_statements.FindMultipliers();
+            financial_statements.FindSharesOutstanding(file_content);
+            return financial_statements;
         }
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
+    // we need to do the loops manually since the first match we get
+    // may not be the actual content we want.
+
+    HTML_FromFile htmls{file_content};
 
     for (auto html : htmls)
     {
@@ -831,9 +807,9 @@ void FinancialStatements::FindSharesOutstanding(sview file_content)
                     boost::regex_constants::normal | boost::regex_constants::icase};
 
             boost::cmatch matches;
-            auto weighted_match([&regex_weighted_avg, &matches](auto line)
+            auto weighted_match([&regex_weighted_avg_text, &matches](auto line)
                 {
-                    return boost::regex_search(line.begin(), line.end(), matches, regex_weighted_avg);
+                    return boost::regex_search(line.begin(), line.end(), matches, regex_weighted_avg_text);
                 });
 
             TablesFromHTML tables{html_};
@@ -873,7 +849,7 @@ void FinancialStatements::FindSharesOutstanding(sview file_content)
     }
     else
     {
-        throw EDGARException("Can't find shares outstanding.\n");
+        spdlog::info("Can't find shares outstanding.\n");
     }
 }		/* -----  end of method FinancialStatements::FindSharesOutstanding  ----- */
 
@@ -953,11 +929,9 @@ bool StockholdersEquity::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, bool replace_content)
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, long int shares_outstanding, bool replace_content)
 {
     // start stuffing the database.
-
-    return true;
 
     pqxx::connection cnxn{"dbname=edgar_extracts user=edgar_pg"};
     pqxx::work trxn{cnxn};
@@ -1000,7 +974,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 		trxn.esc(SEC_fields.at("form_type")),
 		trxn.esc(SEC_fields.at("date_filed")),
 		trxn.esc(SEC_fields.at("quarter_ending")),
-        0)
+        shares_outstanding)
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd);

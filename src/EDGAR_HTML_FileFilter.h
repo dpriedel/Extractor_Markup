@@ -133,7 +133,7 @@ struct FinancialStatements
     StockholdersEquity stockholders_equity_;
     EE::EDGAR_Values values_;
     sview html_;
-    long int outstanding_shares_ = 0;
+    long int outstanding_shares_ = -1;
 
     bool has_data() const
     {
@@ -261,6 +261,6 @@ StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anch
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, bool replace_content);
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, long int shares_outstanding, bool replace_content);
 
 #endif

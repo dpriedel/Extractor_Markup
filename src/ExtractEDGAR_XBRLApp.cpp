@@ -562,7 +562,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
                     + input_file_name.string()).c_str());
 
 //        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables.ListValues(), replace_DB_content_);
+        did_load = LoadDataToDB(SEC_fields, the_tables.ListValues(), the_tables.outstanding_shares_, replace_DB_content_);
     }
     catch(const std::exception& e)
     {
@@ -710,7 +710,7 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
     BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find any HTML financial tables: " + file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
-    return LoadDataToDB(SEC_fields, the_tables.ListValues(), replace_DB_content_);
+    return LoadDataToDB(SEC_fields, the_tables.ListValues(), the_tables.outstanding_shares_, replace_DB_content_);
 }		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
