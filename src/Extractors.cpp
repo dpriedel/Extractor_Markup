@@ -386,8 +386,8 @@ FilterList SelectExtractors (int argc, const char* argv[])
 //    filters.emplace_back(Count_SS{});
 //    filters.emplace_back(BalanceSheet_data{});
 //    filters.emplace_back(FinancialStatements_data{});
-//    filters.emplace_back(Multiplier_data{});
-    filters.emplace_back(Shares_data{});
+    filters.emplace_back(Multiplier_data{});
+//    filters.emplace_back(Shares_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -654,47 +654,27 @@ void Multiplier_data::UseExtractor (sview file_content, const fs::path& output_d
     // we need to do the loops manually since the first match we get
     // may not be the actual content we want.
 
-    static const boost::regex regex_finance_statements
-    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
-
     FinancialStatements financial_statements;
 
-    HTML_FromFile htmls{file_content};
-
-    auto look_for_top_level([&document_anchor_filter] (auto html)
+    auto financial_content = FindFinancialContentUsingAnchors(file_content);
+    if (! financial_content.empty())
     {
-        try
+        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content);
+        if (financial_statements.has_data())
         {
-            AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
-            return financial_anchor != anchors.end();
-        }
-        catch(const HTMLException& e)
-        {
-            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
-            return false;
-        }
-    });
-
-    for (auto html : htmls)
-    {
-        if (look_for_top_level(html))
-        {
-            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
-            if (financial_statements.has_data())
-            {
-                financial_statements.html_ = html;
-                financial_statements.PrepareTableContent();
-                FindMultipliers(financial_statements);
-                std::cout << "Found using anchors\n";
-                return;
-            }
+            financial_statements.html_ = financial_content;
+            financial_statements.PrepareTableContent();
+            FindMultipliers(financial_statements);
+            std::cout << "Found using anchors\n";
+            return;
         }
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
+    // we need to do the loops manually since the first match we get
+    // may not be the actual content we want.
+
+    HTML_FromFile htmls{file_content};
 
     for (auto html : htmls)
     {
@@ -732,8 +712,11 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
         {
             BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
             financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
+            std::cout <<  "Balance Sheet multiplier: " << multipliers[0].multiplier_ << '\n';
             financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
+            std::cout <<  "Stmt of Ops multiplier: " << multipliers[1].multiplier_ << '\n';
             financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+            std::cout <<  "Cash flows multiplier: " << multipliers[2].multiplier_ << '\n';
         }
         else
         {
@@ -749,8 +732,9 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     // let's try looking in the parsed data first.
     // we may or may not find all of our values there so we need to keep track.
 
+//    static const boost::regex regex_dollar_mults{R"***((?:\([^)]+?(thousands|millions|billions)[^)]+?except.+?\))|(?:u[^s]*?s.+?dollar))***",
 //        static const boost::regex regex_dollar_mults{R"***(\(.*?(?:in )?(thousands|millions|billions)(?:.*?dollar)?.*?\))***",
-    static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
+    static const boost::regex regex_dollar_mults{R"***(\([^)]*?(thousands|millions|billions).*?\))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     int how_many_matches{0};
@@ -760,6 +744,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
                 financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
+        std::cout <<  "Balance Sheet multiplier: " << multiplier << '\n';
         int value = TranslateMultiplier(multiplier);
         financial_statements.balance_sheet_.multiplier_ = value;
         ++how_many_matches;
@@ -768,6 +753,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
+        std::cout <<  "Stmt of Ops multiplier: " << multiplier << '\n';
         int value = TranslateMultiplier(multiplier);
         financial_statements.statement_of_operations_.multiplier_ = value;
         ++how_many_matches;
@@ -776,6 +762,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
+        std::cout <<  "Cash flows multiplier: " << multiplier << '\n';
         int value = TranslateMultiplier(multiplier);
         financial_statements.cash_flows_.multiplier_ = value;
         ++how_many_matches;
@@ -790,6 +777,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
                     financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
+            std::cout <<  "Generic multiplier: " << multiplier << '\n';
             int value = TranslateMultiplier(multiplier);
 
             //  fill in any missing values
@@ -829,48 +817,28 @@ void Shares_data::UseExtractor(sview file_content, const fs::path& output_direct
     // we need to do the loops manually since the first match we get
     // may not be the actual content we want.
 
-    static const boost::regex regex_finance_statements
-    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:balance\s+sheet)|(?:financial.*?position).*?</a)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
-
     FinancialStatements financial_statements;
 
-    HTML_FromFile htmls{file_content};
-
-    auto look_for_top_level([&document_anchor_filter] (auto html)
+    auto financial_content = FindFinancialContentUsingAnchors(file_content);
+    if (! financial_content.empty())
     {
-        try
+        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content);
+        if (financial_statements.has_data())
         {
-            AnchorsFromHTML anchors(html);
-            auto financial_anchor = std::find_if(anchors.begin(), anchors.end(), document_anchor_filter);
-            return financial_anchor != anchors.end();
-        }
-        catch(const HTMLException& e)
-        {
-            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
-            return false;
-        }
-    });
-
-    for (auto html : htmls)
-    {
-        if (look_for_top_level(html))
-        {
-            financial_statements = ExtractFinancialStatementsUsingAnchors(html);
-            if (financial_statements.has_data())
-            {
-                financial_statements.html_ = html;
-                financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
-                FindSharesOutstanding(file_content, financial_statements, fields);
-                std::cout << "Found using anchors\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
-                return;
-            }
+            financial_statements.html_ = financial_content;
+            financial_statements.PrepareTableContent();
+            financial_statements.FindMultipliers();
+            FindSharesOutstanding(file_content, financial_statements, fields);
+            std::cout << "Found using anchors\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
+            return;
         }
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
+    // we need to do the loops manually since the first match we get
+    // may not be the actual content we want.
+
+    HTML_FromFile htmls{file_content};
 
     for (auto html : htmls)
     {

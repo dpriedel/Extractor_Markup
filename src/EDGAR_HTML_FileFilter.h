@@ -71,6 +71,7 @@ struct BalanceSheet
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
 
@@ -86,6 +87,7 @@ struct StatementOfOperations
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
 
@@ -101,6 +103,7 @@ struct CashFlows
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
 
@@ -116,6 +119,7 @@ struct StockholdersEquity
     std::string parsed_data_;
     std::vector<sview> lines_;
     EE::EDGAR_Values values_;
+    std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
 

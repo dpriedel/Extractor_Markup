@@ -36,6 +36,7 @@
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
+#include <cctype>
 #include <charconv>
 #include <iostream>
 #include <system_error>
@@ -273,7 +274,8 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
+//    static const boost::regex regex_dollar_mults{R"***((?:\([^)]+?(thousands|millions|billions)[^)]+?except.+?\))|(?:u[^s]*?s.+?dollar))***",
+    static const boost::regex regex_dollar_mults{R"***(\([^)]*?(thousands|millions|billions).*?\))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
@@ -299,15 +301,18 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
  */
 int TranslateMultiplier(sview multiplier)
 {
-    if (multiplier == "thousands")
+    std::string mplier;
+    std::transform(multiplier.begin(), multiplier.end(), std::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
+
+    if (mplier == "thousands")
     {
         return 1000;
     }
-    if (multiplier == "millions")
+    if (mplier == "millions")
     {
         return 1'000'000;
     }
-    if (multiplier == "billions")
+    if (mplier == "billions")
     {
         return 1'000'000'000;
     }
@@ -631,8 +636,11 @@ void FindMultipliersUsingAnchors (FinancialStatements& financial_statements)
     {
         BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
         financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
+        financial_statements.balance_sheet_.multiplier_s_ = multipliers[0].multiplier_;
         financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
+        financial_statements.statement_of_operations_.multiplier_s_ = multipliers[1].multiplier_;
         financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+        financial_statements.cash_flows_.multiplier_s_ = multipliers[2].multiplier_;
     }
     else
     {
@@ -640,8 +648,11 @@ void FindMultipliersUsingAnchors (FinancialStatements& financial_statements)
         // go with default.
 
         financial_statements.balance_sheet_.multiplier_ = 1;
+        financial_statements.balance_sheet_.multiplier_s_ = "";
         financial_statements.statement_of_operations_.multiplier_ = 1;
+        financial_statements.statement_of_operations_.multiplier_s_ = "";
         financial_statements.cash_flows_.multiplier_ = 1;
+        financial_statements.cash_flows_.multiplier_s_ = "";
     }
 }		/* -----  end of function FindMultipliersUsingAnchors  ----- */
 
@@ -656,7 +667,7 @@ void FindMultipliersUsingContent(FinancialStatements& financial_statements)
     // let's try looking in the parsed data first.
     // we may or may not find all of our values there so we need to keep track.
 
-    static const boost::regex regex_dollar_mults{R"***((?:\(.*?(thousands|millions|billions).*?\))|(?:u[^s]*?s.+?dollar))***",
+    static const boost::regex regex_dollar_mults{R"***(\([^)]+?(thousands|millions|billions).*?\))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     int how_many_matches{0};
