@@ -128,7 +128,7 @@ struct Multiplier_data
 {
     void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
 
-    void FindMultipliers(FinancialStatements& financial_statements);
+    void FindMultipliers(FinancialStatements& financial_statements, const fs::path& file_name);
 };
 
 struct Shares_data
