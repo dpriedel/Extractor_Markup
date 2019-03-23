@@ -68,6 +68,7 @@ public:
 
         sview file_content_;
         mutable sview html_;
+        sview file_name_;
 
     public:
 
@@ -84,17 +85,18 @@ public:
         pointer operator->() const { return &html_; }
 
         sview to_sview() const { return html_; }
+        sview GetFileName() const { return file_name_; }
     };
 
-      typedef sview					value_type;
-      typedef typename html_itor::pointer			pointer;
-      typedef typename html_itor::pointer	const_pointer;
-      typedef typename html_itor::reference		reference;
-      typedef typename html_itor::reference	const_reference;
-      typedef html_itor                          iterator;
-      typedef html_itor                    const_iterator;
-      typedef size_t					size_type;
-      typedef ptrdiff_t					difference_type;
+    typedef sview					value_type;
+    typedef typename html_itor::pointer			pointer;
+    typedef typename html_itor::pointer	const_pointer;
+    typedef typename html_itor::reference		reference;
+    typedef typename html_itor::reference	const_reference;
+    typedef html_itor                          iterator;
+    typedef html_itor                    const_iterator;
+    typedef size_t					size_type;
+    typedef ptrdiff_t					difference_type;
 
 public:
     /* ====================  LIFECYCLE     ======================================= */

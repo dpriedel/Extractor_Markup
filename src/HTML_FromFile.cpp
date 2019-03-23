@@ -80,6 +80,7 @@ HTML_FromFile::html_itor::html_itor (sview file_content)
         html_ = FindHTML(document);
         if (! html_.empty())
         {
+            file_name_ = FindFileName(document);
             break;
         }
     }
@@ -93,6 +94,7 @@ HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
         html_ = FindHTML(document);
         if (! html_.empty())
         {
+            file_name_ = FindFileName(document);
             break;
         }
     }

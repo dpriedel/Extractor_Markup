@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -147,7 +148,7 @@ struct FinancialStatements
 
     void PrepareTableContent();
     bool ValidateContent();
-    void FindMultipliers();
+    void FindAndStoreMultipliers();
     void FindSharesOutstanding(sview file_content);
 
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
@@ -155,12 +156,12 @@ struct FinancialStatements
 
 EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines);
 
-void FindMultipliersUsingAnchors(FinancialStatements& financial_statements);
-void FindMultipliersUsingContent(FinancialStatements& financial_statements);
+bool FindAndStoreMultipliersUsingAnchors(FinancialStatements& financial_statements);
+void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements);
 
 struct MultiplierData
 {
-    sview multiplier_;
+    std::string multiplier_;
     sview html_document_;
     int multiplier_value_ = 0;
 };
@@ -177,11 +178,11 @@ inline bool operator<(const MultiplierData& lhs, const MultiplierData& rhs)
 
 using MultDataList = std::vector<MultiplierData>;
 
-int TranslateMultiplier(sview multiplier);
+std::pair<std::string, int> TranslateMultiplier(sview multiplier);
 
 bool FinancialDocumentFilter (sview html);
 
-sview FindFinancialContentUsingAnchors (sview file_content);
+std::optional<std::pair<sview, sview>> FindFinancialContentUsingAnchors (sview file_content);
 
 AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors);
 

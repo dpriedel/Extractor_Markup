@@ -159,7 +159,7 @@ bool FinancialDocumentFilter (sview html)
  *  Description:  
  * =====================================================================================
  */
-sview FindFinancialContentUsingAnchors (sview file_content)
+std::optional<std::pair<sview, sview>> FindFinancialContentUsingAnchors (sview file_content)
 {
     // sometimes we don't have a top level anchor but we do have
     // anchors for individual statements.
@@ -218,7 +218,7 @@ sview FindFinancialContentUsingAnchors (sview file_content)
 
     if (financial_content != htmls.end())
     {
-        return (*financial_content);
+        return (std::optional(std::make_pair(*financial_content, financial_content.GetFileName())));
     }
     return {};
 }		/* -----  end of function FindFinancialContentUsingAnchors  ----- */
@@ -274,8 +274,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-//    static const boost::regex regex_dollar_mults{R"***((?:\([^)]+?(thousands|millions|billions)[^)]+?except.+?\))|(?:u[^s]*?s.+?dollar))***",
-    static const boost::regex regex_dollar_mults{R"***(\([^)]*?(thousands|millions|billions).*?\))***",
+    static const boost::regex regex_dollar_mults{R"***([(][^)]*?(thousands|millions|billions|dollars).*?[)])***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
@@ -286,8 +285,8 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
                     regex_dollar_mults); found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
-            int value = TranslateMultiplier(multiplier);
-            multipliers.emplace_back(MultiplierData{multiplier, a.html_document_, value});
+            auto[multiplier_s, value] = TranslateMultiplier(multiplier);
+            multipliers.emplace_back(MultiplierData{multiplier_s, a.html_document_, value});
         }
     }
     return multipliers;
@@ -299,24 +298,28 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
  *  Description:  
  * =====================================================================================
  */
-int TranslateMultiplier(sview multiplier)
+std::pair<std::string, int> TranslateMultiplier(sview multiplier)
 {
     std::string mplier;
     std::transform(multiplier.begin(), multiplier.end(), std::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
 
     if (mplier == "thousands")
     {
-        return 1000;
+        return {",000", 1000};
     }
     if (mplier == "millions")
     {
-        return 1'000'000;
+        return {",000,000", 1'000'000};
     }
     if (mplier == "billions")
     {
-        return 1'000'000'000;
+        return {",000,000,000", 1'000'000'000};
     }
-    return 1;
+    if (mplier == "dollars")
+    {
+        return {"", 1};
+    }
+    return {"", 1};
 }		/* -----  end of function TranslateMultiplier  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
@@ -489,14 +492,14 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
     FinancialStatements financial_statements;
 
     auto financial_content = FindFinancialContentUsingAnchors(file_content);
-    if (! financial_content.empty())
+    if (financial_content)
     {
-        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content);
+        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->first);
         if (financial_statements.has_data())
         {
-            financial_statements.html_ = financial_content;
+            financial_statements.html_ = financial_content->second;
             financial_statements.PrepareTableContent();
-            financial_statements.FindMultipliers();
+            financial_statements.FindAndStoreMultipliers();
             financial_statements.FindSharesOutstanding(file_content);
             return financial_statements;
         }
@@ -517,7 +520,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             {
                 financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
+                financial_statements.FindAndStoreMultipliers();
                 financial_statements.FindSharesOutstanding(file_content);
                 return financial_statements;
             }
@@ -604,27 +607,27 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_cont
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatementsUsingAnchors  ----- */
 
-void FinancialStatements::FindMultipliers()
+void FinancialStatements::FindAndStoreMultipliers()
 {
     if (balance_sheet_.has_anchor())
     {
         // if one has anchor so must all of them.
 
-        FindMultipliersUsingAnchors(*this);
+        if (FindAndStoreMultipliersUsingAnchors(*this))
+        {
+            return;
+        }
     }
-    else
-    {
-        FindMultipliersUsingContent(*this);
-    }
-}		/* -----  end of method FinancialStatements::FindMultipliers  ----- */
+    FindAndStoreMultipliersUsingContent(*this);
+}		/* -----  end of method FinancialStatements::FindAndStoreMultipliers  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindMultipliersUsingAnchors
+ *         Name:  FindAndStoreMultipliersUsingAnchors
  *  Description:  
  * =====================================================================================
  */
-void FindMultipliersUsingAnchors (FinancialStatements& financial_statements)
+bool FindAndStoreMultipliersUsingAnchors (FinancialStatements& financial_statements)
 {
     AnchorList anchors;
     anchors.push_back(financial_statements.balance_sheet_.the_anchor_);
@@ -641,33 +644,26 @@ void FindMultipliersUsingAnchors (FinancialStatements& financial_statements)
         financial_statements.statement_of_operations_.multiplier_s_ = multipliers[1].multiplier_;
         financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
         financial_statements.cash_flows_.multiplier_s_ = multipliers[2].multiplier_;
-    }
-    else
-    {
-        spdlog::info("Have anchors but no multipliers found. Using default.\n");
-        // go with default.
 
-        financial_statements.balance_sheet_.multiplier_ = 1;
-        financial_statements.balance_sheet_.multiplier_s_ = "";
-        financial_statements.statement_of_operations_.multiplier_ = 1;
-        financial_statements.statement_of_operations_.multiplier_s_ = "";
-        financial_statements.cash_flows_.multiplier_ = 1;
-        financial_statements.cash_flows_.multiplier_s_ = "";
+        return true;
     }
-}		/* -----  end of function FindMultipliersUsingAnchors  ----- */
+    spdlog::info("Have anchors but no multipliers found. Doing it the 'hard' way.\n");
+
+    return false;
+}		/* -----  end of function FindAndStoreMultipliersUsingAnchors  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FindMultipliersUsingContent
+ *         Name:  FindAndStoreMultipliersUsingContent
  *  Description:  
  * =====================================================================================
  */
-void FindMultipliersUsingContent(FinancialStatements& financial_statements)
+void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements)
 {
     // let's try looking in the parsed data first.
     // we may or may not find all of our values there so we need to keep track.
 
-    static const boost::regex regex_dollar_mults{R"***(\([^)]+?(thousands|millions|billions).*?\))***",
+    static const boost::regex regex_dollar_mults{R"***([(][^)]*?(thousands|millions|billions|dollars).*?[)])***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     int how_many_matches{0};
@@ -677,21 +673,27 @@ void FindMultipliersUsingContent(FinancialStatements& financial_statements)
                 financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
-        financial_statements.balance_sheet_.multiplier_ = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        financial_statements.balance_sheet_.multiplier_s_ = mult_s;
+        financial_statements.balance_sheet_.multiplier_ = mult;
         ++how_many_matches;
     }
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
-        financial_statements.statement_of_operations_.multiplier_ = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
+        financial_statements.statement_of_operations_.multiplier_ = mult;
         ++how_many_matches;
     }
     if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
         sview multiplier(matches[1].str());
-        financial_statements.cash_flows_.multiplier_ = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        financial_statements.cash_flows_.multiplier_s_ = mult_s;
+        financial_statements.cash_flows_.multiplier_ = mult;
         ++how_many_matches;
     }
     if (how_many_matches < 3)
@@ -704,21 +706,24 @@ void FindMultipliersUsingContent(FinancialStatements& financial_statements)
                     financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
             sview multiplier(matches[1].first, matches[1].length());
-            int value = TranslateMultiplier(multiplier);
+            const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
 
             //  fill in any missing values
 
             if (financial_statements.balance_sheet_.multiplier_ == 0)
             {
-                financial_statements.balance_sheet_.multiplier_ = value;
+                financial_statements.balance_sheet_.multiplier_ = mult;
+                financial_statements.balance_sheet_.multiplier_s_ = mult_s;
             }
             if (financial_statements.statement_of_operations_.multiplier_ == 0)
             {
-                financial_statements.statement_of_operations_.multiplier_ = value;
+                financial_statements.statement_of_operations_.multiplier_ = mult;
+                financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
             }
             if (financial_statements.cash_flows_.multiplier_ == 0)
             {
-                financial_statements.cash_flows_.multiplier_ = value;
+                financial_statements.cash_flows_.multiplier_ = mult;
+                financial_statements.cash_flows_.multiplier_s_ = mult_s;
             }
         }
         else
@@ -728,11 +733,14 @@ void FindMultipliersUsingContent(FinancialStatements& financial_statements)
             // let's just go with 1 -- a likely value in this case
             //
             financial_statements.balance_sheet_.multiplier_ = 1;
+            financial_statements.balance_sheet_.multiplier_s_ = "";
             financial_statements.statement_of_operations_.multiplier_ = 1;
+            financial_statements.statement_of_operations_.multiplier_s_ = "";
             financial_statements.cash_flows_.multiplier_ = 1;
+            financial_statements.cash_flows_.multiplier_s_ = "";
         }
     }
-}		/* -----  end of function FindMultipliersUsingContent  ----- */
+}		/* -----  end of function FindAndStoreMultipliersUsingContent  ----- */
 
 void FinancialStatements::FindSharesOutstanding(sview file_content)
 {
