@@ -23,12 +23,14 @@ CREATE TABLE html_extracts.edgar_filing_id
 ALTER TABLE html_extracts.edgar_filing_id OWNER TO edgar_pg;
 
 
-DROP TABLE IF EXISTS html_extracts.edgar_filing_data ;
+DROP TABLE IF EXISTS html_extracts.edgar_bal_sheet_data ;
+DROP TABLE IF EXISTS html_extracts.edgar_stmt_of_ops_data ;
+DROP TABLE IF EXISTS html_extracts.edgar_cash_flows_data ;
 
 -- this definition is just a dummy placeholder for now.
 -- the main thing was to get the foreign key stuff in plance.
 
-CREATE TABLE html_extracts.edgar_filing_data
+CREATE TABLE html_extracts.edgar_bal_sheet_data
 (
 	filing_data_ID SERIAL UNIQUE,
 	filing_ID integer REFERENCES html_extracts.edgar_filing_id (filing_ID) ON DELETE CASCADE,
@@ -42,15 +44,70 @@ CREATE TABLE html_extracts.edgar_filing_data
 	PRIMARY KEY(filing_data_ID)
 );
 
-ALTER TABLE html_extracts.edgar_filing_data OWNER TO edgar_pg;
+ALTER TABLE html_extracts.edgar_bal_sheet_data OWNER TO edgar_pg;
 
-DROP TRIGGER IF EXISTS tsv_update ON html_extracts.edgar_filing_data ;
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.edgar_bal_sheet_data ;
 
 CREATE TRIGGER tsv_update
-	BEFORE INSERT OR UPDATE ON html_extracts.edgar_filing_data FOR EACH ROW
+	BEFORE INSERT OR UPDATE ON html_extracts.edgar_bal_sheet_data FOR EACH ROW
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
 
-DROP INDEX IF EXISTS idx_field_label ;
+DROP INDEX IF EXISTS idx_bal_sheet ;
 
-CREATE INDEX idx_field_label ON html_extracts.edgar_filing_data USING GIN (tsv);
+CREATE INDEX idx_bal_sheet ON html_extracts.edgar_bal_sheet_data USING GIN (tsv);
+
+CREATE TABLE html_extracts.edgar_stmt_of_ops_data
+(
+	filing_data_ID SERIAL UNIQUE,
+	filing_ID integer REFERENCES html_extracts.edgar_filing_id (filing_ID) ON DELETE CASCADE,
+	html_label TEXT NOT NULL,
+    html_value TEXT NOT NULL,
+	/* period_begin DATE NOT NULL, */
+	/* period_end DATE NOT NULL, */
+	/* units TEXT NOT NULL, */
+	/* decimals TEXT, */
+	tsv TSVECTOR,
+	PRIMARY KEY(filing_data_ID)
+);
+
+ALTER TABLE html_extracts.edgar_stmt_of_ops_data OWNER TO edgar_pg;
+
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.edgar_stmt_of_ops_data ;
+
+CREATE TRIGGER tsv_update
+	BEFORE INSERT OR UPDATE ON html_extracts.edgar_stmt_of_ops_data FOR EACH ROW
+	EXECUTE PROCEDURE
+		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
+
+DROP INDEX IF EXISTS idx_stmt_of_ops ;
+
+CREATE INDEX idx_stmt_of_ops ON html_extracts.edgar_stmt_of_ops_data USING GIN (tsv);
+
+CREATE TABLE html_extracts.edgar_cash_flows_data
+(
+	filing_data_ID SERIAL UNIQUE,
+	filing_ID integer REFERENCES html_extracts.edgar_filing_id (filing_ID) ON DELETE CASCADE,
+	html_label TEXT NOT NULL,
+    html_value TEXT NOT NULL,
+	/* period_begin DATE NOT NULL, */
+	/* period_end DATE NOT NULL, */
+	/* units TEXT NOT NULL, */
+	/* decimals TEXT, */
+	tsv TSVECTOR,
+	PRIMARY KEY(filing_data_ID)
+);
+
+ALTER TABLE html_extracts.edgar_cash_flows_data OWNER TO edgar_pg;
+
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.edgar_cash_flows_data ;
+
+CREATE TRIGGER tsv_update
+	BEFORE INSERT OR UPDATE ON html_extracts.edgar_cash_flows_data FOR EACH ROW
+	EXECUTE PROCEDURE
+		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
+
+DROP INDEX IF EXISTS idx_cash_flows ;
+
+CREATE INDEX idx_cash_flows ON html_extracts.edgar_cash_flows_data USING GIN (tsv);
+

@@ -154,7 +154,7 @@ struct FinancialStatements
     const EE::EDGAR_Values& ListValues(void) const { return values_; }
 };
 
-EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines);
+EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier);
 
 bool FindAndStoreMultipliersUsingAnchors(FinancialStatements& financial_statements);
 void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements);
@@ -266,6 +266,6 @@ StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anch
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, long int shares_outstanding, bool replace_content);
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content);
 
 #endif

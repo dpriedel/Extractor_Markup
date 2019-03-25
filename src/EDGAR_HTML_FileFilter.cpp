@@ -98,26 +98,26 @@ void FinancialStatements::PrepareTableContent ()
     if (! balance_sheet_.empty())
     {
         balance_sheet_.lines_ = split_string(balance_sheet_.parsed_data_, '\n');
-        balance_sheet_.values_ = CollectStatementValues(balance_sheet_.lines_);
+        balance_sheet_.values_ = CollectStatementValues(balance_sheet_.lines_, balance_sheet_.multiplier_s_);
         std::copy(balance_sheet_.values_.begin(), balance_sheet_.values_.end(), std::back_inserter(values_));
     }
     if (! statement_of_operations_.empty())
     {
         statement_of_operations_.lines_ = split_string(statement_of_operations_.parsed_data_, '\n');
-        statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_);
+        statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.multiplier_s_);
         std::copy(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
                 std::back_inserter(values_));
     }
     if (! cash_flows_.empty())
     {
         cash_flows_.lines_ = split_string(cash_flows_.parsed_data_, '\n');
-        cash_flows_.values_ = CollectStatementValues(cash_flows_.lines_);
+        cash_flows_.values_ = CollectStatementValues(cash_flows_.lines_, cash_flows_.multiplier_s_);
         std::copy(cash_flows_.values_.begin(), cash_flows_.values_.end(), std::back_inserter(values_));
     }
     if (! stockholders_equity_.empty())
     {
         stockholders_equity_.lines_ = split_string(stockholders_equity_.parsed_data_, '\n');
-        stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_);
+        stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.multiplier_s_);
         std::copy(stockholders_equity_.values_.begin(), stockholders_equity_.values_.end(), std::back_inserter(values_));
     }
 }		/* -----  end of method FinancialStatements::PrepareTableContent  ----- */
@@ -498,8 +498,8 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
         if (financial_statements.has_data())
         {
             financial_statements.html_ = financial_content->second;
-            financial_statements.PrepareTableContent();
             financial_statements.FindAndStoreMultipliers();
+            financial_statements.PrepareTableContent();
             financial_statements.FindSharesOutstanding(file_content);
             return financial_statements;
         }
@@ -519,8 +519,8 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
             if (financial_statements.has_data())
             {
                 financial_statements.html_ = html;
-                financial_statements.PrepareTableContent();
                 financial_statements.FindAndStoreMultipliers();
+                financial_statements.PrepareTableContent();
                 financial_statements.FindSharesOutstanding(file_content);
                 return financial_statements;
             }
@@ -899,7 +899,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
 
-EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines)
+EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
@@ -912,13 +912,32 @@ EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines)
             [&values](auto& a_line)
             {
                 boost::cmatch match_values;
-                bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value);
-                if (found_it)
+                if(bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value); found_it)
                 {
                     values.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
                 }
             }
         );
+
+    const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+
+    std::for_each(values.begin(),
+            values.end(),
+            [&multiplier, &regex_per_share] (auto& x)
+            {
+                if(bool found_it = boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); ! found_it)
+                {
+                    if (x.second.back() == ')')
+                    {
+                        x.second.resize(x.second.size() - 1);
+                    }
+                    x.second += multiplier;
+                    if (x.second[0] == '(')
+                    {
+                        x.second += ')';
+                    }
+                }
+            });
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
 
@@ -948,7 +967,7 @@ bool StockholdersEquity::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Values& filing_fields, long int shares_outstanding, bool replace_content)
+bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content)
 {
     // start stuffing the database.
 
@@ -993,7 +1012,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 		trxn.esc(SEC_fields.at("form_type")),
 		trxn.esc(SEC_fields.at("date_filed")),
 		trxn.esc(SEC_fields.at("quarter_ending")),
-        shares_outstanding)
+        financial_statements.outstanding_shares_)
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd);
@@ -1006,20 +1025,51 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::EDGAR_Value
 
 //    pqxx::work trxn{c};
     int counter = 0;
-    pqxx::stream_to inserter{trxn, "html_extracts.edgar_filing_data",
+    pqxx::stream_to inserter1{trxn, "html_extracts.edgar_bal_sheet_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
-    for (const auto&[label, value] : filing_fields)
+    for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
     {
         ++counter;
-        inserter << std::make_tuple(
+        inserter1 << std::make_tuple(
             filing_ID,
             trxn.esc(label),
             trxn.esc(value)
             );
     }
 
-    inserter.complete();
+    inserter1.complete();
+
+    pqxx::stream_to inserter2{trxn, "html_extracts.edgar_stmt_of_ops_data",
+        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+
+    for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
+    {
+        ++counter;
+        inserter2 << std::make_tuple(
+            filing_ID,
+            trxn.esc(label),
+            trxn.esc(value)
+            );
+    }
+
+    inserter2.complete();
+
+    pqxx::stream_to inserter3{trxn, "html_extracts.edgar_cash_flows_data",
+        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+
+    for (const auto&[label, value] : financial_statements.cash_flows_.values_)
+    {
+        ++counter;
+        inserter3 << std::make_tuple(
+            filing_ID,
+            trxn.esc(label),
+            trxn.esc(value)
+            );
+    }
+
+    inserter3.complete();
+
     trxn.commit();
     cnxn.disconnect();
 
