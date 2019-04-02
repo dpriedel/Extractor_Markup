@@ -845,7 +845,7 @@ void Shares_data::UseExtractor(sview file_content, const fs::path& output_direct
         {
             financial_statements.html_ = financial_content->first;
             financial_statements.PrepareTableContent();
-            financial_statements.FindMultipliers();
+            financial_statements.FindAndStoreMultipliers();
             FindSharesOutstanding(file_content, financial_statements, fields);
             std::cout << "Found using anchors\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
             return;
@@ -867,7 +867,7 @@ void Shares_data::UseExtractor(sview file_content, const fs::path& output_direct
             {
                 financial_statements.html_ = html;
                 financial_statements.PrepareTableContent();
-                financial_statements.FindMultipliers();
+                financial_statements.FindAndStoreMultipliers();
                 FindSharesOutstanding(file_content, financial_statements, fields);
                 std::cout << "Found the hard way\nShares outstanding: " << financial_statements.outstanding_shares_ << '\n';;
                 return;
