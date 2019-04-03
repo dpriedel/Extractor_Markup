@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  ExtractEDGAR_XBRLApp.h
+//       Filename:  ExtractorApp.h
 //
 //    Description:  main application
 //
@@ -15,29 +15,29 @@
 //
 // =====================================================================================
 
-	/* This file is part of CollectEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* CollectEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* CollectEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 
 // =====================================================================================
-//        Class:  ExtractEDGAR_XBRLApp
+//        Class:  ExtractorApp
 //  Description:
 // =====================================================================================
 
-#ifndef EXTRACTEDGAR_XBRLAPP_H_
-#define EXTRACTEDGAR_XBRLAPP_H_
+#ifndef EXTRACTORAPP_H_
+#define EXTRACTORAPP_H_
 
 // #include <fstream>
 #include <atomic>
@@ -57,21 +57,21 @@ using sview = std::string_view;
 namespace bg = boost::gregorian;
 namespace po = boost::program_options;
 
-#include "ExtractEDGAR.h"
+#include "Extractor.h"
 
-class ExtractEDGAR_XBRLApp
+class ExtractorApp
 {
 
 public:
 
-    ExtractEDGAR_XBRLApp(int argc, char* argv[]);
+    ExtractorApp(int argc, char* argv[]);
     
     // use ctor below for testing with predefined options
 
-    ExtractEDGAR_XBRLApp(const std::vector<std::string>& tokens);
+    ExtractorApp(const std::vector<std::string>& tokens);
     
-    ExtractEDGAR_XBRLApp() = delete;
-	ExtractEDGAR_XBRLApp(const ExtractEDGAR_XBRLApp& rhs) = delete;
+    ExtractorApp() = delete;
+	ExtractorApp(const ExtractorApp& rhs) = delete;
 
     static bool SignalReceived(void) { return had_signal_ ; }
 
@@ -94,11 +94,11 @@ protected:
 
 	void BuildFilterList(void);
 	void BuildListOfFilesToProcess(void);
-	bool ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
+	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
 
-    bool LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_HTML(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
     void Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, const std::string& file_name);
 
@@ -119,7 +119,7 @@ private:
 
 		// ====================  DATA MEMBERS  =======================================
 
-	using FilterList = std::vector<std::function<bool(const EE::SEC_Header_fields& header_fields, sview)>>;
+	using FilterList = std::vector<std::function<bool(const EM::SEC_Header_fields& header_fields, sview)>>;
 
 	po::positional_options_description	mPositional;			//	old style options
 	po::options_description				mNewOptions;			//	new style options (with identifiers)
@@ -161,6 +161,6 @@ private:
 
     static bool had_signal_;
 
-}; // -----  end of class ExtractEDGAR_XBRLApp  -----
+}; // -----  end of class ExtractorApp  -----
 
-#endif /* EXTRACTEDGAR_XBRLAPP_H_ */
+#endif /* EXTRACTORAPP_H_ */

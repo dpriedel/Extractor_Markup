@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  ExtractEDGAR_XBRLApp.cpp
+//       Filename:  ExtractorApp.cpp
 //
 //    Description:  main application
 //
@@ -15,29 +15,29 @@
 //
 // =====================================================================================
 
-    /* This file is part of CollectEDGARData. */
+    /* This file is part of Extractor_Markup. */
 
-    /* CollectEDGARData is free software: you can redistribute it and/or modify */
+    /* Extractor_Markup is free software: you can redistribute it and/or modify */
     /* it under the terms of the GNU General Public License as published by */
     /* the Free Software Foundation, either version 3 of the License, or */
     /* (at your option) any later version. */
 
-    /* CollectEDGARData is distributed in the hope that it will be useful, */
+    /* Extractor_Markup is distributed in the hope that it will be useful, */
     /* but WITHOUT ANY WARRANTY; without even the implied warranty of */
     /* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
     /* GNU General Public License for more details. */
 
     /* You should have received a copy of the GNU General Public License */
-    /* along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+    /* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 
 //--------------------------------------------------------------------------------------
-//       Class:  ExtractEDGAR_XBRLApp
-//      Method:  ExtractEDGAR_XBRLApp
+//       Class:  ExtractorApp
+//      Method:  ExtractorApp
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-#include "ExtractEDGAR_XBRLApp.h"
+#include "ExtractorApp.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -66,9 +66,9 @@
 
 #include <pqxx/pqxx>
 
-#include "EDGAR_HTML_FileFilter.h"
-#include "EDGAR_XBRL_FileFilter.h"
-#include "ExtractEDGAR_Utils.h"
+#include "Extractor_HTML_FileFilter.h"
+#include "Extractor_XBRL_FileFilter.h"
+#include "Extractor_Utils.h"
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
@@ -89,7 +89,7 @@ struct line_only_whitespace : std::ctype<char>
     explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
 };
 
-bool ExtractEDGAR_XBRLApp::had_signal_ = false;
+bool ExtractorApp::had_signal_ = false;
 
 // code from "The C++ Programming Language" 4th Edition. p. 1243.
 // with modifications.
@@ -122,7 +122,7 @@ int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono
         }
         continue_here = 0;
 
-        if (ExtractEDGAR_XBRLApp::SignalReceived())
+        if (ExtractorApp::SignalReceived())
         {
             break;
         }
@@ -135,29 +135,29 @@ int wait_for_any(std::vector<std::future<T>>& vf, int continue_here, std::chrono
 
 /*
  *--------------------------------------------------------------------------------------
- *       Class:  ExtractEDGAR_XBRLApp
- *      Method:  ExtractEDGAR_XBRLApp
+ *       Class:  ExtractorApp
+ *      Method:  ExtractorApp
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (int argc, char* argv[])
+ExtractorApp::ExtractorApp (int argc, char* argv[])
     : mArgc{argc}, mArgv{argv}
 {
-}  /* -----  end of method ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp  (constructor)  ----- */
+}  /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
- *       Class:  ExtractEDGAR_XBRLApp
- *      Method:  ExtractEDGAR_XBRLApp
+ *       Class:  ExtractorApp
+ *      Method:  ExtractorApp
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp (const std::vector<std::string>& tokens)
+ExtractorApp::ExtractorApp (const std::vector<std::string>& tokens)
     : tokens_{tokens}
 {
-}  /* -----  end of method ExtractEDGAR_XBRLApp::ExtractEDGAR_XBRLApp  (constructor)  ----- */
+}  /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
-void ExtractEDGAR_XBRLApp::ConfigureLogging()
+void ExtractorApp::ConfigureLogging()
 {
     // we need to set log level if specified and also log file.
 
@@ -189,7 +189,7 @@ void ExtractEDGAR_XBRLApp::ConfigureLogging()
     }
 }
 
-bool ExtractEDGAR_XBRLApp::Startup()
+bool ExtractorApp::Startup()
 {
     spdlog::info(("\n\n*** Begin run "
            + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n"));
@@ -222,9 +222,9 @@ bool ExtractEDGAR_XBRLApp::Startup()
         result = false;
 	}
     return result;
-}		/* -----  end of method ExtractEDGAR_XBRLApp::Startup  ----- */
+}		/* -----  end of method ExtractorApp::Startup  ----- */
 
-void ExtractEDGAR_XBRLApp::SetupProgramOptions ()
+void ExtractorApp::SetupProgramOptions ()
 {
 	mNewOptions.add_options()
 		("help,h", "produce help message")
@@ -254,9 +254,9 @@ void ExtractEDGAR_XBRLApp::SetupProgramOptions ()
 		("resume-at", po::value<std::string>(&resume_at_this_filename_),
          "find this file name in list of files to process and resume processing there.")
 		;
-}		/* -----  end of method ExtractEDGAR_XBRLApp::SetupProgramOptions  ----- */
+}		/* -----  end of method ExtractorApp::SetupProgramOptions  ----- */
 
-void ExtractEDGAR_XBRLApp::ParseProgramOptions ()
+void ExtractorApp::ParseProgramOptions ()
 {
 	auto options = po::parse_command_line(mArgc, mArgv, mNewOptions);
 	po::store(options, mVariableMap);
@@ -267,9 +267,9 @@ void ExtractEDGAR_XBRLApp::ParseProgramOptions ()
 	}
 	po::notify(mVariableMap);    
 
-}		/* -----  end of method ExtractEDGAR_XBRLApp::ParseProgramOptions  ----- */
+}		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
 
-void ExtractEDGAR_XBRLApp::ParseProgramOptions (const std::vector<std::string>& tokens)
+void ExtractorApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
 	auto options = po::command_line_parser(tokens).options(mNewOptions).run();
 	po::store(options, mVariableMap);
@@ -279,9 +279,9 @@ void ExtractEDGAR_XBRLApp::ParseProgramOptions (const std::vector<std::string>& 
 		throw std::runtime_error("\nExiting after 'help'.");
 	}
 	po::notify(mVariableMap);    
-}		/* -----  end of method ExtractEDGAR_XBRLApp::ParseProgramOptions  ----- */
+}		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
 
-bool ExtractEDGAR_XBRLApp::CheckArgs ()
+bool ExtractorApp::CheckArgs ()
 {
     if (begin_date_ != bg::date())
     {
@@ -357,9 +357,9 @@ bool ExtractEDGAR_XBRLApp::CheckArgs ()
     BuildFilterList();
 
     return true;
-}       // -----  end of method ExtractEDGAR_XBRLApp::CheckArgs  -----
+}       // -----  end of method ExtractorApp::CheckArgs  -----
 
-void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
+void ExtractorApp::BuildListOfFilesToProcess()
 {
     list_of_files_to_process_.clear();      //  in case of reprocessing.
 
@@ -390,9 +390,9 @@ void ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess()
     list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
 
     spdlog::info(catenate("Resuming with: ", list_of_files_to_process_.size(), " files in list."));
-}		/* -----  end of method ExtractEDGAR_XBRLApp::BuildListOfFilesToProcess  ----- */
+}		/* -----  end of method ExtractorApp::BuildListOfFilesToProcess  ----- */
 
-void ExtractEDGAR_XBRLApp::BuildFilterList()
+void ExtractorApp::BuildFilterList()
 {
     //  we always ned to do this first.
 
@@ -424,9 +424,9 @@ void ExtractEDGAR_XBRLApp::BuildFilterList()
     {
         filters_.emplace_back(FileHasSIC{SIC_list_});
     }
-}		/* -----  end of method ExtractEDGAR_XBRLApp::BuildFilterList  ----- */
+}		/* -----  end of method ExtractorApp::BuildFilterList  ----- */
 
-void ExtractEDGAR_XBRLApp::Run()
+void ExtractorApp::Run()
 {
     std::tuple<int, int, int> counters;
 
@@ -458,9 +458,9 @@ void ExtractEDGAR_XBRLApp::Run()
 
     spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ",
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
-}		/* -----  end of method ExtractEDGAR_XBRLApp::Run  ----- */
+}		/* -----  end of method ExtractorApp::Run  ----- */
 
-bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields, sview file_content,
+bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content,
         std::atomic<int>& forms_processed)
 {
     bool use_file{true};
@@ -483,16 +483,16 @@ bool ExtractEDGAR_XBRLApp::ApplyFilters(const EE::SEC_Header_fields& SEC_fields,
     return use_file;
 }
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB(const fs::path& input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(const fs::path& input_file_name)
 {
     if (mode_ == "XBRL")
     {
         return LoadSingleFileToDB_XBRL(input_file_name);
     }
     return LoadSingleFileToDB_HTML(input_file_name);
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB  ----- */
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs::path& input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const fs::path& input_file_name)
 {
     bool did_load{false};
     std::atomic<int> forms_processed{0};
@@ -535,9 +535,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL(const fs
         return {1, 0, 0};
     }
     return {0, 1, 0};
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB_XBRL  ----- */
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs::path& input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& input_file_name)
 {
     bool did_load{false};
     std::atomic<int> forms_processed{0};
@@ -575,9 +575,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML(const fs
         return {1, 0, 0};
     }
     return {0, 1, 0};
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadSingleFileToDB_HTML  ----- */
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
+std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -593,9 +593,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDB()
     std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
 
     return {success_counter, skipped_counter, error_counter};
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFilesFromListToDB  ----- */
+}		/* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
 
-void ExtractEDGAR_XBRLApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
+void ExtractorApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, const std::string& file_name)
 {
     if (fs::is_regular_file(file_name))
@@ -646,9 +646,9 @@ void ExtractEDGAR_XBRLApp::Do_SingleFile(std::atomic<int>& forms_processed, int&
             spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
         }
     }
-}		/* -----  end of method ExtractEDGAR_XBRLApp::Do_SingleFile  ----- */
+}		/* -----  end of method ExtractorApp::Do_SingleFile  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
+std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -670,9 +670,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::ProcessDirectory()
             process_file);
 
     return {success_counter, skipped_counter, error_counter};
-}		/* -----  end of method ExtractEDGAR_XBRLApp::ProcessDirectory  ----- */
+}		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
-bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     spdlog::debug(catenate("Loading contents from file: ", file_name));
@@ -682,9 +682,9 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB(const std::string& file_name, 
         return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, file_content);
     }
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB  ----- */
+}		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
-bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     auto document_sections{LocateDocumentSections(file_content)};
@@ -701,9 +701,9 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL(const std::string& file_n
     auto label_data = ExtractFieldLabels(labels_xml);
 
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_XBRL  ----- */
+}		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
-bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EE::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     auto the_tables = FindAndExtractFinancialStatements(file_content);
@@ -711,9 +711,9 @@ bool ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML(const std::string& file_n
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
     return LoadDataToDB(SEC_fields, the_tables, replace_DB_content_);
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileFromFolderToDB_HTML  ----- */
+}		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -740,7 +740,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
         {
             LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
         }
-        catch(const EDGARException& e)
+        catch(const ExtractorException& e)
         {
             spdlog::error(e.what());
             ++error_counter;
@@ -764,9 +764,9 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFileAsync(const std::string&
     }
 
     return {success_counter, skipped_counter, error_counter};
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFileAsync  ----- */
+}		/* -----  end of method ExtractorApp::LoadFileAsync  ----- */
 
-std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently()
+std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 {
     // since this code can potentially run for hours on end (depending on database throughput)
     // it's a good idea to provide a way to break into this processing and shut it down cleanly.
@@ -775,7 +775,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
     struct sigaction sa_old;
     struct sigaction sa_new;
 
-    sa_new.sa_handler = ExtractEDGAR_XBRLApp::HandleSignal;
+    sa_new.sa_handler = ExtractorApp::HandleSignal;
     sigemptyset(&sa_new.sa_mask);
     sa_new.sa_flags = 0;
     sigaction(SIGINT, &sa_new, &sa_old);
@@ -787,7 +787,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     // ok, get ready to handle keyboard interrupts, if any.
 
-    ExtractEDGAR_XBRLApp::had_signal_= false;
+    ExtractorApp::had_signal_= false;
 
     std::exception_ptr ep{nullptr};
 
@@ -814,7 +814,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         // queue up our tasks up to the limit.
 
         // for some strange reason, this does not compile (but it should)
-        // tasks.emplace_back(std::async(std::launch::async, &ExtractEDGAR_XBRLApp::LoadFileAsync, this,
+        // tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
         // list_of_files_to_process_[i], forms_processed));
 
         // so, use this instead.
@@ -888,7 +888,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
             break;
         }
 
-        if (ep || ExtractEDGAR_XBRLApp::had_signal_)
+        if (ep || ExtractorApp::had_signal_)
         {
             break;
         }
@@ -918,7 +918,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
                 counters = AddTs(counters, result);
             }
         }
-        catch (EDGARException& e)
+        catch (ExtractorException& e)
         {
             // any problems, we'll document them and continue.
 
@@ -948,7 +948,7 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
         std::rethrow_exception(ep);
     }
 
-    if (ExtractEDGAR_XBRLApp::had_signal_)
+    if (ExtractorApp::had_signal_)
     {
         spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
                 ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
@@ -962,22 +962,22 @@ std::tuple<int, int, int> ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrentl
 
     return counters;
 
-}		/* -----  end of method ExtractEDGAR_XBRLApp::LoadFilesFromListToDBConcurrently  ----- */
+}		/* -----  end of method ExtractorApp::LoadFilesFromListToDBConcurrently  ----- */
 
-void ExtractEDGAR_XBRLApp::HandleSignal(int signal)
+void ExtractorApp::HandleSignal(int signal)
 
 {
-    std::signal(SIGINT, ExtractEDGAR_XBRLApp::HandleSignal);
+    std::signal(SIGINT, ExtractorApp::HandleSignal);
 
     // only thing we need to do
 
-    ExtractEDGAR_XBRLApp::had_signal_ = true;
+    ExtractorApp::had_signal_ = true;
 
 }		/* -----  end of method ExtractEDGAR_XBRL::HandleSignal  ----- */
 
-void ExtractEDGAR_XBRLApp::Shutdown ()
+void ExtractorApp::Shutdown ()
 {
     spdlog::info("\n\n*** End run "
             + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
-}       // -----  end of method ExtractEDGAR_XBRLApp::Shutdown  -----
+}       // -----  end of method ExtractorApp::Shutdown  -----
 

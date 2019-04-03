@@ -1,8 +1,8 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_HTML_FileFilter.h
+//       Filename:  Extractor_HTML_FileFilter.h
 //
-//    Description:  class which identifies EDGAR files which contain proper XML for extracting.
+//    Description:  class which identifies SEC files which contain proper XML for extracting.
 //
 //        Version:  1.0
 //        Created:  11/14/2018 09:37:16 AM
@@ -16,28 +16,28 @@
 // =====================================================================================
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_HTML_FileFilter
-//  Description:  class which EDGAR files to extract data from.
+//        Class:  Extractor_HTML_FileFilter
+//  Description:  class which SEC files to extract data from.
 // =====================================================================================
 
-#ifndef  _EDGAR_HTML_FILEFILTER_
-#define  _EDGAR_HTML_FILEFILTER_
+#ifndef  _EXTRACTOR_HTML_FILEFILTER_
+#define  _EXTRACTOR_HTML_FILEFILTER_
 
 #include <algorithm>
 #include <map>
@@ -49,8 +49,8 @@
 
 #include <boost/regex.hpp>
 
-#include "ExtractEDGAR.h"
-#include "ExtractEDGAR_Utils.h"
+#include "Extractor.h"
+#include "Extractor_Utils.h"
 #include "AnchorsFromHTML.h"
 #include "TablesFromFile.h"
 
@@ -60,7 +60,7 @@ using sview = std::string_view;
 
 struct FileHasHTML
 {
-    bool operator()(const EE::SEC_Header_fields&, sview file_content);
+    bool operator()(const EM::SEC_Header_fields&, sview file_content);
 };
 
 // Extracting the desired content from each financial statement section
@@ -71,7 +71,7 @@ struct BalanceSheet
     AnchorData the_anchor_;
     std::string parsed_data_;
     std::vector<sview> lines_;
-    EE::EDGAR_Values values_;
+    EM::Extractor_Values values_;
     std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
@@ -87,7 +87,7 @@ struct StatementOfOperations
     AnchorData the_anchor_;
     std::string parsed_data_;
     std::vector<sview> lines_;
-    EE::EDGAR_Values values_;
+    EM::Extractor_Values values_;
     std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
@@ -103,7 +103,7 @@ struct CashFlows
     AnchorData the_anchor_;
     std::string parsed_data_;
     std::vector<sview> lines_;
-    EE::EDGAR_Values values_;
+    EM::Extractor_Values values_;
     std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
@@ -119,7 +119,7 @@ struct StockholdersEquity
     AnchorData the_anchor_;
     std::string parsed_data_;
     std::vector<sview> lines_;
-    EE::EDGAR_Values values_;
+    EM::Extractor_Values values_;
     std::string multiplier_s_;
     int multiplier_ = 0;
     bool is_valid_;
@@ -136,7 +136,7 @@ struct FinancialStatements
     StatementOfOperations statement_of_operations_;
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
-    EE::EDGAR_Values values_;
+    EM::Extractor_Values values_;
     sview html_;
     long int outstanding_shares_ = -1;
 
@@ -151,10 +151,10 @@ struct FinancialStatements
     void FindAndStoreMultipliers();
     void FindSharesOutstanding(sview file_content);
 
-    const EE::EDGAR_Values& ListValues(void) const { return values_; }
+    const EM::Extractor_Values& ListValues(void) const { return values_; }
 };
 
-EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier);
+EM::Extractor_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier);
 
 bool FindAndStoreMultipliersUsingAnchors(FinancialStatements& financial_statements);
 void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements);
@@ -266,6 +266,6 @@ StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anch
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content);
+bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content);
 
 #endif

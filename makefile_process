@@ -43,12 +43,12 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/process_main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/ExtractEDGAR_XBRL.cpp \
+SRCS2 := $(SDIR2)/Extractor_XBRL.cpp \
 		$(SDIR2)/Extractors.cpp \
 		$(SDIR2)/SEC_Header.cpp \
-		$(SDIR2)/EDGAR_HTML_FileFilter.cpp \
-		$(SDIR2)/EDGAR_XBRL_FileFilter.cpp \
-		$(SDIR2)/ExtractEDGAR_Utils.cpp \
+		$(SDIR2)/Extractor_HTML_FileFilter.cpp \
+		$(SDIR2)/Extractor_XBRL_FileFilter.cpp \
+		$(SDIR2)/Extractor_Utils.cpp \
 		$(SDIR2)/HTML_FromFile.cpp \
 		$(SDIR2)/AnchorsFromHTML.cpp \
 		$(SDIR2)/TablesFromFile.cpp

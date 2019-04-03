@@ -1,8 +1,8 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_HTML_FileFilter.cpp
+//       Filename:  Extractor_HTML_FileFilter.cpp
 //
-//    Description:  class which identifies EDGAR files which contain proper XML for extracting.
+//    Description:  class which identifies SEC files which contain proper XML for extracting.
 //
 //        Version:  1.0
 //        Created:  11/14/2018 16:12:16 AM
@@ -16,24 +16,24 @@
 // =====================================================================================
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_HTML_FileFilter
-//  Description:  class which EDGAR files to extract data from.
+//        Class:  Extractor_HTML_FileFilter
+//  Description:  class which SEC files to extract data from.
 // =====================================================================================
 
 #include <cctype>
@@ -41,8 +41,8 @@
 #include <iostream>
 #include <system_error>
 
-#include "EDGAR_HTML_FileFilter.h"
-#include "EDGAR_XBRL_FileFilter.h"
+#include "Extractor_HTML_FileFilter.h"
+#include "Extractor_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
 #include "SEC_Header.h"
 #include "TablesFromFile.h"
@@ -70,7 +70,7 @@ const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[
  *  Description:  
  * =====================================================================================
  */
-bool FileHasHTML::operator() (const EE::SEC_Header_fields& header_fields, sview file_content) 
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, sview file_content) 
 {
     const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
 
@@ -746,7 +746,7 @@ void FinancialStatements::FindSharesOutstanding(sview file_content)
 {
     // let's try this first...
 
-    if (FileHasXBRL{}(EE::SEC_Header_fields{}, file_content))
+    if (FileHasXBRL{}(EM::SEC_Header_fields{}, file_content))
     {
         auto documents = LocateDocumentSections(file_content);
         auto instance_doc = LocateInstanceDocument(documents);
@@ -856,7 +856,7 @@ void FinancialStatements::FindSharesOutstanding(sview file_content)
         if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
                     outstanding_shares_); ec != std::errc())
         {
-            throw EDGARException(catenate("Problem converting shares outstanding: ",
+            throw ExtractorException(catenate("Problem converting shares outstanding: ",
                         std::make_error_code(ec).message(), '\n'));
         }
         // apply multiplier if we got our value from a table value rather than a table label.
@@ -899,12 +899,12 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
 
-EE::EDGAR_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier)
+EM::Extractor_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
     
-    EE::EDGAR_Values values;
+    EM::Extractor_Values values;
 
     std::for_each(
             lines.begin(),
@@ -967,14 +967,14 @@ bool StockholdersEquity::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content)
+bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content)
 {
     // start stuffing the database.
 
-    pqxx::connection cnxn{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{cnxn};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.edgar_filing_id WHERE"
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -992,7 +992,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 //    pqxx::work trxn{c};
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.edgar_filing_id WHERE"
+	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -1000,7 +1000,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatem
 			;
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.edgar_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.extractor_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
@@ -1025,7 +1025,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 //    pqxx::work trxn{c};
     int counter = 0;
-    pqxx::stream_to inserter1{trxn, "html_extracts.edgar_bal_sheet_data",
+    pqxx::stream_to inserter1{trxn, "html_extracts.extractor_bal_sheet_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
@@ -1040,7 +1040,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter1.complete();
 
-    pqxx::stream_to inserter2{trxn, "html_extracts.edgar_stmt_of_ops_data",
+    pqxx::stream_to inserter2{trxn, "html_extracts.extractor_stmt_of_ops_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
@@ -1055,7 +1055,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter2.complete();
 
-    pqxx::stream_to inserter3{trxn, "html_extracts.edgar_cash_flows_data",
+    pqxx::stream_to inserter3{trxn, "html_extracts.extractor_cash_flows_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)

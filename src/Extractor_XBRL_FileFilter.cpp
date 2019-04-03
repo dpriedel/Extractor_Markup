@@ -1,6 +1,6 @@
 // =====================================================================================
 //
-//       Filename:  EDGAR_XBRL_FileFilter.cpp
+//       Filename:  Extractor_XBRL_FileFilter.cpp
 //
 //    Description:  class which identifies EDGAR files which contain proper XML for extracting.
 //
@@ -16,28 +16,28 @@
 // =====================================================================================
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 // =====================================================================================
-//        Class:  EDGAR_XBRL_FileFilter
+//        Class:  Extractor_XBRL_FileFilter
 //  Description:  class which EDGAR files to extract data from.
 // =====================================================================================
 
-#include "ExtractEDGAR_Utils.h"
-#include "EDGAR_XBRL_FileFilter.h"
+#include "Extractor_Utils.h"
+#include "Extractor_XBRL_FileFilter.h"
 
 #include <algorithm>
 
@@ -69,7 +69,7 @@ const std::string::size_type START_WITH{1000000};
 // special case utility function to wrap map lookup for field names
 // returns a defualt value if not found.
 
-const std::string& FindOrDefault(const EE::EDGAR_Labels& labels, const std::string& key, const std::string& default_result)
+const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::string& key, const std::string& default_result)
 {
     try
     {
@@ -82,17 +82,17 @@ const std::string& FindOrDefault(const EE::EDGAR_Labels& labels, const std::stri
     }
 }
 
-bool FileHasXBRL::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
 {
     return (file_content.find(R"***(<XBRL>)***") != sview::npos);
 }
 
-bool FileHasFormType::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
 {
     return (std::find(std::begin(form_list_), std::end(form_list_), header_fields.at("form_type")) != std::end(form_list_));
 }
 
-bool FileHasCIK::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -104,12 +104,12 @@ bool FileHasCIK::operator()(const EE::SEC_Header_fields& header_fields, sview fi
     return (std::find(std::begin(CIK_list_), std::end(CIK_list_), header_fields.at("cik")) != std::end(CIK_list_));
 }
 
-bool FileHasSIC::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
 {
     return (std::find(std::begin(SIC_list_), std::end(SIC_list_), header_fields.at("sic")) != std::end(SIC_list_));
 }
 
-bool FileIsWithinDateRange::operator()(const EE::SEC_Header_fields& header_fields, sview file_content)
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
 {
     auto report_date = bg::from_simple_string(header_fields.at("quarter_ending"));
 
@@ -144,7 +144,7 @@ sview LocateLabelDocument(const std::vector<sview>& document_sections)
     return {};
 }
 
-EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
+EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 {
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
@@ -158,7 +158,7 @@ EE::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
-    return EE::FilingData{trading_symbol, period_end_date, context_ID,
+    return EM::FilingData{trading_symbol, period_end_date, context_ID,
         shares_outstanding.empty() ? "0" : std::string{shares_outstanding}};
 }
 
@@ -177,9 +177,9 @@ std::string ConvertPeriodEndDateToContextName(sview period_end_date)
     return result;
 }
 
-std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml)
+std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml)
 {
-    std::vector<EE::GAAP_Data> result;
+    std::vector<EM::GAAP_Data> result;
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
@@ -205,8 +205,8 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // collect our data: name, context, units, decimals, value.
 
-//        EE::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
-        EE::GAAP_Data fields{second_level_nodes.name() + GAAP_LEN,
+//        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
+        EM::GAAP_Data fields{second_level_nodes.name() + GAAP_LEN,
             second_level_nodes.attribute("contextRef").value(), second_level_nodes.attribute("unitRef").value(),
             second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
 
@@ -238,7 +238,7 @@ std::vector<EE::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 //
 //  NOTE: we actually follow this path in reverse when we build our table.
 
-EE::EDGAR_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
+EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 {
     auto top_level_node = labels_xml.first_child();
 
@@ -412,10 +412,10 @@ std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_nod
     return arcs;
 }		/* -----  end of function FindLabelArcElements  ----- */
 
-EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
+EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
         const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs)
 {
-    EE::EDGAR_Labels result;
+    EM::Extractor_Labels result;
 
     for (auto [link_to, value] : labels)
     {
@@ -439,9 +439,9 @@ EE::EDGAR_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>&
     return result;
 }		/* -----  end of function AssembleLookupTable  ----- */
 
-EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)
+EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)
 {
-    EE::ContextPeriod result;
+    EM::ContextPeriod result;
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
@@ -501,7 +501,7 @@ EE::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
             end_ptr = end.child_value();
         }
         if (auto [it, success] = result.try_emplace(second_level_nodes.attribute("id").value(),
-            EE::EDGAR_TimePeriod{start_ptr, end_ptr}); ! success)
+            EM::Extractor_TimePeriod{start_ptr, end_ptr}); ! success)
         {
             std::cout << "Can't insert value for label: " << second_level_nodes.attribute("id").value()  << '\n';
         }
@@ -544,16 +544,16 @@ pugi::xml_document ParseXMLContent(sview document)
  *  Description:  
  * =====================================================================================
  */
-bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData& filing_fields,
-    const std::vector<EE::GAAP_Data>& gaap_fields, const EE::EDGAR_Labels& label_fields,
-    const EE::ContextPeriod& context_fields, bool replace_content)
+bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData& filing_fields,
+    const std::vector<EM::GAAP_Data>& gaap_fields, const EM::Extractor_Labels& label_fields,
+    const EM::ContextPeriod& context_fields, bool replace_content)
 {
     // start stuffing the database.
 
-    pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM xbrl_extracts.edgar_filing_id WHERE"
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM xbrl_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -571,7 +571,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 
 //    pqxx::work trxn{c};
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
+	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -579,7 +579,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
 			;
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
@@ -608,7 +608,7 @@ bool LoadDataToDB(const EE::SEC_Header_fields& SEC_fields, const EE::FilingData&
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_data"
+    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_data"
             " (filing_ID, xbrl_label, user_label, xbrl_value, context_ID, period_begin, period_end, units, decimals)"
             " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')",
     			trxn.esc(filing_ID),

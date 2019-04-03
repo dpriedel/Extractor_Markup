@@ -2,7 +2,7 @@
 //
 //       Filename:  Extractors.h
 //
-//    Description:  module which scans the set of collected EDGAR files and extracts
+//    Description:  module which scans the set of collected SEC files and extracts
 //                  relevant data from the file.
 //
 //      Inputs:
@@ -20,22 +20,23 @@
 //
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
-#ifndef __XBRL_Extractors__
-#define __XBRL_Extractors__
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
+
+#ifndef _EXTRACTORS__
+#define _EXTRACTORS__
 
 #include <filesystem>
 #include <string>
@@ -49,8 +50,8 @@ using sview = std::string_view;
 
 #include "gq/Node.h"
 
-#include "ExtractEDGAR.h"
-#include "EDGAR_HTML_FileFilter.h"
+#include "Extractor.h"
+#include "Extractor_HTML_FileFilter.h"
 
 namespace fs = std::filesystem;
 /* namespace hana = boost::hana; */
@@ -82,67 +83,67 @@ std::string CollectFinancialStatementContent (sview document_content);
 
 struct XBRL_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
 };
 
 struct XBRL_Label_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields);
+    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
 };
 
 struct Count_SS
 {
     int SS_counter = 0;
 
-    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct DocumentCounter
 {
     int document_counter = 0;
 
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct HTM_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct FinancialStatements_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct BalanceSheet_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct Multiplier_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
 
     void FindMultipliers(FinancialStatements& financial_statements, const fs::path& file_name);
 };
 
 struct Shares_data
 {
-    void UseExtractor(sview, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
 
-    void FindSharesOutstanding(sview file_content, FinancialStatements& financial_statements, const EE::SEC_Header_fields& fields);
+    void FindSharesOutstanding(sview file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields&);
+    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 // someday, the user can sellect filters.  We'll pretend we do that here.
@@ -173,4 +174,4 @@ FilterList SelectExtractors(int argc, const char* argv[]);
 //}
 
 
-#endif /* end of include guard:  __XBRL_Extractors__*/
+#endif /* end of include guard:  _EXTRACTORS__*/

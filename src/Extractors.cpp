@@ -2,7 +2,7 @@
 //
 //       Filename:  Extractors.cpp
 //
-//    Description:  module which scans the set of collected EDGAR files and extracts
+//    Description:  module which scans the set of collected SEC files and extracts
 //                  relevant data from the file.
 //
 //      Inputs:
@@ -20,23 +20,23 @@
 //
 
 
-	/* This file is part of EEData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* EEData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* EEData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with EEData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "Extractors.h"
-#include "ExtractEDGAR_XBRL.h"
+#include "Extractor_XBRL.h"
 
 #include <iostream>
 #include <filesystem>
@@ -54,9 +54,9 @@ using sview = std::string_view;
 
 #include "spdlog/spdlog.h"
 
-#include "EDGAR_HTML_FileFilter.h"
-#include "EDGAR_XBRL_FileFilter.h"
-#include "ExtractEDGAR_Utils.h"
+#include "Extractor_HTML_FileFilter.h"
+#include "Extractor_XBRL_FileFilter.h"
+#include "Extractor_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
@@ -391,7 +391,7 @@ FilterList SelectExtractors (int argc, const char* argv[])
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
-void XBRL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void XBRL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -428,7 +428,7 @@ void XBRL_data::UseExtractor(sview file_content, const fs::path& output_director
     }
 }
 
-void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -465,7 +465,7 @@ void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_di
     }
 }
 
-void SS_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void SS_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -502,7 +502,7 @@ void SS_data::UseExtractor(sview file_content, const fs::path& output_directory,
     }
 }
 
-void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EE::SEC_Header_fields& fields)
+void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -516,7 +516,7 @@ void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EE::SEC
 }		/* -----  end of method Count_SS::UseExtractor  ----- */
 
 
-void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EE::SEC_Header_fields& fields)
+void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -527,7 +527,7 @@ void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EE
 }
 
 
-void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -582,7 +582,7 @@ void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory
 }
 
 void FinancialStatements_data::UseExtractor (sview file_content, const fs::path& output_directory,
-        const EE::SEC_Header_fields& fields)
+        const EM::SEC_Header_fields& fields)
 {
     // we locate the HTML document in the file which contains the financial statements.
     // we then convert that to text and save the output.
@@ -615,7 +615,7 @@ void FinancialStatements_data::UseExtractor (sview file_content, const fs::path&
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 
-void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we are being given a DOCUMENT from the file so we need to scan it for HTML
     // then scan that for tables then scan that for a balance sheet.
@@ -645,7 +645,7 @@ void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_
 //    }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
-void Multiplier_data::UseExtractor (sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void Multiplier_data::UseExtractor (sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -826,7 +826,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     }
 }		/* -----  end of method Multiplier_data::FindMultipliers  ----- */
 
-void Shares_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void Shares_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -876,7 +876,7 @@ void Shares_data::UseExtractor(sview file_content, const fs::path& output_direct
     }
 }
 
-void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements& financial_statements, const EE::SEC_Header_fields& fields)
+void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields)
 {
     // let's try this first...
 
@@ -991,7 +991,7 @@ void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements
         if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
                     financial_statements.outstanding_shares_); ec != std::errc())
         {
-            throw EDGARException(catenate("Problem converting shares outstanding: ",
+            throw ExtractorException(catenate("Problem converting shares outstanding: ",
                         std::make_error_code(ec).message(), '\n'));
         }
         // apply multiplier if we got our value from a table value rather than a table label.
@@ -1003,11 +1003,11 @@ void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements
     }
     else
     {
-        throw EDGARException("Can't find shares outstanding.\n");
+        throw ExtractorException("Can't find shares outstanding.\n");
     }
 }		/* -----  end of method Shares_data::UseExtractor  ----- */
 
-void ALL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EE::SEC_Header_fields& fields)
+void ALL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 

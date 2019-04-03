@@ -15,7 +15,7 @@ Release*/*
 
 XBRL_Extract
 ProcessXBRL_Extract
-ExtractEDGAR_XBRL
+ExtractorApp
 
 #	log file
 

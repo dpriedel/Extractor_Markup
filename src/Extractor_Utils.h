@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  ExtractEDGAR_Utils.h
+ *       Filename:  Extractor_Utils.h
  *
  *    Description:  Routines shared by XBRL and HTLM extracts.
  *
@@ -17,28 +17,24 @@
  */
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
-// =====================================================================================
-//        Class:  EDGAR_FileFilter
-//  Description:  class which EDGAR files to extract data from.
-// =====================================================================================
 
-#ifndef  ExtractEDGAR_Utils_INC
-#define  ExtractEDGAR_Utils_INC
+#ifndef  _EXTRACTOR_UTILS_INC_
+#define  _EXTRACTOR_UTILS_INC_
 
 #include <exception>
 #include <map>
@@ -98,7 +94,7 @@ auto SumT(const std::tuple<Ts...>& t)
     return std::apply(z_, t);
 }
 
-#include "ExtractEDGAR.h"
+#include "Extractor.h"
 
 std::string LoadDataFileForUse(const char* file_name);
 
@@ -106,13 +102,13 @@ std::string LoadDataFileForUse(const char* file_name);
 // now that we have both XBRL and HTML based extractors, we need
 // a more elaborate exception setup.
 
-class EDGARException : public std::runtime_error
+class ExtractorException : public std::runtime_error
 {
 public:
 
-    explicit EDGARException(const char* what);
+    explicit ExtractorException(const char* what);
 
-    explicit EDGARException(const std::string& what);
+    explicit ExtractorException(const std::string& what);
 };
 
 class AssertionException : public std::invalid_argument
@@ -124,7 +120,7 @@ public:
     explicit AssertionException(const std::string& what);
 };
 
-class XBRLException : public EDGARException 
+class XBRLException : public ExtractorException 
 {
 public:
 
@@ -133,7 +129,7 @@ public:
     explicit XBRLException(const std::string& what);
 };
 
-class HTMLException : public EDGARException 
+class HTMLException : public ExtractorException 
 {
 public:
 
@@ -193,7 +189,7 @@ auto AllNotEmpty(Ts ...ts)
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EE::SEC_Header_fields& header_fields, sview file_content, Ts ...ts)
+auto ApplyFilters(const EM::SEC_Header_fields& header_fields, sview file_content, Ts ...ts)
 {
     // unary left fold
 
@@ -210,4 +206,4 @@ sview FindFileType(sview document);
 
 sview FindHTML(sview document);
 
-#endif   /* ----- #ifndef ExtractEDGAR_Utils_INC  ----- */
+#endif   /* ----- #ifndef _EXTRACTOR_UTILS_INC_  ----- */

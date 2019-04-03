@@ -1,17 +1,17 @@
-# This file is part of CollectEDGARData.
+# This file is part of Extractor_Markup.
 
-# CollectEDGARData is free software: you can redistribute it and/or modify
+# Extractor_Markup is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# CollectEDGARData is distributed in the hope that it will be useful,
+# Extractor_Markup is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>.
+# along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>.
 
 # see link below for make file dependency magic
 #
@@ -30,7 +30,7 @@ endif
 
 #	common definitions
 
-OUTFILE := ExtractEDGAR_XBRL
+OUTFILE := ExtractorApp
 
 CFG_INC := -I./src -I$(BOOSTDIR) -I/extra/gcc/cpp-json/include/
 
@@ -40,10 +40,10 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/Main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/ExtractEDGAR_XBRLApp.cpp \
-		$(SDIR2)/EDGAR_HTML_FileFilter.cpp \
-		$(SDIR2)/EDGAR_XBRL_FileFilter.cpp \
-		$(SDIR2)/ExtractEDGAR_Utils.cpp \
+SRCS2 := $(SDIR2)/ExtractorApp.cpp \
+		$(SDIR2)/Extractor_HTML_FileFilter.cpp \
+		$(SDIR2)/Extractor_XBRL_FileFilter.cpp \
+		$(SDIR2)/Extractor_Utils.cpp \
 		$(SDIR2)/SEC_Header.cpp \
 		$(SDIR2)/HTML_FromFile.cpp \
 		$(SDIR2)/AnchorsFromHTML.cpp \

@@ -31,7 +31,7 @@
 	/* along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 
-#include "ExtractEDGAR_XBRLApp.h"
+#include "ExtractorApp.h"
 
 #include <iostream>
 
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 	int result = 0;
 	try
 	{
-		ExtractEDGAR_XBRLApp myApp(argc, argv);
+		ExtractorApp myApp(argc, argv);
 		bool startup_ok = myApp.Startup();
         if (startup_ok)
         {

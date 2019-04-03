@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  ExtractEDGAR_Utils.cpp
+ *       Filename:  Extractor_Utils.cpp
  *
  *    Description:  Routines shared by XBRL and HTML extracts.
  *
@@ -16,27 +16,23 @@
  * =====================================================================================
  */
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
-// =====================================================================================
-//        Class:  EDGAR_FileFilter
-//  Description:  class which EDGAR files to extract data from.
-// =====================================================================================
 
-#include "ExtractEDGAR_Utils.h"
+#include "Extractor_Utils.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -52,20 +48,20 @@ using namespace std::string_literals;
 
 /*
  *--------------------------------------------------------------------------------------
- *       Class:  EDGARException
- *      Method:  EDGARException
+ *       Class:  ExtractorException
+ *      Method:  ExtractorException
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-EDGARException::EDGARException(const char* text)
+ExtractorException::ExtractorException(const char* text)
     : std::runtime_error(text)
 {
-}  /* -----  end of method EDGARException::EDGARException  (constructor)  ----- */
+}  /* -----  end of method ExtractorException::ExtractorException  (constructor)  ----- */
 
-EDGARException::EDGARException(const std::string& text)
+ExtractorException::ExtractorException(const std::string& text)
     : std::runtime_error(text)
 {
-}  /* -----  end of method EDGARException::EDGARException  (constructor)  ----- */
+}  /* -----  end of method ExtractorException::ExtractorException  (constructor)  ----- */
 
 
 /*
@@ -93,12 +89,12 @@ AssertionException::AssertionException(const std::string& text)
  *--------------------------------------------------------------------------------------
  */
 XBRLException::XBRLException(const char* text)
-    : EDGARException(text)
+    : ExtractorException(text)
 {
 }  /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
 
 XBRLException::XBRLException(const std::string& text)
-    : EDGARException(text)
+    : ExtractorException(text)
 {
 }  /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
 
@@ -110,12 +106,12 @@ XBRLException::XBRLException(const std::string& text)
  *--------------------------------------------------------------------------------------
  */
 HTMLException::HTMLException(const char* text)
-    : EDGARException(text)
+    : ExtractorException(text)
 {
 }  /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
 
 HTMLException::HTMLException(const std::string& text)
-    : EDGARException(text)
+    : ExtractorException(text)
 {
 }  /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
 
@@ -189,7 +185,7 @@ sview FindFileName(sview document)
         const sview file_name(matches[1].first, matches[1].length());
         return file_name;
     }
-    throw EDGARException("Can't find file name in document.\n");
+    throw ExtractorException("Can't find file name in document.\n");
 }		/* -----  end of function FindFileName  ----- */
 
 /* 
@@ -209,7 +205,7 @@ sview FindFileType(sview document)
         const sview file_type(matches[1].first, matches[1].length());
         return file_type;
     }
-    throw EDGARException("Can't find file type in document.\n");
+    throw ExtractorException("Can't find file type in document.\n");
 }		/* -----  end of function FindFileType  ----- */
 
 /*

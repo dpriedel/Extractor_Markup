@@ -2,7 +2,7 @@
 //
 //       Filename:  main
 //
-//    Description:  module which scans the set of collected EDGAR files and extracts
+//    Description:  module which scans the set of collected SEC files and extracts
 //                  relevant data from the file.
 //
 //      Inputs:
@@ -20,20 +20,20 @@
 //
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <algorithm>
 #include <atomic>
@@ -41,19 +41,20 @@
 #include <iostream>
 //#include <regex>
 #include <boost/regex.hpp>
-
+#include <filesystem>
 // gumbo-query
+#include <string_view>
 
 #include "gq/Document.h"
 #include "gq/Node.h"
 #include "gq/Selection.h"
 
-// namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 #include "pstreams/pstream.h"
 
 
-#include "ExtractEDGAR_XBRL.h"
+#include "Extractor_XBRL.h"
 #include "Extractors.h"
 
 using namespace std::string_literals;
