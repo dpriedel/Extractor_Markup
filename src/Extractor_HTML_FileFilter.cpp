@@ -974,7 +974,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{cnxn};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.extractor_filing_id WHERE"
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -992,7 +992,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 //    pqxx::work trxn{c};
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.extractor_filing_id WHERE"
+	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -1000,7 +1000,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 			;
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.extractor_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
@@ -1025,7 +1025,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 //    pqxx::work trxn{c};
     int counter = 0;
-    pqxx::stream_to inserter1{trxn, "html_extracts.extractor_bal_sheet_data",
+    pqxx::stream_to inserter1{trxn, "html_extracts.sec_bal_sheet_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
@@ -1040,7 +1040,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter1.complete();
 
-    pqxx::stream_to inserter2{trxn, "html_extracts.extractor_stmt_of_ops_data",
+    pqxx::stream_to inserter2{trxn, "html_extracts.sec_stmt_of_ops_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
@@ -1055,7 +1055,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter2.complete();
 
-    pqxx::stream_to inserter3{trxn, "html_extracts.extractor_cash_flows_data",
+    pqxx::stream_to inserter3{trxn, "html_extracts.sec_cash_flows_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)

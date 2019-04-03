@@ -2,9 +2,9 @@
 -- the SEC database which is extracted from the files
 -- downloaded from the SEC FTP server.
 
-DROP TABLE IF EXISTS html_extracts.extractor_filing_id CASCADE ;
+DROP TABLE IF EXISTS html_extracts.sec_filing_id CASCADE ;
 
-CREATE TABLE html_extracts.extractor_filing_id
+CREATE TABLE html_extracts.sec_filing_id
 (
 	filing_ID SERIAL UNIQUE,
 	cik TEXT NOT NULL,
@@ -20,20 +20,20 @@ CREATE TABLE html_extracts.extractor_filing_id
     PRIMARY KEY(cik, form_type, period_ending)
 );
 
-ALTER TABLE html_extracts.extractor_filing_id OWNER TO extractor_pg;
+ALTER TABLE html_extracts.sec_filing_id OWNER TO extractor_pg;
 
 
-DROP TABLE IF EXISTS html_extracts.extractor_bal_sheet_data ;
-DROP TABLE IF EXISTS html_extracts.extractor_stmt_of_ops_data ;
-DROP TABLE IF EXISTS html_extracts.extractor_cash_flows_data ;
+DROP TABLE IF EXISTS html_extracts.sec_bal_sheet_data ;
+DROP TABLE IF EXISTS html_extracts.sec_stmt_of_ops_data ;
+DROP TABLE IF EXISTS html_extracts.sec_cash_flows_data ;
 
 -- this definition is just a dummy placeholder for now.
 -- the main thing was to get the foreign key stuff in plance.
 
-CREATE TABLE html_extracts.extractor_bal_sheet_data
+CREATE TABLE html_extracts.sec_bal_sheet_data
 (
 	filing_data_ID SERIAL UNIQUE,
-	filing_ID integer REFERENCES html_extracts.extractor_filing_id (filing_ID) ON DELETE CASCADE,
+	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
 	/* period_begin DATE NOT NULL, */
@@ -44,23 +44,23 @@ CREATE TABLE html_extracts.extractor_bal_sheet_data
 	PRIMARY KEY(filing_data_ID)
 );
 
-ALTER TABLE html_extracts.extractor_bal_sheet_data OWNER TO extractor_pg;
+ALTER TABLE html_extracts.sec_bal_sheet_data OWNER TO extractor_pg;
 
-DROP TRIGGER IF EXISTS tsv_update ON html_extracts.extractor_bal_sheet_data ;
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.sec_bal_sheet_data ;
 
 CREATE TRIGGER tsv_update
-	BEFORE INSERT OR UPDATE ON html_extracts.extractor_bal_sheet_data FOR EACH ROW
+	BEFORE INSERT OR UPDATE ON html_extracts.sec_bal_sheet_data FOR EACH ROW
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
 
 DROP INDEX IF EXISTS idx_bal_sheet ;
 
-CREATE INDEX idx_bal_sheet ON html_extracts.extractor_bal_sheet_data USING GIN (tsv);
+CREATE INDEX idx_bal_sheet ON html_extracts.sec_bal_sheet_data USING GIN (tsv);
 
-CREATE TABLE html_extracts.extractor_stmt_of_ops_data
+CREATE TABLE html_extracts.sec_stmt_of_ops_data
 (
 	filing_data_ID SERIAL UNIQUE,
-	filing_ID integer REFERENCES html_extracts.extractor_filing_id (filing_ID) ON DELETE CASCADE,
+	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
 	/* period_begin DATE NOT NULL, */
@@ -71,23 +71,23 @@ CREATE TABLE html_extracts.extractor_stmt_of_ops_data
 	PRIMARY KEY(filing_data_ID)
 );
 
-ALTER TABLE html_extracts.extractor_stmt_of_ops_data OWNER TO extractor_pg;
+ALTER TABLE html_extracts.sec_stmt_of_ops_data OWNER TO extractor_pg;
 
-DROP TRIGGER IF EXISTS tsv_update ON html_extracts.extractor_stmt_of_ops_data ;
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.sec_stmt_of_ops_data ;
 
 CREATE TRIGGER tsv_update
-	BEFORE INSERT OR UPDATE ON html_extracts.extractor_stmt_of_ops_data FOR EACH ROW
+	BEFORE INSERT OR UPDATE ON html_extracts.sec_stmt_of_ops_data FOR EACH ROW
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
 
 DROP INDEX IF EXISTS idx_stmt_of_ops ;
 
-CREATE INDEX idx_stmt_of_ops ON html_extracts.extractor_stmt_of_ops_data USING GIN (tsv);
+CREATE INDEX idx_stmt_of_ops ON html_extracts.sec_stmt_of_ops_data USING GIN (tsv);
 
-CREATE TABLE html_extracts.extractor_cash_flows_data
+CREATE TABLE html_extracts.sec_cash_flows_data
 (
 	filing_data_ID SERIAL UNIQUE,
-	filing_ID integer REFERENCES html_extracts.extractor_filing_id (filing_ID) ON DELETE CASCADE,
+	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
 	/* period_begin DATE NOT NULL, */
@@ -98,16 +98,16 @@ CREATE TABLE html_extracts.extractor_cash_flows_data
 	PRIMARY KEY(filing_data_ID)
 );
 
-ALTER TABLE html_extracts.extractor_cash_flows_data OWNER TO extractor_pg;
+ALTER TABLE html_extracts.sec_cash_flows_data OWNER TO extractor_pg;
 
-DROP TRIGGER IF EXISTS tsv_update ON html_extracts.extractor_cash_flows_data ;
+DROP TRIGGER IF EXISTS tsv_update ON html_extracts.sec_cash_flows_data ;
 
 CREATE TRIGGER tsv_update
-	BEFORE INSERT OR UPDATE ON html_extracts.extractor_cash_flows_data FOR EACH ROW
+	BEFORE INSERT OR UPDATE ON html_extracts.sec_cash_flows_data FOR EACH ROW
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', html_label);
 
 DROP INDEX IF EXISTS idx_cash_flows ;
 
-CREATE INDEX idx_cash_flows ON html_extracts.extractor_cash_flows_data USING GIN (tsv);
+CREATE INDEX idx_cash_flows ON html_extracts.sec_cash_flows_data USING GIN (tsv);
 

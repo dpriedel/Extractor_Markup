@@ -553,7 +553,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM xbrl_extracts.extractor_filing_id WHERE"
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM xbrl_extracts.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -571,7 +571,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 
 //    pqxx::work trxn{c};
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
+	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
@@ -579,7 +579,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 			;
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}') RETURNING filing_ID",
@@ -608,7 +608,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_data"
+    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.sec_filing_data"
             " (filing_ID, xbrl_label, user_label, xbrl_value, context_ID, period_begin, period_end, units, decimals)"
             " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')",
     			trxn.esc(filing_ID),
