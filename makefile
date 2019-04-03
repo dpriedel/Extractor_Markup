@@ -92,7 +92,7 @@ OUTDIR=Release
 
 CFG_LIB := -lpthread -lstdc++fs \
    		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt -lboost_iostreams-mt -lboost_regex-mt \
+		-lboost_date_time-mt-x64 -lboost_iostreams-mt-x64 -lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-lgumbo \
 		-lgq \
