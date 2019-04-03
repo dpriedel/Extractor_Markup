@@ -1,8 +1,8 @@
 // =====================================================================================
 //
-//       Filename:  ExtractEDGAR_XBRL.cpp
+//       Filename:  Extractor_XBRL.cpp
 //
-//    Description:  module which scans the set of collected EDGAR files and extracts
+//    Description:  module which scans the set of collected SEC files and extracts
 //                  relevant data from the file.
 //
 //      Inputs:
@@ -20,20 +20,20 @@
 //
 
 
-	/* This file is part of ExtractEDGARData. */
+	/* This file is part of Extractor_Markup. */
 
-	/* ExtractEDGARData is free software: you can redistribute it and/or modify */
+	/* Extractor_Markup is free software: you can redistribute it and/or modify */
 	/* it under the terms of the GNU General Public License as published by */
 	/* the Free Software Foundation, either version 3 of the License, or */
 	/* (at your option) any later version. */
 
-	/* ExtractEDGARData is distributed in the hope that it will be useful, */
+	/* Extractor_Markup is distributed in the hope that it will be useful, */
 	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
 	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
 	/* GNU General Public License for more details. */
 
 	/* You should have received a copy of the GNU General Public License */
-	/* along with ExtractEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
+	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <fstream>
 #include <iostream>
@@ -48,7 +48,7 @@ namespace bg = boost::gregorian;
 #include <pqxx/pqxx>
 
 
-#include "ExtractEDGAR_XBRL.h"
+#include "Extractor_XBRL.h"
 #include "SEC_Header.h"
 
 // let's try the pugi XML parser.
@@ -59,7 +59,7 @@ namespace bg = boost::gregorian;
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+?</SEC-HEADER>)***"};
 
-void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
+void ParseTheXML(sview document, const EM::SEC_Header_fields& fields)
 {
     // TODO: add error handling all over the place here.
 
@@ -87,12 +87,12 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
     // start stuffing the database.
     // this data comes from the SEC Header portion of the file and from the XBRL.
 
-    pqxx::connection c{"dbname=edgar_extracts user=edgar_pg"};
+    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
     // for now, let's assume we are going to to a full replace of the data for each filing.
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.edgar_filing_id WHERE"
+	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(fields.at("cik")),
 			trxn.esc(fields.at("form_type")),
@@ -100,7 +100,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 			;
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_id"
+	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
 		trxn.esc(fields.at("cik")),
@@ -136,7 +136,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 //            << second_level_nodes.attribute("contextRef").value() ;
 //        std::cout << std::endl;
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.edgar_filing_data"
+    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_data"
             " (filing_ID, xbrl_label, xbrl_value) VALUES ('{0}', '{1}', '{2}')",
     			trxn.esc(filing_ID),
     			trxn.esc(second_level_nodes.name()),
@@ -167,7 +167,7 @@ void ParseTheXML(sview document, const EE::SEC_Header_fields& fields)
 //    return result;
 //}
 
-void ParseTheXML_Labels(const sview document, const EE::SEC_Header_fields& fields)
+void ParseTheXML_Labels(const sview document, const EM::SEC_Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file_l.txt"};
     logfile << document;
@@ -203,7 +203,7 @@ void ParseTheXML_Labels(const sview document, const EE::SEC_Header_fields& field
 
     std::cout << "\n ****** \n";
 }
-std::optional<EE::SEC_Header_fields> FilterFiles(sview file_content, sview form_type,
+std::optional<EM::SEC_Header_fields> FilterFiles(sview file_content, sview form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
     boost::cmatch results;
