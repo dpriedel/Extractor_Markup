@@ -228,8 +228,8 @@ void ExtractorApp::SetupProgramOptions ()
 {
 	mNewOptions.add_options()
 		("help,h", "produce help message")
-		("begin-date", po::value<bg::date>(&this->begin_date_), "retrieve files with dates greater than or equal to")
-		("end-date", po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to")
+		("begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
+		("end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
 		("form-dir", po::value<fs::path>(&local_form_file_directory_),	"directory of form files to be processed")
 		("file,f", po::value<fs::path>(&single_file_to_process_),	"single file to be processed.")
 		("replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
@@ -283,6 +283,15 @@ void ExtractorApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 
 bool ExtractorApp::CheckArgs ()
 {
+    if (! start_date_.empty())
+    {
+        begin_date_ = bg::from_string(start_date_);
+    }
+    if (! stop_date_.empty())
+    {
+        end_date_ = bg::from_string(stop_date_);
+    }
+
     if (begin_date_ != bg::date())
     {
         if (end_date_ == bg::date())
