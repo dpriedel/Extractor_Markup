@@ -94,13 +94,13 @@ protected:
 
 	void BuildFilterList(void);
 	void BuildListOfFilesToProcess(void);
-	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>& forms_processed);
+	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>* forms_processed);
 
-    bool LoadFileFromFolderToDB(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_HTML(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
-    void Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, const std::string& file_name);
+    bool LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_XBRL(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
+        int& error_counter, sview file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);
@@ -109,7 +109,7 @@ protected:
     std::tuple<int, int, int> LoadFilesFromListToDB(void);
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
 
-    std::tuple<int, int, int> LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed);
+    std::tuple<int, int, int> LoadFileAsync(sview file_name, std::atomic<int>* forms_processed);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -140,6 +140,8 @@ private:
 	std::string SIC_;
     std::string logging_level_{"information"};
     std::string resume_at_this_filename_;
+    std::string file_list_data_;
+    std::string list_of_files_to_process_path_;
 
 	std::vector<sview> form_list_;
 	std::vector<sview> CIK_list_;
@@ -150,9 +152,8 @@ private:
 	fs::path log_file_path_name_;
 	fs::path local_form_file_directory_;
 	fs::path single_file_to_process_;
-    fs::path list_of_files_to_process_path_;
 
-    std::vector<std::string> list_of_files_to_process_;
+    std::vector<sview> list_of_files_to_process_;
 
     int max_forms_to_process_{-1};     // mainly for testing
     int max_at_a_time_{-1};             // how many concurrent downloads allowed

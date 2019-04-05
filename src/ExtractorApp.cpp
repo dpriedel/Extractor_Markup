@@ -234,7 +234,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("file,f", po::value<fs::path>(&single_file_to_process_),	"single file to be processed.")
 		("replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
             "replace all DB content for each file. Default is 'false'")
-		("list-file", po::value<fs::path>(&list_of_files_to_process_path_),"path to file with list of files to process.")
+		("list-file", po::value<std::string>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 		("mode,m", po::value<std::string>(&mode_)->required(), "Must be either 'HTML' or 'XBRL'.")
@@ -354,9 +354,9 @@ bool ExtractorApp::CheckArgs ()
     if (! list_of_files_to_process_path_.empty())
     {
         BOOST_ASSERT_MSG(fs::exists(list_of_files_to_process_path_),
-                ("Can't find file: " + list_of_files_to_process_path_.string()).c_str());
+                ("Can't find file: " + list_of_files_to_process_path_).c_str());
         BOOST_ASSERT_MSG(fs::is_regular_file(list_of_files_to_process_path_),
-                ("Path :"s + list_of_files_to_process_path_.string() + " is not a regular file.").c_str());
+                ("Path :"s + list_of_files_to_process_path_ + " is not a regular file.").c_str());
         BuildListOfFilesToProcess();
     }
 
@@ -372,18 +372,9 @@ void ExtractorApp::BuildListOfFilesToProcess()
 {
     list_of_files_to_process_.clear();      //  in case of reprocessing.
 
-    std::ifstream input_file{list_of_files_to_process_path_};
+    file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
 
-    // Tell the stream to use our facet, so only '\n' is treated as a space.
-
-    input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
-
-    std::copy(
-        std::istream_iterator<std::string>{input_file},
-        std::istream_iterator<std::string>{},
-        std::back_inserter(list_of_files_to_process_)
-    );
-    input_file.close();
+    list_of_files_to_process_ = split_string(file_list_data_, '\n');
 
     spdlog::debug(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
@@ -470,7 +461,7 @@ void ExtractorApp::Run()
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
 bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content,
-        std::atomic<int>& forms_processed)
+        std::atomic<int>* forms_processed)
 {
     bool use_file{true};
     for (const auto& filter : filters_)
@@ -483,7 +474,7 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview f
     }
     if (use_file)
     {
-        auto x = forms_processed.fetch_add(1);
+        auto x = forms_processed->fetch_add(1);
         if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
         {
             throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
@@ -515,7 +506,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const fs::path& 
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+        bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
         auto document_sections{LocateDocumentSections(file_content)};
@@ -560,7 +551,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed);
+        bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
         auto the_tables = FindAndExtractFinancialStatements(file_content);
@@ -596,7 +587,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 
     auto process_file([this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto& file_name)
     {
-        Do_SingleFile(forms_processed, success_counter, skipped_counter, error_counter, file_name);
+        Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, file_name);
     });
 
     std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
@@ -604,8 +595,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
 
-void ExtractorApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, const std::string& file_name)
+void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
+        int& error_counter, sview file_name)
 {
     if (fs::is_regular_file(file_name))
     {
@@ -620,7 +611,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>& forms_processed, int& success
                 }
             }
             spdlog::debug(catenate("Scanning file: ", file_name));
-            const std::string file_content(LoadDataFileForUse(file_name.c_str()));
+            const std::string file_content(LoadDataFileForUse(file_name));
 
             SEC_Header SEC_data;
             SEC_data.UseData(file_content);
@@ -671,7 +662,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
         {
             const std::string file_name{dir_ent.path().string()};
 
-            Do_SingleFile(forms_processed, success_counter, skipped_counter, error_counter, file_name);
+            Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, file_name);
         }
     });
 
@@ -681,7 +672,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     spdlog::debug(catenate("Loading contents from file: ", file_name));
@@ -693,7 +684,7 @@ bool ExtractorApp::LoadFileFromFolderToDB(const std::string& file_name, const EM
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_XBRL(sview file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     auto document_sections{LocateDocumentSections(file_content)};
@@ -712,17 +703,17 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const std::string& file_name, con
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_HTML(const std::string& file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_Header_fields& SEC_fields,
         sview file_content)
 {
     auto the_tables = FindAndExtractFinancialStatements(file_content);
-    BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find required HTML financial tables: " + file_name).c_str());
+    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
-    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: " + file_name).c_str());
+    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());
     return LoadDataToDB(SEC_fields, the_tables, replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const std::string& file_name, std::atomic<int>& forms_processed)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(sview file_name, std::atomic<int>* forms_processed)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -738,7 +729,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const std::string& file_na
     }
     
     spdlog::debug(catenate("Scanning file: ", file_name));
-    const std::string file_content(LoadDataFileForUse(file_name.c_str()));
+    const std::string file_content(LoadDataFileForUse(file_name));
 
     SEC_Header SEC_data; SEC_data.UseData(file_content);
     SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields = SEC_data.GetFields();
@@ -810,10 +801,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
     std::vector<std::future<std::tuple<int, int, int>>> tasks;
     tasks.reserve(max_at_a_time_);
 
-    auto do_work([this, &forms_processed](int i)
-    {
-        return this->LoadFileAsync(list_of_files_to_process_[i], forms_processed);
-    });
+//    auto do_work([this, &forms_processed](int i)
+//    {
+//        return this->LoadFileAsync(list_of_files_to_process_[i], &forms_processed);
+//    });
 
     // prime the pump...
 
@@ -823,11 +814,11 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         // queue up our tasks up to the limit.
 
         // for some strange reason, this does not compile (but it should)
-        // tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-        // list_of_files_to_process_[i], forms_processed));
+        tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
+        list_of_files_to_process_[current_file], &forms_processed));
 
         // so, use this instead.
-        tasks.emplace_back(std::async(std::launch::async, do_work, current_file));
+//        tasks.emplace_back(std::async(std::launch::async, do_work, current_file));
     }
 
     int continue_here{0};
@@ -906,7 +897,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
         if (current_file < list_of_files_to_process_.size())
         {
-            tasks[ready_task] = std::async(std::launch::async, do_work, current_file);
+            tasks[ready_task] = std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
+                    list_of_files_to_process_[current_file], &forms_processed);
             continue_here = (ready_task + 1) % max_at_a_time_;
             ready_task = -1;
         }

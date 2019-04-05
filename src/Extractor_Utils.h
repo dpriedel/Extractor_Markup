@@ -96,7 +96,7 @@ auto SumT(const std::tuple<Ts...>& t)
 
 #include "Extractor.h"
 
-std::string LoadDataFileForUse(const char* file_name);
+std::string LoadDataFileForUse(sview file_name);
 
 // so we can recognize our errors if we want to do something special
 // now that we have both XBRL and HTML based extractors, we need
@@ -196,7 +196,7 @@ auto ApplyFilters(const EM::SEC_Header_fields& header_fields, sview file_content
 	return (... && (ts(header_fields, file_content)));
 }
 
-bool FormIsInFileName(std::vector<sview>& form_types, const std::string& file_name);
+bool FormIsInFileName(std::vector<sview>& form_types, sview file_name);
 
 std::vector<sview> LocateDocumentSections(sview file_content);
 

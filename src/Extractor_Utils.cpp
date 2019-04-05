@@ -138,10 +138,10 @@ MaxFilesException::MaxFilesException(const std::string& text)
  *  Description:  
  * =====================================================================================
  */
-std::string LoadDataFileForUse (const char* file_name)
+std::string LoadDataFileForUse (sview file_name)
 {
     std::string file_content(fs::file_size(file_name), '\0');
-    std::ifstream input_file{file_name, std::ios_base::in | std::ios_base::binary};
+    std::ifstream input_file{fs::path{file_name}, std::ios_base::in | std::ios_base::binary};
     input_file.read(&file_content[0], file_content.size());
     input_file.close();
     
@@ -245,7 +245,7 @@ sview FindHTML (sview document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (std::vector<sview>& form_types, const std::string& file_name)
+bool FormIsInFileName (std::vector<sview>& form_types, sview file_name)
 {
     auto check_for_form_in_name([&file_name](auto form_type)
     {
