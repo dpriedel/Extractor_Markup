@@ -178,6 +178,7 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, 
     const std::string working_copy{start, end};
     whole_anchor.parse(working_copy);
     auto the_anchor = whole_anchor.find("a"s);
+    BOOST_ASSERT_MSG(the_anchor.nodeNum() > 0, "No anchor found in extractecd anchor!!");
 
     AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
         the_anchor.nodeAt(0).text(), sview(start, end - start), html};
