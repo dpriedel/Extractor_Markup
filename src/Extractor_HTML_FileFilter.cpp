@@ -165,16 +165,16 @@ std::optional<std::pair<sview, sview>> FindFinancialContentUsingAnchors (sview f
     // anchors for individual statements.
 
     static const boost::regex regex_finance_statements
-    {R"***(<a.*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
+    {R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_finance_statements_bal
-    {R"***(<a.*?(?:balance\s+sheet).*?</a)***",
+    {R"***((?:<a>|<a |<a\n).*?(?:balance\s+sheet).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_finance_statements_ops
-    {R"***(<a.*?((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning)).*?</a)***",
+    {R"***((?:<a>|<a |<a\n).*?((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning)).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_finance_statements_cash
-    {R"***(<a.*?(?:statement|statements)\s+?of.*?(?:cash\s+flow).*?</a)***",
+    {R"***((?:<a>|<a |<a\n).*?(?:statement|statements)\s+?of.*?(?:cash\s+flow).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
@@ -274,7 +274,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***([(][^)]*?(thousands|millions|billions|dollars).*?[)])***",
+    static const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch

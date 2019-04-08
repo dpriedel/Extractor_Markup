@@ -33,7 +33,6 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
-
 #include "AnchorsFromHTML.h"
 #include "Extractor_Utils.h"
 
@@ -109,7 +108,7 @@ AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
 
 std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char* begin, const char* end)
 {
-    static const boost::regex re_anchor_begin{R"***((?:<a>|<a[^>])[^>]*?>)***",
+    static const boost::regex re_anchor_begin{R"***((?:<a>|<a |<a\n)[^>]*?>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     // we need to prime the pump by finding the beginning of the first anchor.
@@ -137,9 +136,9 @@ const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const c
 {
     // handle 'nested' anchors.
 
-    static const boost::regex re_anchor_end_or_begin{R"***(</a>|(?:(?:<a>|<a ).*?>))***",
+    static const boost::regex re_anchor_end_or_begin{R"***(</a>|(?:(?:<a>|<a |<a\n).*?>))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex re_anchor_begin{R"***((?:<a |<a>).*?>)***",
+    static const boost::regex re_anchor_begin{R"***((?:<a |<a>|<a\n).*?>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     boost::cmatch anchor_end_or_begin;

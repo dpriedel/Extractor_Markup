@@ -161,6 +161,18 @@ void ExtractorApp::ConfigureLogging()
 {
     // we need to set log level if specified and also log file.
 
+    if (! log_file_path_name_.empty())
+    {
+        fs::path log_dir = log_file_path_name_.parent_path();
+        if (! fs::exists(log_dir))
+        {
+            fs::create_directories(log_dir);
+        }
+
+        auto file_logger = spdlog::basic_logger_mt("filelogger", log_file_path_name_.c_str());
+        spdlog::set_default_logger(file_logger);
+    }
+
     // we are running before 'CheckArgs' so we need to do a little editiing ourselves.
 
     std::map<std::string, spdlog::level::level_enum> levels{
@@ -176,17 +188,6 @@ void ExtractorApp::ConfigureLogging()
         spdlog::set_level(which_level->second);
     }
 
-    if (! log_file_path_name_.empty())
-    {
-        fs::path log_dir = log_file_path_name_.parent_path();
-        if (! fs::exists(log_dir))
-        {
-            fs::create_directories(log_dir);
-        }
-
-        auto file_logger = spdlog::basic_logger_mt("filelogger", log_file_path_name_.c_str());
-        spdlog::set_default_logger(file_logger);
-    }
 }
 
 bool ExtractorApp::Startup()
@@ -394,7 +395,12 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
 void ExtractorApp::BuildFilterList()
 {
-    //  we always ned to do this first.
+    //  we always ned to do this first since it just needs the SEC header fields.
+
+    if (begin_date_ != bg::date() || end_date_ != bg::date())
+    {
+        filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
+    }
 
     if (mode_ == "HTML"s)
     {
@@ -408,11 +414,6 @@ void ExtractorApp::BuildFilterList()
     if (! form_.empty())
     {
         filters_.emplace_back(FileHasFormType{form_list_});
-    }
-
-    if (begin_date_ != bg::date() || end_date_ != bg::date())
-    {
-        filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
     }
 
     if (! CIK_.empty())
@@ -732,7 +733,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(sview file_name, std::atom
     const std::string file_content(LoadDataFileForUse(file_name));
 
     SEC_Header SEC_data; SEC_data.UseData(file_content);
-    SEC_data.ExtractHeaderFields(); decltype(auto) SEC_fields = SEC_data.GetFields();
+    SEC_data.ExtractHeaderFields();
+    decltype(auto) SEC_fields = SEC_data.GetFields();
 
     if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
     {
@@ -859,18 +861,18 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         }
         catch (std::exception& e)
         {
-            // any problems, we'll document them and finish any other active tasks.
+            // any 'expected' problems, we'll document them and continue on.
 
             spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
 
-            // OK, let's remember our first time here.
-
-            if (! ep)
-            {
-                ep = std::current_exception();
-            }
-            break;
+//            // OK, let's remember our first time here.
+//
+//            if (! ep)
+//            {
+//                ep = std::current_exception();
+//            }
+//            break;
         }
         catch (...)
         {

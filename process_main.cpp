@@ -117,22 +117,29 @@ int main(int argc, const char* argv[])
             std::cout << "processing file: " << file_path << '\n';
             const std::string file_content = LoadDataFileForUse(file_path.c_str());
 
-            auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
-            
-            if (use_file)
+            try
             {
-                for(auto& e : the_filters)
+                auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
+                
+                if (use_file)
                 {
-                    try
+                    for(auto& e : the_filters)
                     {
-                        std::visit([file_content, &use_file](auto &&x)
-                            {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
-                    }
-                    catch(std::exception& ex)
-                    {
-                        std::cerr << ex.what() << '\n';
+                        try
+                        {
+                            std::visit([file_content, &use_file](auto &&x)
+                                {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
+                        }
+                        catch(std::exception& ex)
+                        {
+                            std::cerr << ex.what() << '\n';
+                        }
                     }
                 }
+            }
+            catch(std::exception& ex)
+            {
+                std::cerr << ex.what() << '\n';
             }
         });
 

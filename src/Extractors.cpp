@@ -736,7 +736,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
 //        static const boost::regex regex_dollar_mults{R"***(\(.*?(?:in )?(thousands|millions|billions)(?:.*?dollar)?.*?\))***",
 //    static const boost::regex regex_dollar_mults{R"***((?:[(][^)]*?(thousands|millions|billions).*?[)])|(?:[(][^)]*?(u\.?s.+?dollars).*?[)]))***",
 //    static const boost::regex regex_dollar_mults{R"***((?:[(][^)]*?(thousands|millions|billions).*?[)])|(?:[(][^)]*?u\.?s.+?(dollars).*?[)]))***",
-    static const boost::regex regex_dollar_mults{R"***([(][^)]*?(thousands|millions|billions|dollars).*?[)])***",
+    static const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     int how_many_matches{0};
