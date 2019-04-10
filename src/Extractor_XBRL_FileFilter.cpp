@@ -82,40 +82,6 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     }
 }
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
-{
-    return (file_content.find(R"***(<XBRL>)***") != sview::npos);
-}
-
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
-{
-    return (std::find(std::begin(form_list_), std::end(form_list_), header_fields.at("form_type")) != std::end(form_list_));
-}
-
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
-{
-    // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
-
-    if (CIK_list_.size() == 2)
-    {
-        return (CIK_list_[0] <= header_fields.at("cik") && header_fields.at("cik") <= CIK_list_[1]);
-    }
-    
-    return (std::find(std::begin(CIK_list_), std::end(CIK_list_), header_fields.at("cik")) != std::end(CIK_list_));
-}
-
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
-{
-    return (std::find(std::begin(SIC_list_), std::end(SIC_list_), header_fields.at("sic")) != std::end(SIC_list_));
-}
-
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& header_fields, sview file_content)
-{
-    auto report_date = bg::from_simple_string(header_fields.at("quarter_ending"));
-
-    return (begin_date_ <= report_date && report_date <= end_date_);
-}
-
 sview LocateInstanceDocument(const std::vector<sview>& document_sections)
 {
     for (auto document : document_sections)

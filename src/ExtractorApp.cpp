@@ -239,6 +239,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
 		("mode,m", po::value<std::string>(&mode_)->required(), "Must be either 'HTML' or 'XBRL'.")
+		("DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")
 		("form", po::value<std::string>(&form_)->default_value("10-Q"),
          "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
 		("CIK",	po::value<std::string>(&CIK_),
@@ -312,6 +313,12 @@ bool ExtractorApp::CheckArgs ()
     if (! mode_.empty())
     {
         BOOST_ASSERT_MSG(mode_ == "HTML"s || mode_ == "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
+    }
+
+    if (! DB_mode_.empty())
+    {
+        BOOST_ASSERT_MSG(DB_mode_ == "test"s || DB_mode_ == "live"s, "DB-mode must be: 'test' or 'live'.");
+        schema_prefix_ = (DB_mode_ = "test" ? "" : "live_");
     }
 
     if (! form_.empty())
@@ -395,7 +402,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
 void ExtractorApp::BuildFilterList()
 {
-    //  we always ned to do this first since it just needs the SEC header fields.
+    //  we always need to do this first since it just needs the SEC header fields.
 
     if (begin_date_ != bg::date() || end_date_ != bg::date())
     {
@@ -405,10 +412,12 @@ void ExtractorApp::BuildFilterList()
     if (mode_ == "HTML"s)
     {
         filters_.push_back(FileHasHTML{});
+        filters_.push_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
     }
     else
     {
         filters_.push_back(FileHasXBRL{});
+        //TODO: set up replace filter for XBRL content too
     }
 
     if (! form_.empty())
@@ -563,7 +572,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
                     + input_file_name.string()).c_str());
 
 //        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables, replace_DB_content_);
+        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
     }
     catch(const std::exception& e)
     {
@@ -711,7 +720,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_He
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());
-    return LoadDataToDB(SEC_fields, the_tables, replace_DB_content_);
+    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadFileAsync(sview file_name, std::atomic<int>* forms_processed)

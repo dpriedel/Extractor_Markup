@@ -42,6 +42,11 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
+#include "fmt/core.h"
+#include "spdlog/spdlog.h"
+
+#include <pqxx/pqxx>
+
 namespace fs = std::filesystem;
 
 using namespace std::string_literals;
@@ -255,6 +260,67 @@ bool FormIsInFileName (std::vector<sview>& form_types, sview file_name)
     );
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
+
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    return (file_content.find(R"***(<XBRL>)***") != sview::npos);
+}		/* -----  end of method FileHasXBRL::operator()  ----- */
+
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
+}		/* -----  end of method FileHasFormType::operator()  ----- */
+
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
+
+    if (CIK_list_.size() == 2)
+    {
+        return (CIK_list_[0] <= SEC_fields.at("cik") && SEC_fields.at("cik") <= CIK_list_[1]);
+    }
+    
+    return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
+}		/* -----  end of method FileHasCIK::operator()  ----- */
+
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
+}		/* -----  end of method FileHasSIC::operator()  ----- */
+
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
+    pqxx::work trxn{c};
+
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+			trxn.esc(SEC_fields.at("cik")),
+			trxn.esc(SEC_fields.at("form_type")),
+			trxn.esc(SEC_fields.at("quarter_ending")),
+            schema_name_)
+			;
+
+    auto row = trxn.exec1(check_for_existing_content_cmd);
+    trxn.commit();
+	auto have_data = row[0].as<int>();
+    c.disconnect();
+
+    if (have_data != 0 && ! replace_DB_content_)
+    {
+        spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
+        return false;
+    }
+    return true;
+}		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
+
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+{
+    auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
+
+    return (begin_date_ <= report_date && report_date <= end_date_);
+}		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
+
 
 namespace boost
 {

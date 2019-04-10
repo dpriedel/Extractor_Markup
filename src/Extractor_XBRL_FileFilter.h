@@ -43,62 +43,10 @@
 
 using sview = std::string_view;
 
-#include <boost/date_time/gregorian/gregorian.hpp>
-
-namespace bg = boost::gregorian;
-
 #include <pugixml.hpp>
 #include "gq/Node.h"
 
 #include "Extractor.h"
-
-// let's use some function objects for our filters.
-
-struct FileHasXBRL
-{
-    bool operator()(const EM::SEC_Header_fields&, sview file_content);
-};
-
-struct FileHasFormType
-{
-    FileHasFormType(const std::vector<sview>& form_list)
-        : form_list_{form_list} {}
-
-    bool operator()(const EM::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& form_list_;
-};
-
-struct FileHasCIK
-{
-    FileHasCIK(const std::vector<sview>& CIK_list)
-        : CIK_list_{CIK_list} {}
-
-    bool operator()(const EM::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& CIK_list_;
-};
-
-struct FileHasSIC
-{
-    FileHasSIC(const std::vector<sview>& SIC_list)
-        : SIC_list_{SIC_list} {}
-
-    bool operator()(const EM::SEC_Header_fields& header_fields, sview file_content);
-
-    const std::vector<sview>& SIC_list_;
-};
-
-struct FileIsWithinDateRange
-{
-    FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
-        : begin_date_{begin_date}, end_date_{end_date}   {}
-
-    bool operator()(const EM::SEC_Header_fields& header_fields, sview file_content);
-
-    const bg::date& begin_date_;
-    const bg::date& end_date_;
-};
 
 sview LocateInstanceDocument(const std::vector<sview>& document_sections);
 

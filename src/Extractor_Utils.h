@@ -44,6 +44,10 @@
 #include <vector>
 
 #include <boost/assert.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
+
+namespace bg = boost::gregorian;
+
 
 using sview = std::string_view;
 
@@ -189,11 +193,11 @@ auto AllNotEmpty(Ts ...ts)
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EM::SEC_Header_fields& header_fields, sview file_content, Ts ...ts)
+auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, Ts ...ts)
 {
     // unary left fold
 
-	return (... && (ts(header_fields, file_content)));
+	return (... && (ts(SEC_fields, file_content)));
 }
 
 bool FormIsInFileName(std::vector<sview>& form_types, sview file_name);
@@ -205,5 +209,64 @@ sview FindFileName(sview document);
 sview FindFileType(sview document);
 
 sview FindHTML(sview document);
+
+// let's use some function objects for our filters.
+
+struct FileHasXBRL
+{
+    bool operator()(const EM::SEC_Header_fields&, sview file_content);
+};
+
+struct FileHasFormType
+{
+    FileHasFormType(const std::vector<sview>& form_list)
+        : form_list_{form_list} {}
+
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+
+    const std::vector<sview>& form_list_;
+};
+
+struct FileHasCIK
+{
+    FileHasCIK(const std::vector<sview>& CIK_list)
+        : CIK_list_{CIK_list} {}
+
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+
+    const std::vector<sview>& CIK_list_;
+};
+
+struct FileHasSIC
+{
+    FileHasSIC(const std::vector<sview>& SIC_list)
+        : SIC_list_{SIC_list} {}
+
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+
+    const std::vector<sview>& SIC_list_;
+};
+
+struct NeedToUpdateDBContent
+{
+    NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
+        : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
+
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+
+    const std::string schema_name_;
+    bool replace_DB_content_;
+};
+
+struct FileIsWithinDateRange
+{
+    FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
+        : begin_date_{begin_date}, end_date_{end_date}   {}
+
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+
+    const bg::date& begin_date_;
+    const bg::date& end_date_;
+};
 
 #endif   /* ----- #ifndef _EXTRACTOR_UTILS_INC_  ----- */

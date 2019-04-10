@@ -136,6 +136,8 @@ private:
     std::string stop_date_;
 	std::string mode_{"HTML"};
 	std::string form_{"10-Q"};
+    std::string DB_mode_{"test"};
+    std::string schema_prefix_;
 	std::string CIK_;
 	std::string SIC_;
     std::string logging_level_{"information"};

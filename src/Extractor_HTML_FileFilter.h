@@ -266,6 +266,7 @@ StatementType FindStatementContent(sview financial_content, AnchorsFromHTML anch
 
 MultDataList CreateMultiplierListWhenNoAnchors (sview file_content);
 
-bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content);
+bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
+        const std::string& schema_name);
 
 #endif

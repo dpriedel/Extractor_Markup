@@ -967,40 +967,38 @@ bool StockholdersEquity::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements, bool replace_content)
+bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
+        const std::string& schema_name)
 {
     // start stuffing the database.
+    // we only get here if we are going to add/replace data.
 
     pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{cnxn};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM html_extracts.sec_filing_id WHERE"
+	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
-			trxn.esc(SEC_fields.at("quarter_ending")))
+			trxn.esc(SEC_fields.at("quarter_ending")),
+            schema_name)
 			;
     auto row = trxn.exec1(check_for_existing_content_cmd);
-//    trxn.commit();
 	auto have_data = row[0].as<int>();
-    if (have_data != 0 && ! replace_content)
+
+    if (have_data)
     {
-        spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
-        cnxn.disconnect();
-        return false;
+        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(SEC_fields.at("quarter_ending")),
+                schema_name)
+                ;
+        trxn.exec(filing_ID_cmd);
     }
 
-//    pqxx::work trxn{c};
-
-	auto filing_ID_cmd = fmt::format("DELETE FROM html_extracts.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-			trxn.esc(SEC_fields.at("cik")),
-			trxn.esc(SEC_fields.at("form_type")),
-			trxn.esc(SEC_fields.at("quarter_ending")))
-			;
-    trxn.exec(filing_ID_cmd);
-
-	filing_ID_cmd = fmt::format("INSERT INTO html_extracts.sec_filing_id"
+	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding)"
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
@@ -1012,7 +1010,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 		trxn.esc(SEC_fields.at("form_type")),
 		trxn.esc(SEC_fields.at("date_filed")),
 		trxn.esc(SEC_fields.at("quarter_ending")),
-        financial_statements.outstanding_shares_)
+        financial_statements.outstanding_shares_,
+        schema_name)
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd);
@@ -1025,7 +1024,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 //    pqxx::work trxn{c};
     int counter = 0;
-    pqxx::stream_to inserter1{trxn, "html_extracts.sec_bal_sheet_data",
+    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
@@ -1040,7 +1039,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter1.complete();
 
-    pqxx::stream_to inserter2{trxn, "html_extracts.sec_stmt_of_ops_data",
+    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
@@ -1055,7 +1054,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter2.complete();
 
-    pqxx::stream_to inserter3{trxn, "html_extracts.sec_cash_flows_data",
+    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
         std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
