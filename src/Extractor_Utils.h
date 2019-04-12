@@ -37,33 +37,68 @@
 #define  _EXTRACTOR_UTILS_INC_
 
 #include <exception>
+#include <functional>
 #include <map>
 #include <sstream>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <boost/assert.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/mp11.hpp>
+
+namespace mp11 = boost::mp11;
 
 namespace bg = boost::gregorian;
-
 
 using sview = std::string_view;
 
 // some code to help with putting together error messages,
 
+// suport for concatenation of string-like things
+
+template<typename T>
+void append_to_string(std::string& s, const T& t)
+{
+    using text_types_list = mp11::mp_list<std::string, std::string_view, const char*, char>;
+
+    // look for things which are 'string like' so we can just append them.
+
+    if constexpr(std::is_same_v<mp11::mp_set_contains<text_types_list, std::remove_cv_t<T>>, mp11::mp_true>)
+    {
+        s += t;
+    }
+    else if constexpr(std::is_convertible_v<T, const char*>)
+    {
+        s +=t;
+    }
+    else if constexpr(std::is_arithmetic_v<T>)
+    {
+        // it's a number so convert it.
+
+        s += std::to_string(t);
+    }
+    else
+    {
+        // we don't know what to do with it.
+
+        throw std::invalid_argument("wrong type for 'catenate' function.");
+    }
+}
+
+// now, a function to concatenate a bunch of string-like things.
+
 template<typename... Ts>
 std::string catenate(Ts&&... ts)
 {
-    // let the standard library do the heavy lifting...
+    // let's use fold a expression
+    // (comma operator is cool...)
 
-    std::ostringstream result;
-
-    // let's use fold expression
-
-    (result << ... << ts );
-    return result.str();
+    std::string x;
+    ( ... , append_to_string(x, ts) );
+    return x;
 }
 
 // let's add tuples...
