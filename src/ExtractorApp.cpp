@@ -175,7 +175,8 @@ void ExtractorApp::ConfigureLogging()
 
     // we are running before 'CheckArgs' so we need to do a little editiing ourselves.
 
-    std::map<std::string, spdlog::level::level_enum> levels{
+    std::map<std::string, spdlog::level::level_enum> levels
+    {
         {"none", spdlog::level::off},
         {"error", spdlog::level::err},
         {"information", spdlog::level::info},

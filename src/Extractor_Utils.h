@@ -97,7 +97,7 @@ std::string catenate(Ts&&... ts)
     // (comma operator is cool...)
 
     std::string x;
-    ( ... , append_to_string(x, ts) );
+    ( ... , append_to_string(x, std::forward<Ts>(ts)) );
     return x;
 }
 

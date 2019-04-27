@@ -72,6 +72,9 @@ public:
     
     ExtractorApp() = delete;
 	ExtractorApp(const ExtractorApp& rhs) = delete;
+	ExtractorApp(ExtractorApp&& rhs) = delete;
+
+    ~ExtractorApp() = default;
 
     static bool SignalReceived(void) { return had_signal_ ; }
 
@@ -83,17 +86,17 @@ protected:
 
 	//	Setup for parsing program options.
 
-	void	SetupProgramOptions(void);
-	void 	ParseProgramOptions(void);
+	void	SetupProgramOptions();
+	void 	ParseProgramOptions();
 	void 	ParseProgramOptions(const std::vector<std::string>& tokens);
 
-    void    ConfigureLogging(void);
+    void    ConfigureLogging();
 
-	bool	CheckArgs (void);
-	void	Do_Quit (void);
+	bool	CheckArgs ();
+	void	Do_Quit ();
 
-	void BuildFilterList(void);
-	void BuildListOfFilesToProcess(void);
+	void BuildFilterList();
+	void BuildListOfFilesToProcess();
 	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>* forms_processed);
 
     bool LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
