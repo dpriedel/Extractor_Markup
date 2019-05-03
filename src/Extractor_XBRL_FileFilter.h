@@ -33,7 +33,7 @@
 
 
 #ifndef  _EXTRACTOR_XBRL_FILEFILTER_INC_
-#define  _XTRACTORR_XBRL_FILEFILTER_INC_
+#define  _EXTRACTOR_XBRL_FILEFILTER_INC_
 
 #include <exception>
 #include <map>

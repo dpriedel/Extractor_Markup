@@ -235,7 +235,7 @@ auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, T
 	return (... && (ts(SEC_fields, file_content)));
 }
 
-bool FormIsInFileName(std::vector<sview>& form_types, sview file_name);
+bool FormIsInFileName(const std::vector<sview>& form_types, sview file_name);
 
 std::vector<sview> LocateDocumentSections(sview file_content);
 
@@ -254,7 +254,7 @@ struct FileHasXBRL
 
 struct FileHasFormType
 {
-    FileHasFormType(const std::vector<sview>& form_list)
+    explicit FileHasFormType(const std::vector<sview>& form_list)
         : form_list_{form_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
@@ -264,7 +264,7 @@ struct FileHasFormType
 
 struct FileHasCIK
 {
-    FileHasCIK(const std::vector<sview>& CIK_list)
+    explicit FileHasCIK(const std::vector<sview>& CIK_list)
         : CIK_list_{CIK_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
@@ -274,7 +274,7 @@ struct FileHasCIK
 
 struct FileHasSIC
 {
-    FileHasSIC(const std::vector<sview>& SIC_list)
+    explicit FileHasSIC(const std::vector<sview>& SIC_list)
         : SIC_list_{SIC_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);

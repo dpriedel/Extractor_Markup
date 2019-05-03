@@ -38,7 +38,9 @@
 #include "Extractors.h"
 #include "Extractor_XBRL.h"
 
+#include <cstdio>
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 #include <charconv>
 #include <string>
@@ -56,6 +58,7 @@ using sview = std::string_view;
 
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
+
 #include "Extractor_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
@@ -69,7 +72,7 @@ using sview = std::string_view;
 namespace fs = std::filesystem;
 using namespace std::string_literals;
 
-//#include "pstreams/pstream.h"
+#include "pstreams/pstream.h"
 
 
 const auto XBLR_TAG_LEN{7};
@@ -379,14 +382,14 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-//    filters.emplace_back(SS_data{});
+    filters.emplace_back(SS_data{});
 //    filters.emplace_back(DocumentCounter{});
 
 //    filters.emplace_back(HTM_data{});
 //    filters.emplace_back(Count_SS{});
 //    filters.emplace_back(BalanceSheet_data{});
 //    filters.emplace_back(FinancialStatements_data{});
-    filters.emplace_back(Multiplier_data{});
+//    filters.emplace_back(Multiplier_data{});
 //    filters.emplace_back(Shares_data{});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
@@ -471,7 +474,7 @@ void SS_data::UseExtractor(sview file_content, const fs::path& output_directory,
 
     for (auto& document : documents)
     {
-        if (auto ss_loc = document.find(R"***(.xls)***"); ss_loc != sview::npos)
+        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
         {
             std::cout << "spread sheet\n";
 
@@ -487,19 +490,99 @@ void SS_data::UseExtractor(sview file_content, const fs::path& output_directory,
 
             document.remove_prefix(x);
 
-            auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-            if (xbrl_end_loc != sview::npos)
+            auto ss_end_loc = document.rfind(R"***(</TEXT>)***");
+            if (ss_end_loc != sview::npos)
             {
-                document.remove_suffix(document.length() - xbrl_end_loc);
+                document.remove_suffix(document.length() - ss_end_loc);
             }
             else
             {
                 throw std::runtime_error("Can't find end of spread sheet in document.\n");
             }
 
-            WriteDataToFile(output_file_name, document);
+            ConvertDataAndWriteToDisk(output_file_name, document);
         }
     }
+}
+
+void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview content)
+{
+	// we write our table out to a temp file and then call uudecode on it.
+    //
+    // creating a proper unique temp file is not straight-forward.
+    // this approach tries to create a unique directory first then write a file to it.
+    // directory creation is an atomic operation in Linux.  If it succeeds,
+    // the directory did not already exist so it can safely be used.
+
+    fs::path temp_file_name = fs::temp_directory_path();
+    std::error_code ec;
+    char buffer[L_tmpnam];
+
+    while (true)
+    {
+        temp_file_name = fs::temp_directory_path();
+        if (std::tmpnam(buffer))
+        {
+            temp_file_name /= buffer;
+            if(bool did_create = fs::create_directory(temp_file_name, ec); did_create)
+            {
+                break;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Can't create temp file name.\n");
+        }
+    }
+
+	temp_file_name /= "encoded_data.txt";
+
+	std::ofstream temp_file{temp_file_name};
+
+    // it seems it's possible to have uuencoded data with 'short' lines
+    // so, we need to be sure each line is 61 bytes long.
+
+    auto lines = split_string(content, '\n');
+    for (auto line : lines)
+    {
+        temp_file.write(line.data(), line.size());
+        if (line == "end")
+        {
+            temp_file.put('\n');
+            break;
+        }
+        for (int i = line.size(); i < 61; ++i)
+        {
+            temp_file.put(' ');
+        }
+        temp_file.put('\n');
+    }
+	temp_file.close();
+
+	redi::ipstream in(catenate("uudecode -o ", output_file_name.string(), ' ', temp_file_name.string()));
+	// redi::ipstream in("html2text -b 0 --ignore-emphasis --ignore-images --ignore-links " + temp_file_name.string());
+
+	std::string str1;
+
+    // we use a buffer and the readsome function so that we will get any
+    // embedded return characters (which would be stripped off if we did
+    // readline.
+
+    char buf[1024];
+    std::streamsize n;
+    while (! in.eof())
+    {
+        while ((n = in.out().readsome(buf, sizeof(buf))) > 0)
+            str1.append(buf, n);
+    }
+
+	// let's be neat and not leave temp files laying around
+
+	fs::remove(temp_file_name);
+
+    // I know I could this in 1 call but...
+
+    fs::remove(temp_file_name.remove_filename());
 }
 
 void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EM::SEC_Header_fields& fields)

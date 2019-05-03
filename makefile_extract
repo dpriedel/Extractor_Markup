@@ -33,7 +33,6 @@ endif
 OUTFILE := XBRL_Extract
 
 CFG_INC := -I./src \
-		-I/extra/pstream \
 		-I$(BOOSTDIR)
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
@@ -77,7 +76,7 @@ CFG_LIB := -lpthread \
 		-lgq \
 		-L/usr/lib \
 		-lpugixml \
-		-lpq -lpqxx
+		-lpqxx -lpq
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

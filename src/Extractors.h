@@ -51,10 +51,11 @@ using sview = std::string_view;
 #include "gq/Node.h"
 
 #include "Extractor.h"
-#include "Extractor_HTML_FileFilter.h"
 
 namespace fs = std::filesystem;
 /* namespace hana = boost::hana; */
+
+struct FinancialStatements;
 
 // for use with ranges.
 
@@ -94,6 +95,7 @@ struct XBRL_Label_data
 struct SS_data
 {
     void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
+    void ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview content);
 };
 
 struct Count_SS

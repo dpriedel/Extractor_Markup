@@ -34,7 +34,6 @@ OUTFILE := ProcessXBRL_Extract
 
 CFG_INC := -I./src \
 		-I/usr/local/include \
-		-I/extra/pstream \
 		-I$(BOOSTDIR)
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
@@ -76,8 +75,6 @@ CFG_LIB := -lpthread \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
-		-lPocoFoundationd \
-		-lPocoUtild \
 		-lgumbo \
 		-lgq \
 		-L/usr/lib \

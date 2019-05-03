@@ -250,7 +250,7 @@ sview FindHTML (sview document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (std::vector<sview>& form_types, sview file_name)
+bool FormIsInFileName (const std::vector<sview>& form_types, sview file_name)
 {
     auto check_for_form_in_name([&file_name](auto form_type)
     {
@@ -352,4 +352,4 @@ namespace boost
         throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
                     " from file: ", file, " at line: ", line));
     }		/* -----  end of function assertion_failed  ----- */
-}
+} /* end namespace boost */
