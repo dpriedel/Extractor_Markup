@@ -12,14 +12,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/TablesFromFile.o",
             "src/TablesFromFile.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/TablesFromFile.cpp"
     },
     {
@@ -39,13 +39,13 @@
             "-I./src",
             "-I/usr/local/include",
             "-I/extra/pstream",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-march=native",
             "-o",
             "ProcessDebug/Extractor_XBRL.o",
             "src/Extractor_XBRL.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/Extractor_XBRL.cpp"
     },
     {
@@ -61,14 +61,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/HTML_FromFile.o",
             "src/HTML_FromFile.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/HTML_FromFile.cpp"
     },
     {
@@ -88,13 +88,13 @@
             "-I./src",
             "-I/usr/local/include",
             "-I/extra/pstream",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-march=native",
             "-o",
             "ProcessDebug/Extractors.o",
             "src/Extractors.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/Extractors.cpp"
     },
     {
@@ -110,14 +110,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/Main.o",
             "Main.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "Main.cpp"
     },
     {
@@ -133,14 +133,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/SEC_Header.o",
             "src/SEC_Header.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/SEC_Header.cpp"
     },
     {
@@ -156,14 +156,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/Extractor_Utils.o",
             "src/Extractor_Utils.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/Extractor_Utils.cpp"
     },
     {
@@ -179,14 +179,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/Extractor_HTML_FileFilter.o",
             "src/Extractor_HTML_FileFilter.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/Extractor_HTML_FileFilter.cpp"
     },
     {
@@ -202,14 +202,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/ExtractorApp.o",
             "src/ExtractorApp.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/ExtractorApp.cpp"
     },
     {
@@ -225,14 +225,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/Extractor_XBRL_FileFilter.o",
             "src/Extractor_XBRL_FileFilter.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/Extractor_XBRL_FileFilter.cpp"
     },
     {
@@ -248,14 +248,14 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-I/extra/gcc/cpp-json/include/",
             "-march=native",
             "-o",
             "Debug/AnchorsFromHTML.o",
             "src/AnchorsFromHTML.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "src/AnchorsFromHTML.cpp"
     },
     {
@@ -275,13 +275,13 @@
             "-I./src",
             "-I/usr/local/include",
             "-I/extra/pstream",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-march=native",
             "-o",
             "ProcessDebug/process_main.o",
             "process_main.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "process_main.cpp"
     },
     {
@@ -300,13 +300,13 @@
             "-I./src",
             "-I/usr/local/include",
             "-I/extra/pstream",
-            "-I/extra/boost/boost-1.69_gcc-8",
+            "-I/extra/boost/boost-1.70_gcc-8",
             "-march=native",
             "-o",
             "ExtractDebug/extract_main.o",
             "extract_main.cpp"
         ],
-        "directory": "/home/dpriedel/projects/github/Extract_Markup",
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
         "file": "extract_main.cpp"
     }
 ]
