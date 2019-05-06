@@ -38,11 +38,10 @@
 
 #include <iterator>
 #include <string>
-#include <string_view>
-
-using sview = std::string_view;
 
 #include <boost/regex.hpp>
+
+#include "Extractor.h"
 
 class CNode;
 
@@ -86,50 +85,50 @@ public:
         const std::string just_dollar = "$";
 
 
-        sview html_;
-        mutable sview current_table_;
+        EM::sv html_;
+        mutable EM::sv current_table_;
         mutable std::string table_content_;
 
-        std::string CollectTableContent(sview html);
+        std::string CollectTableContent(EM::sv html);
         std::string ExtractTextDataFromTable (CNode& a_table);
         std::string FilterFoundHTML (const std::string& new_row_data);
 
     public:
 
         table_itor() = default;
-        explicit table_itor(sview html);
+        explicit table_itor(EM::sv html);
 
         table_itor& operator++();
         table_itor operator++(int) { table_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(table_itor other) const { return doc_ == other.doc_; }
-        bool operator!=(table_itor other) const { return !(*this == other); }
+        bool operator==(const table_itor& other) const { return doc_ == other.doc_; }
+        bool operator!=(const table_itor& other) const { return !(*this == other); }
 
         reference operator*() const { return table_content_; };
         pointer operator->() const { return &table_content_; }
 
-        sview to_sview() const { return current_table_; }
-        bool TableHasMarkup (sview table);
+        EM::sv to_sview() const { return current_table_; }
+        bool TableHasMarkup (EM::sv table);
     };
 
-      typedef std::string       					value_type;
-      typedef typename table_itor::pointer			pointer;
-      typedef typename table_itor::pointer      	const_pointer;
-      typedef typename table_itor::reference		reference;
-      typedef typename table_itor::reference	    const_reference;
-      typedef table_itor                          iterator;
-      typedef table_itor                    const_iterator;
-      typedef size_t					size_type;
-      typedef ptrdiff_t					difference_type;
+        using value_type = std::string;
+        using pointer = table_itor::pointer;
+        using const_pointer = table_itor::pointer;
+        using reference = table_itor::reference;
+        using const_reference = table_itor::reference;
+        using iterator = table_itor;
+        using const_iterator = table_itor;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
 
     public:
         /* ====================  LIFECYCLE     ======================================= */
-        TablesFromHTML (sview html);                             /* constructor */
+        explicit TablesFromHTML (EM::sv html);                             /* constructor */
 
         /* ====================  ACCESSORS     ======================================= */
 
-    const_iterator begin() const;
-    const_iterator end() const;
+    [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] const_iterator end() const;
 
         /* ====================  MUTATORS      ======================================= */
 
@@ -145,7 +144,7 @@ public:
 
         /* ====================  DATA MEMBERS  ======================================= */
 
-        sview html_;
+        EM::sv html_;
 
 }; /* -----  end of class TablesFromHTML  ----- */
 

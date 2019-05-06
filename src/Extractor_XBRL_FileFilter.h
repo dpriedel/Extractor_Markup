@@ -37,20 +37,17 @@
 
 #include <exception>
 #include <map>
-#include <string_view>
 #include <tuple>
 #include <vector>
 
-using sview = std::string_view;
-
-#include <pugixml.hpp>
 #include "gq/Node.h"
+#include <pugixml.hpp>
 
 #include "Extractor.h"
 
-sview LocateInstanceDocument(const std::vector<sview>& document_sections);
+EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections);
 
-sview LocateLabelDocument(const std::vector<sview>& document_sections);
+EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections);
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
@@ -58,25 +55,25 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
 EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
 
-std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& top_level_node,
+std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& label_node_name);
 
-std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
+std::map<EM::sv, EM::sv> FindLocElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& loc_node_name);
 
-std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_node,
+std::map<EM::sv, EM::sv> FindLabelArcElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& arc_node_name);
 
-EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
-        const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs);
+EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>>& labels,
+        const std::map<EM::sv, EM::sv>& locs, const std::map<EM::sv, EM::sv>& arcs);
 
 EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
-pugi::xml_document ParseXMLContent(sview document);
+pugi::xml_document ParseXMLContent(EM::sv document);
 
-sview TrimExcessXML(sview document);
+EM::sv TrimExcessXML(EM::sv document);
 
-std::string ConvertPeriodEndDateToContextName(sview period_end_date);
+std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date);
 
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData& filing_fields,
     const std::vector<EM::GAAP_Data>& gaap_fields, const EM::Extractor_Labels& label_fields,

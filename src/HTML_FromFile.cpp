@@ -46,7 +46,7 @@
  *--------------------------------------------------------------------------------------
  */
 
-HTML_FromFile::HTML_FromFile (sview file_content)
+HTML_FromFile::HTML_FromFile (EM::sv file_content)
     : file_content_{file_content}
 {
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
@@ -70,13 +70,13 @@ HTML_FromFile::const_iterator HTML_FromFile::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTML_FromFile::html_itor::html_itor (sview file_content)
+HTML_FromFile::html_itor::html_itor (EM::sv file_content)
     : file_content_{file_content}
 {
     doc_ = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc_);
     for (; doc_ != end_; ++doc_)
     {
-        sview document(doc_->first, doc_->length());
+        EM::sv document(doc_->first, doc_->length());
         html_ = FindHTML(document);
         if (! html_.empty())
         {
@@ -90,7 +90,7 @@ HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
 {
     for (++doc_; doc_ != end_; ++doc_)
     {
-        sview document(doc_->first, doc_->length());
+        EM::sv document(doc_->first, doc_->length());
         html_ = FindHTML(document);
         if (! html_.empty())
         {

@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.70_gcc-8
-GCCDIR := /extra/gcc/gcc-8
+BOOSTDIR := /extra/boost/boost-1.70_gcc-9
+GCCDIR := /extra/gcc/gcc-9
 CPP := $(GCCDIR)/bin/g++
 
 # If no configuration is specified, "Debug" will be used
@@ -67,7 +67,7 @@ ifeq "$(CFG)" "Debug"
 OUTDIR=ExtractDebug
 
 CFG_LIB := -lpthread \
-		-lstdc++fs \
+		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
@@ -85,7 +85,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2) # $(OBJS3)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++17 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration

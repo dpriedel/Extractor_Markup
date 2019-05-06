@@ -37,10 +37,10 @@
 #define  _EXTRACTOR_UTILS_INC_
 
 #include <exception>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <sstream>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -49,11 +49,14 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/mp11.hpp>
 
+#include "Extractor.h"
+
 namespace mp11 = boost::mp11;
 
 namespace bg = boost::gregorian;
 
-using sview = std::string_view;
+namespace fs = std::filesystem;
+
 
 // some code to help with putting together error messages,
 
@@ -133,9 +136,7 @@ auto SumT(const std::tuple<Ts...>& t)
     return std::apply(z_, t);
 }
 
-#include "Extractor.h"
-
-std::string LoadDataFileForUse(sview file_name);
+std::string LoadDataFileForUse(EM::sv file_name);
 
 // so we can recognize our errors if we want to do something special
 // now that we have both XBRL and HTML based extractors, we need
@@ -191,13 +192,13 @@ public:
 
 // function to split a string on a delimiter and return a vector of string-views
 
-inline std::vector<sview> split_string(sview string_data, char delim)
+inline std::vector<EM::sv> split_string(EM::sv string_data, char delim)
 {
-    std::vector<sview> results;
-	for (auto it = 0; it != sview::npos; ++it)
+    std::vector<EM::sv> results;
+	for (auto it = 0; it != EM::sv::npos; ++it)
 	{
 		auto pos = string_data.find(delim, it);
-        if (pos != sview::npos)
+        if (pos != EM::sv::npos)
         {
     		results.emplace_back(string_data.substr(it, pos - it));
         }
@@ -228,58 +229,58 @@ auto AllNotEmpty(Ts ...ts)
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, Ts ...ts)
+auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content, Ts ...ts)
 {
     // unary left fold
 
 	return (... && (ts(SEC_fields, file_content)));
 }
 
-bool FormIsInFileName(const std::vector<sview>& form_types, sview file_name);
+bool FormIsInFileName(const std::vector<EM::sv>& form_types, EM::sv file_name);
 
-std::vector<sview> LocateDocumentSections(sview file_content);
+std::vector<EM::sv> LocateDocumentSections(EM::sv file_content);
 
-sview FindFileName(sview document);
+EM::sv FindFileName(EM::sv document);
 
-sview FindFileType(sview document);
+EM::sv FindFileType(EM::sv document);
 
-sview FindHTML(sview document);
+EM::sv FindHTML(EM::sv document);
 
 // let's use some function objects for our filters.
 
 struct FileHasXBRL
 {
-    bool operator()(const EM::SEC_Header_fields&, sview file_content);
+    bool operator()(const EM::SEC_Header_fields&, EM::sv file_content);
 };
 
 struct FileHasFormType
 {
-    explicit FileHasFormType(const std::vector<sview>& form_list)
+    explicit FileHasFormType(const std::vector<EM::sv>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<sview>& form_list_;
+    const std::vector<EM::sv>& form_list_;
 };
 
 struct FileHasCIK
 {
-    explicit FileHasCIK(const std::vector<sview>& CIK_list)
+    explicit FileHasCIK(const std::vector<EM::sv>& CIK_list)
         : CIK_list_{CIK_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<sview>& CIK_list_;
+    const std::vector<EM::sv>& CIK_list_;
 };
 
 struct FileHasSIC
 {
-    explicit FileHasSIC(const std::vector<sview>& SIC_list)
+    explicit FileHasSIC(const std::vector<EM::sv>& SIC_list)
         : SIC_list_{SIC_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<sview>& SIC_list_;
+    const std::vector<EM::sv>& SIC_list_;
 };
 
 struct NeedToUpdateDBContent
@@ -287,7 +288,7 @@ struct NeedToUpdateDBContent
     NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
         : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
     const std::string schema_name_;
     bool replace_DB_content_;
@@ -298,10 +299,28 @@ struct FileIsWithinDateRange
     FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
     const bg::date& begin_date_;
     const bg::date& end_date_;
 };
 
+struct ConvertInputHierarchyToOutputHierarchy
+{
+    ConvertInputHierarchyToOutputHierarchy() = default;
+    ~ConvertInputHierarchyToOutputHierarchy() = default;
+    ConvertInputHierarchyToOutputHierarchy(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
+    ConvertInputHierarchyToOutputHierarchy(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
+
+    ConvertInputHierarchyToOutputHierarchy(const fs::path& source_prefix, const fs::path& destination_prefix)
+        : source_prefix_{source_prefix}, destination_prefix_{destination_prefix} {}
+
+    ConvertInputHierarchyToOutputHierarchy& operator=(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
+    ConvertInputHierarchyToOutputHierarchy& operator=(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
+
+    fs::path operator() (const fs::path& source_file_path, const std::string& destination_file_name);
+
+    fs::path source_prefix_;
+    fs::path destination_prefix_;
+};
 #endif   /* ----- #ifndef _EXTRACTOR_UTILS_INC_  ----- */

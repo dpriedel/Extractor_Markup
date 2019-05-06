@@ -39,10 +39,6 @@
 #ifndef  _SEC_HEADER_INC_
 #define  _SEC_HEADER_INC_
 
-#include <string_view>
-
-using sview = std::string_view;
-
 #include "Extractor.h"
 
 class SEC_Header
@@ -55,31 +51,31 @@ class SEC_Header
 
 		// ====================  ACCESSORS     =======================================
 
-		const EM::SEC_Header_fields& GetFields(void) const		{ return parsed_header_data_; }
+		[[nodiscard]] const EM::SEC_Header_fields& GetFields() const		{ return parsed_header_data_; }
 
 		// ====================  MUTATORS      =======================================
 
-		void UseData(sview file_content);
-		void ExtractHeaderFields(void);
+		void UseData(EM::sv file_content);
+		void ExtractHeaderFields();
 
 		// ====================  OPERATORS     =======================================
 
 	protected:
 
-		void ExtractCIK(void);
-		void ExtractSIC(void);
-		void ExtractFormType(void);
-		void ExtractDateFiled(void);
-		void ExtractQuarterEnding(void);
-		void ExtractFileName(void);
-		void ExtractCompanyName(void);
+		void ExtractCIK();
+		void ExtractSIC();
+		void ExtractFormType();
+		void ExtractDateFiled();
+		void ExtractQuarterEnding();
+		void ExtractFileName();
+		void ExtractCompanyName();
 
 		// ====================  DATA MEMBERS  =======================================
 
 	private:
 		// ====================  DATA MEMBERS  =======================================
 
-		sview header_data_;
+		EM::sv header_data_;
 
 		EM::SEC_Header_fields parsed_header_data_;
 

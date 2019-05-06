@@ -42,14 +42,17 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
+#include <pqxx/pqxx>
+
 #include "fmt/core.h"
 #include "spdlog/spdlog.h"
 
-#include <pqxx/pqxx>
 
 namespace fs = std::filesystem;
 
 using namespace std::string_literals;
+
+#include "Extractor.h"
 
 /*
  *--------------------------------------------------------------------------------------
@@ -143,7 +146,7 @@ MaxFilesException::MaxFilesException(const std::string& text)
  *  Description:  
  * =====================================================================================
  */
-std::string LoadDataFileForUse (sview file_name)
+std::string LoadDataFileForUse (EM::sv file_name)
 {
     std::string file_content(fs::file_size(file_name), '\0');
     std::ifstream input_file{fs::path{file_name}, std::ios_base::in | std::ios_base::binary};
@@ -159,15 +162,15 @@ std::string LoadDataFileForUse (sview file_name)
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> LocateDocumentSections(sview file_content)
+std::vector<EM::sv> LocateDocumentSections(EM::sv file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-    std::vector<sview> result;
+    std::vector<EM::sv> result;
 
     for (auto doc = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc);
         doc != boost::cregex_token_iterator{}; ++doc)
     {
-		result.emplace_back(sview(doc->first, doc->length()));
+		result.emplace_back(EM::sv(doc->first, doc->length()));
     }
 
     return result;
@@ -179,7 +182,7 @@ std::vector<sview> LocateDocumentSections(sview file_content)
  *  Description:  
  * =====================================================================================
  */
-sview FindFileName(sview document)
+EM::sv FindFileName(EM::sv document)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
@@ -187,7 +190,7 @@ sview FindFileName(sview document)
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
-        const sview file_name(matches[1].first, matches[1].length());
+        const EM::sv file_name(matches[1].first, matches[1].length());
         return file_name;
     }
     throw ExtractorException("Can't find file name in document.\n");
@@ -199,7 +202,7 @@ sview FindFileName(sview document)
  *  Description:  
  * =====================================================================================
  */
-sview FindFileType(sview document)
+EM::sv FindFileType(EM::sv document)
 {
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
@@ -207,7 +210,7 @@ sview FindFileType(sview document)
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
     if (found_it)
     {
-        const sview file_type(matches[1].first, matches[1].length());
+        const EM::sv file_type(matches[1].first, matches[1].length());
         return file_type;
     }
     throw ExtractorException("Can't find file type in document.\n");
@@ -220,7 +223,7 @@ sview FindFileType(sview document)
  * =====================================================================================
  */
 
-sview FindHTML (sview document)
+EM::sv FindHTML (EM::sv document)
 {
     auto file_name = FindFileName(document);
     if (boost::algorithm::ends_with(file_name, ".htm"))
@@ -236,7 +239,7 @@ sview FindHTML (sview document)
         document.remove_prefix(x);
 
         auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != sview::npos)
+        if (xbrl_end_loc != EM::sv::npos)
         {
             document.remove_suffix(document.length() - xbrl_end_loc);
         }
@@ -250,7 +253,7 @@ sview FindHTML (sview document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (const std::vector<sview>& form_types, sview file_name)
+bool FormIsInFileName (const std::vector<EM::sv>& form_types, EM::sv file_name)
 {
     auto check_for_form_in_name([&file_name](auto form_type)
     {
@@ -261,17 +264,17 @@ bool FormIsInFileName (const std::vector<sview>& form_types, sview file_name)
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
-    return (file_content.find(R"***(<XBRL>)***") != sview::npos);
+    return (file_content.find(R"***(<XBRL>)***") != EM::sv::npos);
 }		/* -----  end of method FileHasXBRL::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
     return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -283,12 +286,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_
     return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
     return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
@@ -314,7 +317,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, sview file_content)
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
 {
     auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
 
@@ -322,6 +325,28 @@ bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, 
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
 
 
+fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& source_file_path, const std::string& destination_file_name)
+{
+	// want keep the directory hierarchy the same as on the remote system
+	// EXCCEPT for the remote system prefix (which is given to our ctor)
+
+	// we will assume there is not trailing delimiter on the stored remote prefix.
+	// (even though we have no edit to enforce that for now.)
+
+	std::string source_index_name = boost::algorithm::replace_first_copy(source_file_path.string(),
+            source_prefix_.string(), "");
+
+    //  there seems to be a change in behaviour.  appending a path starting with '/' actually does an assignment, not an append.
+
+    if (source_index_name[0] == '/')
+    {
+        source_index_name.erase(0, 1);
+    }
+	auto destination_path_name = destination_prefix_;
+	destination_path_name /= source_index_name;
+	return destination_path_name;
+
+}		// -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
 namespace boost
 {
     // these functions are declared in the library headers but left to the user to define.

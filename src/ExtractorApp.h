@@ -42,13 +42,11 @@
 // #include <fstream>
 #include <atomic>
 #include <filesystem>
-#include <string_view>
 #include <functional>
 #include <tuple>
 #include <vector>
 
 namespace fs = std::filesystem;
-using sview = std::string_view;
 
 // #include <boost/filesystem.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -68,7 +66,7 @@ public:
     
     // use ctor below for testing with predefined options
 
-    ExtractorApp(const std::vector<std::string>& tokens);
+    explicit ExtractorApp(const std::vector<std::string>& tokens);
     
     ExtractorApp() = delete;
 	ExtractorApp(const ExtractorApp& rhs) = delete;
@@ -76,7 +74,10 @@ public:
 
     ~ExtractorApp() = default;
 
-    static bool SignalReceived(void) { return had_signal_ ; }
+    ExtractorApp& operator=(const ExtractorApp& rhs) = delete;
+    ExtractorApp& operator=(ExtractorApp&& rhs) = delete;
+
+    static bool SignalReceived() { return had_signal_ ; }
 
     bool Startup();
     void Run();
@@ -97,22 +98,22 @@ protected:
 
 	void BuildFilterList();
 	void BuildListOfFilesToProcess();
-	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content, std::atomic<int>* forms_processed);
+	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content, std::atomic<int>* forms_processed);
 
-    bool LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_XBRL(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
-    bool LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_Header_fields& SEC_fields, sview file_content);
+    bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, sview file_name);
+        int& error_counter, EM::sv file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_HTML(const fs::path& input_file_name);
-    std::tuple<int, int, int> ProcessDirectory(void);
-    std::tuple<int, int, int> LoadFilesFromListToDB(void);
-	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently(void);
+    std::tuple<int, int, int> ProcessDirectory();
+    std::tuple<int, int, int> LoadFilesFromListToDB();
+	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(sview file_name, std::atomic<int>* forms_processed);
+    std::tuple<int, int, int> LoadFileAsync(EM::sv file_name, std::atomic<int>* forms_processed);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -122,7 +123,7 @@ private:
 
 		// ====================  DATA MEMBERS  =======================================
 
-	using FilterList = std::vector<std::function<bool(const EM::SEC_Header_fields& header_fields, sview)>>;
+	using FilterList = std::vector<std::function<bool(const EM::SEC_Header_fields& header_fields, EM::sv)>>;
 
 	po::positional_options_description	mPositional;			//	old style options
 	po::options_description				mNewOptions;			//	new style options (with identifiers)
@@ -148,9 +149,9 @@ private:
     std::string file_list_data_;
     std::string list_of_files_to_process_path_;
 
-	std::vector<sview> form_list_;
-	std::vector<sview> CIK_list_;
-	std::vector<sview> SIC_list_;
+	std::vector<EM::sv> form_list_;
+	std::vector<EM::sv> CIK_list_;
+	std::vector<EM::sv> SIC_list_;
 
 	FilterList filters_;
 
@@ -158,7 +159,7 @@ private:
 	fs::path local_form_file_directory_;
 	fs::path single_file_to_process_;
 
-    std::vector<sview> list_of_files_to_process_;
+    std::vector<EM::sv> list_of_files_to_process_;
 
     int max_forms_to_process_{-1};     // mainly for testing
     int max_at_a_time_{-1};             // how many concurrent downloads allowed

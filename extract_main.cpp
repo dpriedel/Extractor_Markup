@@ -43,7 +43,6 @@
 #include <boost/regex.hpp>
 #include <filesystem>
 // gumbo-query
-#include <string_view>
 
 #include "gq/Document.h"
 #include "gq/Node.h"
@@ -53,7 +52,7 @@ namespace fs = std::filesystem;
 
 #include "pstreams/pstream.h"
 
-
+#include "Extractor.h"
 #include "Extractor_XBRL.h"
 #include "Extractors.h"
 
@@ -90,7 +89,7 @@ int main(int argc, const char* argv[])
 
         std::atomic<int> files_processed{0};
 
-        const sview form_type{argv[3]};
+        const EM::sv form_type{argv[3]};
 
         auto use_file = FilterFiles(file_content, form_type, 1, files_processed);
         if (! use_file)
@@ -104,8 +103,8 @@ int main(int argc, const char* argv[])
         {
             try
             {
-                std::visit([file_content, &use_file, &output_directory](auto &&x)
-                    {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
+                std::visit([&input_file_name, file_content, &use_file, &output_directory](auto &x)
+                    {x.UseExtractor(input_file_name, file_content, output_directory, use_file.value());}, e);
             }
             catch(std::runtime_error& ex)
             {

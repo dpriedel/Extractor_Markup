@@ -40,18 +40,17 @@
 #include <iterator>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
  
-using sview = std::string_view;
+#include "Extractor.h"
 
 struct AnchorData
 {
     std::string href_;
     std::string name_;
     std::string text_;
-    sview anchor_content_;
-    sview html_document_;
+    EM::sv anchor_content_;
+    EM::sv html_document_;
 };				/* ----------  end of struct AnchorData  ---------- */
 
 using AnchorList = std::vector<AnchorData>;
@@ -72,54 +71,54 @@ public:
                        AnchorData                      // value_type
                        >
     {
-        sview html_;
+        EM::sv html_;
         const char* anchor_begin_ = nullptr;
         const char* anchor_end_ = nullptr;
         mutable AnchorData the_anchor_;
 
         std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
         const char* FindAnchorEnd(const char* begin, const char* end, int level);
-        AnchorData ExtractDataFromAnchor (const char* start, const char* end, sview html);
+        AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::sv html);
         
     public:
 
         anchor_itor() = default;
-        explicit anchor_itor(sview html);
+        explicit anchor_itor(EM::sv html);
 
         anchor_itor& operator++();
         anchor_itor operator++(int) { anchor_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(anchor_itor other) const
+        bool operator==(const anchor_itor& other) const
             { return anchor_begin_ == other.anchor_begin_ && anchor_end_ == other.anchor_end_; }
-        bool operator!=(anchor_itor other) const { return !(*this == other); }
+        bool operator!=(const anchor_itor& other) const { return !(*this == other); }
 
         reference operator*() const { return the_anchor_; }
         pointer operator->() const { return &the_anchor_; }
 
-        sview to_sview() const { return the_anchor_.anchor_content_; }
+        EM::sv to_sview() const { return the_anchor_.anchor_content_; }
     };
 
-      typedef sview					value_type;
-      typedef typename anchor_itor::pointer			pointer;
-      typedef typename anchor_itor::pointer	const_pointer;
-      typedef typename anchor_itor::reference		reference;
-      typedef typename anchor_itor::reference	const_reference;
-      typedef anchor_itor                          iterator;
-      typedef anchor_itor                    const_iterator;
-      typedef size_t					size_type;
-      typedef ptrdiff_t					difference_type;
+        using value_type = EM::sv;
+        using pointer = anchor_itor::pointer;
+        using const_pointer = anchor_itor::pointer;
+        using reference = anchor_itor::reference;
+        using const_reference = anchor_itor::reference;
+        using iterator = anchor_itor;
+        using const_iterator = anchor_itor;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
 
     public:
         /* ====================  LIFECYCLE     ======================================= */
-        AnchorsFromHTML (sview html);                             /* constructor */
+        explicit AnchorsFromHTML (EM::sv html);                             /* constructor */
 
         /* ====================  ACCESSORS     ======================================= */
 
-    const_iterator begin() const;
-    const_iterator end() const;
+    [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] const_iterator end() const;
 
-    size_type size() const { return std::distance(begin(), end()); }
-    bool empty() const { return html_.empty(); }
+    [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }
+    [[nodiscard]] bool empty() const { return html_.empty(); }
 
         /* ====================  MUTATORS      ======================================= */
 
@@ -135,7 +134,7 @@ public:
 
         /* ====================  DATA MEMBERS  ======================================= */
 
-        sview html_;
+        EM::sv html_;
 
 }; /* -----  end of class AnchorsFromHTML  ----- */
 

@@ -53,7 +53,7 @@ using namespace std::string_literals;
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::AnchorsFromHTML (sview html)
+AnchorsFromHTML::AnchorsFromHTML (EM::sv html)
     : html_{html}
 {
 }  /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
@@ -75,7 +75,7 @@ AnchorsFromHTML::const_iterator AnchorsFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::anchor_itor::anchor_itor (sview html)
+AnchorsFromHTML::anchor_itor::anchor_itor (EM::sv html)
     : html_{html}
 {
     if (html_.empty())
@@ -171,7 +171,7 @@ const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const c
     return nullptr;
 }		/* -----  end of method AnchorsFromHTML::iterator::FindAnchorEnd  ----- */
 
-AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, sview html)
+AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, EM::sv html)
 {
     CDocument whole_anchor;
     const std::string working_copy{start, end};
@@ -180,7 +180,7 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, 
     BOOST_ASSERT_MSG(the_anchor.nodeNum() > 0, "No anchor found in extractecd anchor!!");
 
     AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
-        the_anchor.nodeAt(0).text(), sview(start, end - start), html};
+        the_anchor.nodeAt(0).text(), EM::sv(start, end - start), html};
 
     // href sometimes is quoted, so remove them.
 

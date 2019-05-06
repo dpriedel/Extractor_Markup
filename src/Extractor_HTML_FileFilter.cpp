@@ -70,7 +70,7 @@ const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[
  *  Description:  
  * =====================================================================================
  */
-bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, sview file_content) 
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::sv file_content) 
 {
     const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
 
@@ -83,9 +83,9 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, sview 
  *  Description:  
  * =====================================================================================
  */
-std::vector<sview> Find_HTML_Documents (sview file_content)
+std::vector<EM::sv> Find_HTML_Documents (EM::sv file_content)
 {
-    std::vector<sview> results;
+    std::vector<EM::sv> results;
 
     HTML_FromFile htmls{file_content};
     std::copy(htmls.begin(), htmls.end(), std::back_inserter(results));
@@ -132,7 +132,7 @@ bool FinancialStatements::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool FinancialDocumentFilter (sview html)
+bool FinancialDocumentFilter (EM::sv html)
 {
     static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -159,7 +159,7 @@ bool FinancialDocumentFilter (sview html)
  *  Description:  
  * =====================================================================================
  */
-std::optional<std::pair<sview, sview>> FindFinancialContentUsingAnchors (sview file_content)
+std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::sv file_content)
 {
     // sometimes we don't have a top level anchor but we do have
     // anchors for individual statements.
@@ -232,7 +232,7 @@ std::optional<std::pair<sview, sview>> FindFinancialContentUsingAnchors (sview f
  */
 AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors)
 {
-    sview looking_for = financial_anchor.href_;
+    EM::sv looking_for = financial_anchor.href_;
     looking_for.remove_prefix(1);               // need to skip '#'
 
     auto do_compare([&looking_for](const auto& anchor)
@@ -284,7 +284,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
         if (bool found_it = boost::regex_search(a.anchor_content_.begin(), a.html_document_.end(), matches,
                     regex_dollar_mults); found_it)
         {
-            sview multiplier(matches[1].first, matches[1].length());
+            EM::sv multiplier(matches[1].first, matches[1].length());
             auto[multiplier_s, value] = TranslateMultiplier(multiplier);
             multipliers.emplace_back(MultiplierData{multiplier_s, a.html_document_, value});
         }
@@ -298,7 +298,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
  *  Description:  
  * =====================================================================================
  */
-std::pair<std::string, int> TranslateMultiplier(sview multiplier)
+std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
 {
     std::string mplier;
     std::transform(multiplier.begin(), multiplier.end(), std::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
@@ -327,7 +327,7 @@ std::pair<std::string, int> TranslateMultiplier(sview multiplier)
  *  Description:  
  * =====================================================================================
  */
-bool BalanceSheetFilter(sview table)
+bool BalanceSheetFilter(EM::sv table)
 {
     // here are some things we expect to find in the balance sheet section
     // and not the other sections.
@@ -358,7 +358,7 @@ bool BalanceSheetFilter(sview table)
  *  Description:  
  * =====================================================================================
  */
-bool StatementOfOperationsFilter(sview table)
+bool StatementOfOperationsFilter(EM::sv table)
 {
     // here are some things we expect to find in the statement of operations section
     // and not the other sections.
@@ -387,7 +387,7 @@ bool StatementOfOperationsFilter(sview table)
  *  Description:  
  * =====================================================================================
  */
-bool CashFlowsFilter(sview table)
+bool CashFlowsFilter(EM::sv table)
 {
     // here are some things we expect to find in the statement of cash flows section
     // and not the other sections.
@@ -412,7 +412,7 @@ bool CashFlowsFilter(sview table)
  *  Description:  
  * =====================================================================================
  */
-bool StockholdersEquityFilter(sview table)
+bool StockholdersEquityFilter(EM::sv table)
 {
     // here are some things we expect to find in the statement of stockholder equity section
     // and not the other sections.
@@ -445,7 +445,7 @@ bool StockholdersEquityFilter(sview table)
  *  Description:  
  * =====================================================================================
  */
-bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, sview table, int matches_needed)
+bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::sv table, int matches_needed)
 {
     auto matcher([table](const boost::regex* regex)
         {
@@ -483,7 +483,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, sview
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (sview file_content)
+FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -534,7 +534,7 @@ FinancialStatements FindAndExtractFinancialStatements (sview file_content)
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements ExtractFinancialStatements (sview financial_content)
+FinancialStatements ExtractFinancialStatements (EM::sv financial_content)
 {
     TablesFromHTML tables{financial_content};
 
@@ -570,7 +570,7 @@ FinancialStatements ExtractFinancialStatements (sview financial_content)
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements ExtractFinancialStatementsUsingAnchors (sview financial_content)
+FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_content)
 {
     FinancialStatements the_tables;
 
@@ -672,7 +672,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
                 financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
         financial_statements.balance_sheet_.multiplier_s_ = mult_s;
         financial_statements.balance_sheet_.multiplier_ = mult;
@@ -681,7 +681,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
         financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
         financial_statements.statement_of_operations_.multiplier_ = mult;
@@ -690,7 +690,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
         financial_statements.cash_flows_.multiplier_s_ = mult_s;
         financial_statements.cash_flows_.multiplier_ = mult;
@@ -705,7 +705,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
         if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
                     financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
-            sview multiplier(matches[1].first, matches[1].length());
+            EM::sv multiplier(matches[1].first, matches[1].length());
             const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
 
             //  fill in any missing values
@@ -742,7 +742,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     }
 }		/* -----  end of function FindAndStoreMultipliersUsingContent  ----- */
 
-void FinancialStatements::FindSharesOutstanding(sview file_content)
+void FinancialStatements::FindSharesOutstanding(EM::sv file_content)
 {
     // let's try this first...
 
@@ -878,7 +878,7 @@ void FinancialStatements::FindSharesOutstanding(sview file_content)
  *  Description:  
  * =====================================================================================
  */
-MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
+MultDataList CreateMultiplierListWhenNoAnchors (EM::sv file_content)
 {
     static const boost::regex table{R"***(<table)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -899,7 +899,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (sview file_content)
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
 
-EM::Extractor_Values CollectStatementValues (std::vector<sview>& lines, std::string& multiplier)
+EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, std::string& multiplier)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line

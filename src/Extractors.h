@@ -40,40 +40,35 @@
 
 #include <filesystem>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
-
-using sview = std::string_view;
-
-//#include <boost/hana.hpp>
 
 #include "gq/Node.h"
 
 #include "Extractor.h"
+#include "Extractor_Utils.h"
 
 namespace fs = std::filesystem;
-/* namespace hana = boost::hana; */
 
 struct FinancialStatements;
 
 // for use with ranges.
 
-using DocumentList = std::vector<sview>;
+using DocumentList = std::vector<EM::sv>;
 
-DocumentList FindDocumentSections(sview file_content);
+DocumentList FindDocumentSections(EM::sv file_content);
 
-sview FindFileNameInSection(sview document);
+EM::sv FindFileNameInSection(EM::sv document);
 
-//sview FindHTML(sview document);
+//EM::sv FindHTML(EM::sv document);
 
-sview FindTableOfContents(sview document);
+EM::sv FindTableOfContents(EM::sv document);
 
-std::string CollectAllAnchors (sview document);
+std::string CollectAllAnchors (EM::sv document);
 
-//std::string CollectTableContent(sview html);
+//std::string CollectTableContent(EM::sv html);
 
-std::string CollectFinancialStatementContent (sview document_content);
+std::string CollectFinancialStatementContent (EM::sv document_content);
 
 //std::string ExtractTextDataFromTable (CNode& a_table);
 
@@ -84,80 +79,73 @@ std::string CollectFinancialStatementContent (sview document_content);
 
 struct XBRL_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
 };
 
 struct XBRL_Label_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
 };
 
 struct SS_data
 {
-    void UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
-    void ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview content);
+    SS_data(int argc, const char* argv[]);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
+    void ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv content);
+
+    ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
 };
 
 struct Count_SS
 {
     int SS_counter = 0;
 
-    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct DocumentCounter
 {
     int document_counter = 0;
 
-    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct HTM_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct FinancialStatements_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct BalanceSheet_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
 struct Multiplier_data
 {
-    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
     void FindMultipliers(FinancialStatements& financial_statements, const fs::path& file_name);
 };
 
 struct Shares_data
 {
-    void UseExtractor(sview, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
-    void FindSharesOutstanding(sview file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields);
+    void FindSharesOutstanding(EM::sv file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields);
 };
 
 // this filter will export all document sections.
 
 struct ALL_data
 {
-    void UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields&);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 };
 
-// someday, the user can sellect filters.  We'll pretend we do that here.
-
-// NOTE: this implementation uses code from a Stack Overflow example.
-// https://stackoverflow.com/questions/28764085/how-to-create-an-element-for-each-type-in-a-typelist-and-add-it-to-a-vector-in-c
-
-// BUT...I am beginning to think that this is not really doable since the point of static polymorphism is that things
-// are known at compile time, not runtime.
-// So, unless I come to a different understanding, I'm going to go with just isolating where the applicable filters are set
-// and leave the rest of the code as generic.
-// I use the Hana library since it makes the subsequent iteration over the generic list MUCH simpler...
 
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
@@ -166,14 +154,6 @@ using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, 
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors(int argc, const char* argv[]);
-//{
-//    // we imagine the user has somehow told us to use these three filter types.
-//
-//    auto L = hana::make_tuple(std::make_unique<XBRL_data>(),  std::make_unique<XBRL_Label_data>(), std::make_unique<SS_data>(),  std::make_unique<DocumentCounter>());
-//    // auto L = hana::make_tuple(std::make_unique<XBRL_data>(), std::make_unique<SS_data>(), std::make_unique<DocumentCounter>(), std::make_unique<HTM_data>());
-//    // auto L = hana::make_tuple(std::make_unique<ALL_data>(), std::make_unique<DocumentCounter>());
-//    return L;
-//}
 
 
 #endif /* end of include guard:  _EXTRACTORS__*/

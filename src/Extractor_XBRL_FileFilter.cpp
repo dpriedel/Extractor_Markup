@@ -82,7 +82,7 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     }
 }
 
-sview LocateInstanceDocument(const std::vector<sview>& document_sections)
+EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -96,7 +96,7 @@ sview LocateInstanceDocument(const std::vector<sview>& document_sections)
     return {};
 }
 
-sview LocateLabelDocument(const std::vector<sview>& document_sections)
+EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -118,7 +118,7 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 
     auto trading_symbol = top_level_node.child("dei:TradingSymbol").child_value();
 
-    sview shares_outstanding{top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value()};
+    EM::sv shares_outstanding{top_level_node.child("dei:EntityCommonStockSharesOutstanding").child_value()};
 
     auto period_end_date = top_level_node.child("dei:DocumentPeriodEndDate").child_value();
 
@@ -128,7 +128,7 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
         shares_outstanding.empty() ? "0" : std::string{shares_outstanding}};
 }
 
-std::string ConvertPeriodEndDateToContextName(sview period_end_date)
+std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
 
 {
     //  our given date is yyyy-mm-dd.
@@ -161,10 +161,10 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // need to filter out table type content.
 
-        if (sview sv{second_level_nodes.child_value()};
-            sv.find("<table") != sview::npos
-            || sv.find("<div") != sview::npos
-            || sv.find("<p ") != sview::npos)
+        if (EM::sv sv{second_level_nodes.child_value()};
+            sv.find("<table") != EM::sv::npos
+            || sv.find("<div") != EM::sv::npos
+            || sv.find("<p ") != EM::sv::npos)
         {
             continue;
         }
@@ -213,7 +213,7 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
     std::string n_name{top_level_node.name()};
 
     std::string namespace_prefix;
-    if (auto pos = n_name.find(':'); pos != sview::npos)
+    if (auto pos = n_name.find(':'); pos != EM::sv::npos)
     {
         namespace_prefix = n_name.substr(0, pos + 1);
     }
@@ -275,20 +275,20 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
     return result;
 }		// -----  end of function ExtractFieldLabels2  -----
 
-std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& top_level_node,
+std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& label_node_name)
 {
-    std::vector<std::pair<sview, sview>> labels;
+    std::vector<std::pair<EM::sv, EM::sv>> labels;
 
     for (auto links : top_level_node.children(label_link_name.c_str()))
     {
         for (auto label_node : links.children(label_node_name.c_str()))
         {
-            sview role{label_node.attribute("xlink:role").value()};
+            EM::sv role{label_node.attribute("xlink:role").value()};
             if (boost::algorithm::ends_with(role, "role/label"))
             {
-                sview link_name{label_node.attribute("xlink:label").value()};
-                if (auto pos = link_name.find('_'); pos != sview::npos)
+                EM::sv link_name{label_node.attribute("xlink:label").value()};
+                if (auto pos = link_name.find('_'); pos != EM::sv::npos)
                 {
                     link_name.remove_prefix(pos + 1);
                 }
@@ -303,23 +303,23 @@ std::vector<std::pair<sview, sview>> FindLabelElements (const pugi::xml_node& to
     return labels;
 }		/* -----  end of function FindLabelElements  ----- */
 
-std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
+std::map<EM::sv, EM::sv> FindLocElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& loc_node_name)
 {
-    std::map<sview, sview> locs;
+    std::map<EM::sv, EM::sv> locs;
 
     for (auto links : top_level_node.children(label_link_name.c_str()))
     {
         for (auto loc_node : links.children(loc_node_name.c_str()))
         {
-            sview href{loc_node.attribute("xlink:href").value()};
-            if (href.find("us-gaap") == sview::npos)
+            EM::sv href{loc_node.attribute("xlink:href").value()};
+            if (href.find("us-gaap") == EM::sv::npos)
             {
                 continue;
             }
 
             auto pos = href.find('#');
-            if (pos == sview::npos)
+            if (pos == EM::sv::npos)
             {
                 throw XBRLException("Can't find href label start.");
             }
@@ -329,8 +329,8 @@ std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
             {
                 href.remove_prefix(GAAP_PFX_LEN);
             }
-            sview link_name{loc_node.attribute("xlink:label").value()};
-            if (auto pos = link_name.find('_'); pos != sview::npos)
+            EM::sv link_name{loc_node.attribute("xlink:label").value()};
+            if (auto pos = link_name.find('_'); pos != EM::sv::npos)
             {
                 link_name.remove_prefix(pos + 1);
             }
@@ -344,19 +344,19 @@ std::map<sview, sview> FindLocElements (const pugi::xml_node& top_level_node,
     return locs;
 }		/* -----  end of function FindLocElements  ----- */
 
-std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_node,
+std::map<EM::sv, EM::sv> FindLabelArcElements (const pugi::xml_node& top_level_node,
         const std::string& label_link_name, const std::string& arc_node_name)
 {
-    std::map<sview, sview> arcs;
+    std::map<EM::sv, EM::sv> arcs;
 
     for (auto links : top_level_node.children(label_link_name.c_str()))
     {
         for (auto arc_node : links.children(arc_node_name.c_str()))
         {
-            sview from{arc_node.attribute("xlink:from").value()};
-            sview to{arc_node.attribute("xlink:to").value()};
+            EM::sv from{arc_node.attribute("xlink:from").value()};
+            EM::sv to{arc_node.attribute("xlink:to").value()};
 
-            if (auto pos = from.find('_'); pos != sview::npos)
+            if (auto pos = from.find('_'); pos != EM::sv::npos)
             {
                 from.remove_prefix(pos + 1);
             }
@@ -364,7 +364,7 @@ std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_nod
             {
                 from.remove_prefix(GAAP_PFX_LEN);
             }
-            if (auto pos = to.find('_'); pos != sview::npos)
+            if (auto pos = to.find('_'); pos != EM::sv::npos)
             {
                 to.remove_prefix(pos + 1);
             }
@@ -378,8 +378,8 @@ std::map<sview, sview> FindLabelArcElements (const pugi::xml_node& top_level_nod
     return arcs;
 }		/* -----  end of function FindLabelArcElements  ----- */
 
-EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<sview, sview>>& labels,
-        const std::map<sview, sview>& locs, const std::map<sview, sview>& arcs)
+EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>>& labels,
+        const std::map<EM::sv, EM::sv>& locs, const std::map<EM::sv, EM::sv>& arcs)
 {
     EM::Extractor_Labels result;
 
@@ -417,7 +417,7 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     std::string n_name{top_level_node.name()};
 
     std::string namespace_prefix;
-    if (auto pos = n_name.find(':'); pos != sview::npos)
+    if (auto pos = n_name.find(':'); pos != EM::sv::npos)
     {
         namespace_prefix = n_name.substr(0, pos + 1);
     }
@@ -476,13 +476,13 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     return result;
 }
 
-sview TrimExcessXML(sview document)
+EM::sv TrimExcessXML(EM::sv document)
 {
     auto xbrl_loc = document.find(R"***(<XBRL>)***");
     document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
     auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-    if (xbrl_end_loc != sview::npos)
+    if (xbrl_end_loc != EM::sv::npos)
     {
         document.remove_suffix(document.length() - xbrl_end_loc);
         return document;
@@ -491,7 +491,7 @@ sview TrimExcessXML(sview document)
 
 }
 
-pugi::xml_document ParseXMLContent(sview document)
+pugi::xml_document ParseXMLContent(EM::sv document)
 {
     pugi::xml_document doc;
     auto result = doc.load_buffer(document.data(), document.size(), pugi::parse_default | pugi::parse_wnorm_attribute);

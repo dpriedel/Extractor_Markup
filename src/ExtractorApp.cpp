@@ -200,9 +200,13 @@ bool ExtractorApp::Startup()
 	{	
 		SetupProgramOptions();
         if (tokens_.empty())
+        {
             ParseProgramOptions();
+        }
         else
+        {
             ParseProgramOptions(tokens_);
+        }
         ConfigureLogging();
 		result = CheckArgs ();
 	}
@@ -319,7 +323,7 @@ bool ExtractorApp::CheckArgs ()
     if (! DB_mode_.empty())
     {
         BOOST_ASSERT_MSG(DB_mode_ == "test"s || DB_mode_ == "live"s, "DB-mode must be: 'test' or 'live'.");
-        schema_prefix_ = (DB_mode_ = "test" ? "" : "live_");
+        schema_prefix_ = (DB_mode_ == "test" ? "" : "live_");
     }
 
     if (! form_.empty())
@@ -471,7 +475,7 @@ void ExtractorApp::Run()
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
-bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, sview file_content,
+bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
         std::atomic<int>* forms_processed)
 {
     bool use_file{true};
@@ -607,7 +611,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 }		/* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
 
 void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, sview file_name)
+        int& error_counter, EM::sv file_name)
 {
     if (fs::is_regular_file(file_name))
     {
@@ -683,8 +687,8 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_fields& SEC_fields,
-        sview file_content)
+bool ExtractorApp::LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
+        EM::sv file_content)
 {
     spdlog::debug(catenate("Loading contents from file: ", file_name));
 
@@ -695,8 +699,8 @@ bool ExtractorApp::LoadFileFromFolderToDB(sview file_name, const EM::SEC_Header_
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_XBRL(sview file_name, const EM::SEC_Header_fields& SEC_fields,
-        sview file_content)
+bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
+        EM::sv file_content)
 {
     auto document_sections{LocateDocumentSections(file_content)};
 
@@ -714,8 +718,8 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(sview file_name, const EM::SEC_He
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_Header_fields& SEC_fields,
-        sview file_content)
+bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
+        EM::sv file_content)
 {
     auto the_tables = FindAndExtractFinancialStatements(file_content);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
@@ -724,7 +728,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(sview file_name, const EM::SEC_He
     return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(sview file_name, std::atomic<int>* forms_processed)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::atomic<int>* forms_processed)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -820,7 +824,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     // prime the pump...
 
-    int current_file{0};
+    size_t current_file{0};
     for ( ; tasks.size() < max_at_a_time_ && current_file < list_of_files_to_process_.size(); ++current_file)
     {
         // queue up our tasks up to the limit.

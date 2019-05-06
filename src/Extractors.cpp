@@ -44,12 +44,9 @@
 #include <filesystem>
 #include <charconv>
 #include <string>
-#include <string_view>
 #include <system_error>
 #include <variant>
 #include <vector>
-
-using sview = std::string_view;
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
@@ -59,7 +56,6 @@ using sview = std::string_view;
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
 
-#include "Extractor_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
@@ -88,7 +84,7 @@ const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
  *  Description:
  * =====================================================================================
  */
-DocumentList FindDocumentSections(sview file_content)
+DocumentList FindDocumentSections(EM::sv file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -96,7 +92,7 @@ DocumentList FindDocumentSections(sview file_content)
     std::transform(boost::cregex_token_iterator(file_content.data(), file_content.data() + file_content.size(), regex_doc),
             boost::cregex_token_iterator{},
             std::back_inserter(documents),
-            [](const auto segment) {sview document(segment.first, segment.length()); return document; });
+            [](const auto segment) {EM::sv document(segment.first, segment.length()); return document; });
 
     return documents;
 }		/* -----  end of function FindDocumentSections  ----- */
@@ -107,13 +103,13 @@ DocumentList FindDocumentSections(sview file_content)
  *  Description:
  * =====================================================================================
  */
-sview FindFileNameInSection (sview document)
+EM::sv FindFileNameInSection (EM::sv document)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
-        sview file_name(matches[1].first, matches[1].length());
+        EM::sv file_name(matches[1].first, matches[1].length());
         return file_name;
     }
     throw std::runtime_error("Can't find file name in document.\n");
@@ -126,7 +122,7 @@ sview FindFileNameInSection (sview document)
 // * =====================================================================================
 // */
 //
-//sview FindHTML (sview document)
+//EM::sv FindHTML (EM::sv document)
 //{
 //    auto file_name = FindFileNameInSection(document);
 //    if (boost::algorithm::ends_with(file_name, ".htm"))
@@ -144,7 +140,7 @@ sview FindFileNameInSection (sview document)
 //        document.remove_prefix(x);
 //
 //        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-//        if (xbrl_end_loc != sview::npos)
+//        if (xbrl_end_loc != EM::sv::npos)
 //        {
 //            document.remove_suffix(document.length() - xbrl_end_loc);
 //        }
@@ -164,7 +160,7 @@ sview FindFileNameInSection (sview document)
  *  Description:  
  * =====================================================================================
  */
-sview FindTableOfContents (sview document)
+EM::sv FindTableOfContents (EM::sv document)
 {
     auto html = FindHTML(document);
     if (html.empty())
@@ -186,7 +182,7 @@ sview FindTableOfContents (sview document)
             {
                 // let's provide a little context
                 
-                sview anchor_entry{document.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()};
+                EM::sv anchor_entry{document.data() + an_anchor.startPosOuter(), an_anchor.endPosOuter() - an_anchor.startPosOuter()};
                 return anchor_entry;
 //                return parent_entry;
             }
@@ -202,7 +198,7 @@ sview FindTableOfContents (sview document)
  *  Description:  
  * =====================================================================================
  */
-std::string CollectAllAnchors (sview document)
+std::string CollectAllAnchors (EM::sv document)
 {
     auto html = FindHTML(document);
     if (html.empty())
@@ -222,7 +218,7 @@ std::string CollectAllAnchors (sview document)
         auto anchor_parent = an_anchor.parent();
         std::cout << anchor_parent.tag() << '\n';
 
-        sview anchor_parent_entry{html.data() + anchor_parent.startPosOuter(), anchor_parent.endPosOuter() - anchor_parent.startPosOuter()};
+        EM::sv anchor_parent_entry{html.data() + anchor_parent.startPosOuter(), anchor_parent.endPosOuter() - anchor_parent.startPosOuter()};
         the_anchors.append(std::string{anchor_parent_entry});
         the_anchors += '\n';
     }
@@ -234,7 +230,7 @@ std::string CollectAllAnchors (sview document)
 // *  Description:
 // * =====================================================================================
 // */
-//std::string CollectTableContent (sview html)
+//std::string CollectTableContent (EM::sv html)
 //{
 //    std::string table_data;
 //    table_data.reserve(START_WITH);
@@ -304,7 +300,7 @@ std::string CollectAllAnchors (sview document)
  * =====================================================================================
  */
 
-std::string CollectFinancialStatementContent (sview document_content)
+std::string CollectFinancialStatementContent (EM::sv document_content)
 {
     // first. let's see if we've got some html here.
     
@@ -382,7 +378,7 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-    filters.emplace_back(SS_data{});
+    filters.emplace_back(SS_data{argc, argv});
 //    filters.emplace_back(DocumentCounter{});
 
 //    filters.emplace_back(HTM_data{});
@@ -394,13 +390,13 @@ FilterList SelectExtractors (int argc, const char* argv[])
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
-void XBRL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void XBRL_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
     for (auto& document : documents)
     {
-        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
+        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != EM::sv::npos)
         {
             auto output_file_name = FindFileName(output_directory, document, regex_fname);
             auto file_type = FindFileType(document, regex_ftype);
@@ -410,7 +406,7 @@ void XBRL_data::UseExtractor(sview file_content, const fs::path& output_director
             document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
             auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-            if (xbrl_end_loc != sview::npos)
+            if (xbrl_end_loc != EM::sv::npos)
             {
                 document.remove_suffix(document.length() - xbrl_end_loc);
             }
@@ -431,13 +427,13 @@ void XBRL_data::UseExtractor(sview file_content, const fs::path& output_director
     }
 }
 
-void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void XBRL_Label_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
     for (auto& document : documents)
     {
-        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != sview::npos)
+        if (auto xbrl_loc = document.find(R"***(<XBRL>)***"); xbrl_loc != EM::sv::npos)
         {
             auto output_file_name = FindFileName(output_directory, document, regex_fname);
             auto file_type = FindFileType(document, regex_ftype);
@@ -447,7 +443,7 @@ void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_di
             document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
             auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
-            if (xbrl_end_loc != sview::npos)
+            if (xbrl_end_loc != EM::sv::npos)
             {
                 document.remove_suffix(document.length() - xbrl_end_loc);
             }
@@ -468,13 +464,23 @@ void XBRL_Label_data::UseExtractor(sview file_content, const fs::path& output_di
     }
 }
 
-void SS_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+SS_data::SS_data(int argc, const char* argv[])
+{
+    fs::path source_prefix;
+    if (argc > 4)
+    {
+        source_prefix = argv[4];
+    }
+    hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, argv[3]);
+}
+
+void SS_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
     for (auto& document : documents)
     {
-        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != EM::sv::npos)
         {
             std::cout << "spread sheet\n";
 
@@ -491,7 +497,7 @@ void SS_data::UseExtractor(sview file_content, const fs::path& output_directory,
             document.remove_prefix(x);
 
             auto ss_end_loc = document.rfind(R"***(</TEXT>)***");
-            if (ss_end_loc != sview::npos)
+            if (ss_end_loc != EM::sv::npos)
             {
                 document.remove_suffix(document.length() - ss_end_loc);
             }
@@ -505,19 +511,22 @@ void SS_data::UseExtractor(sview file_content, const fs::path& output_directory,
     }
 }
 
-void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview content)
+void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv content)
 {
 	// we write our table out to a temp file and then call uudecode on it.
     //
     // creating a proper unique temp file is not straight-forward.
-    // this approach tries to create a unique directory first then write a file to it.
+    // this approach tries to create a unique directory first then write a file into it.
     // directory creation is an atomic operation in Linux.  If it succeeds,
     // the directory did not already exist so it can safely be used.
 
-    fs::path temp_file_name = fs::temp_directory_path();
+    fs::path temp_file_name;
     std::error_code ec;
     char buffer[L_tmpnam];
 
+    // give it 5 tries...
+    
+    int n = 0;
     while (true)
     {
         temp_file_name = fs::temp_directory_path();
@@ -527,6 +536,14 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview 
             if(bool did_create = fs::create_directory(temp_file_name, ec); did_create)
             {
                 break;
+            }
+            else
+            {
+                ++n;
+                if (n >= 5)
+                {
+                    throw std::runtime_error("Can't create temp directory.\n");
+                }
             }
         }
         else
@@ -569,11 +586,11 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview 
     // readline.
 
     char buf[1024];
-    std::streamsize n;
+    std::streamsize bytes_read;
     while (! in.eof())
     {
-        while ((n = in.out().readsome(buf, sizeof(buf))) > 0)
-            str1.append(buf, n);
+        while ((bytes_read = in.out().readsome(buf, sizeof(buf))) > 0)
+            str1.append(buf, bytes_read);
     }
 
 	// let's be neat and not leave temp files laying around
@@ -585,13 +602,13 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, sview 
     fs::remove(temp_file_name.remove_filename());
 }
 
-void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EM::SEC_Header_fields& fields)
+void Count_SS::UseExtractor(const fs::path& file_name, EM::sv file_content,  const fs::path&, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
     for (auto& document : documents)
     {
-        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != sview::npos)
+        if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != EM::sv::npos)
         {
             ++SS_counter;
         }
@@ -599,7 +616,7 @@ void Count_SS::UseExtractor (sview file_content,  const fs::path&, const EM::SEC
 }		/* -----  end of method Count_SS::UseExtractor  ----- */
 
 
-void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EM::SEC_Header_fields& fields)
+void DocumentCounter::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -610,7 +627,7 @@ void DocumentCounter::UseExtractor(sview file_content, const fs::path&, const EM
 }
 
 
-void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void HTM_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -632,7 +649,7 @@ void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory
             document.remove_prefix(x);
 
             auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-            if (xbrl_end_loc != sview::npos)
+            if (xbrl_end_loc != EM::sv::npos)
             {
                 document.remove_suffix(document.length() - xbrl_end_loc);
             }
@@ -664,7 +681,7 @@ void HTM_data::UseExtractor(sview file_content, const fs::path& output_directory
     }
 }
 
-void FinancialStatements_data::UseExtractor (sview file_content, const fs::path& output_directory,
+void FinancialStatements_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory,
         const EM::SEC_Header_fields& fields)
 {
     // we locate the HTML document in the file which contains the financial statements.
@@ -698,7 +715,7 @@ void FinancialStatements_data::UseExtractor (sview file_content, const fs::path&
     }
 }		/* -----  end of method FinancialStatements_data::UseExtractor  ----- */
 
-void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void BalanceSheet_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we are being given a DOCUMENT from the file so we need to scan it for HTML
     // then scan that for tables then scan that for a balance sheet.
@@ -728,7 +745,7 @@ void BalanceSheet_data::UseExtractor(sview file_content, const fs::path& output_
 //    }
 }		/* -----  end of method BalanceSheet_data::UseExtractor  ----- */
 
-void Multiplier_data::UseExtractor (sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void Multiplier_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -828,7 +845,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
                 financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, value] = TranslateMultiplier(multiplier);
         std::cout <<  "Balance Sheet multiplier: " << mult_s << '\n';
         financial_statements.balance_sheet_.multiplier_ = value;
@@ -838,7 +855,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, value] = TranslateMultiplier(multiplier);
         std::cout <<  "Stmt of Ops multiplier: " << mult_s << '\n';
         financial_statements.statement_of_operations_.multiplier_ = value;
@@ -848,7 +865,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        sview multiplier(matches[1].str());
+        EM::sv multiplier(matches[1].str());
         const auto&[mult_s, value] = TranslateMultiplier(multiplier);
         std::cout <<  "Cash flows multiplier: " << mult_s << '\n';
         financial_statements.cash_flows_.multiplier_ = value;
@@ -864,7 +881,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
         if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
                     financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
-            sview multiplier(matches[1].first, matches[1].length());
+            EM::sv multiplier(matches[1].first, matches[1].length());
             std::cout <<  "Found Generic multiplier: " << multiplier << '\n';
             const auto&[mult_s, value] = TranslateMultiplier(multiplier);
             std::cout <<  "Using Generic multiplier: " << mult_s << '\n';
@@ -909,7 +926,7 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     }
 }		/* -----  end of method Multiplier_data::FindMultipliers  ----- */
 
-void Shares_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void Shares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -959,7 +976,7 @@ void Shares_data::UseExtractor(sview file_content, const fs::path& output_direct
     }
 }
 
-void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields)
+void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields)
 {
     // let's try this first...
 
@@ -1090,7 +1107,7 @@ void Shares_data::FindSharesOutstanding (sview file_content, FinancialStatements
     }
 }		/* -----  end of method Shares_data::UseExtractor  ----- */
 
-void ALL_data::UseExtractor(sview file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+void ALL_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     auto documents = FindDocumentSections(file_content);
 
@@ -1110,7 +1127,7 @@ void ALL_data::UseExtractor(sview file_content, const fs::path& output_directory
         document.remove_prefix(x);
 
         auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != sview::npos)
+        if (xbrl_end_loc != EM::sv::npos)
         {
             document.remove_suffix(document.length() - xbrl_end_loc);
         }

@@ -37,10 +37,12 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Extractor
 {
+    using sv = std::string_view;
 	using SEC_Header_fields = std::map<std::string, std::string>;
 
 	struct FilingData
@@ -75,7 +77,7 @@ namespace Extractor
 	// };
 	using Extractor_Labels = std::map<std::string, std::string>;
 	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
-}
+}		/* -----  end of namespace Extractor  ----- */
 
 namespace EM = Extractor;
 

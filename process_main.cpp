@@ -42,10 +42,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <string_view>
 
 namespace fs = std::filesystem;
-using sview = std::string_view;
 using namespace std::string_literals;
 
 #include <boost/program_options.hpp>
@@ -56,6 +54,7 @@ namespace po = boost::program_options;
 #include "Extractor_XBRL.h"
 #include "Extractor_Utils.h"
 #include "Extractors.h"
+#include "Extractor.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -127,8 +126,8 @@ int main(int argc, const char* argv[])
                     {
                         try
                         {
-                            std::visit([file_content, &use_file](auto &&x)
-                                {x.UseExtractor(file_content, output_directory, use_file.value());}, e);
+                            std::visit([&file_path, file_content, &use_file](auto &&x)
+                                {x.UseExtractor(file_path, file_content, output_directory, use_file.value());}, e);
                         }
                         catch(std::exception& ex)
                         {

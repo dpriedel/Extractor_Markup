@@ -39,11 +39,10 @@
 
 #include <iterator>
 #include <string>
-#include <string_view>
-
-using sview = std::string_view;
 
 #include <boost/regex.hpp>
+
+#include "Extractor.h"
 
 /*
  * =====================================================================================
@@ -59,56 +58,56 @@ public:
 
     class html_itor: public std::iterator<
                     std::forward_iterator_tag,      // html_itor_category
-                    sview                           // value_type
+                    EM::sv                           // value_type
                     >
     {
         const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
         boost::cregex_token_iterator doc_;
         boost::cregex_token_iterator end_;
 
-        sview file_content_;
-        mutable sview html_;
-        sview file_name_;
+        EM::sv file_content_;
+        mutable EM::sv html_;
+        EM::sv file_name_;
 
     public:
 
         html_itor() = default;
-        explicit html_itor(sview file_content);
+        explicit html_itor(EM::sv file_content);
 
         html_itor& operator++();
         html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
 
-        bool operator==(html_itor other) const { return doc_ == other.doc_; }
-        bool operator!=(html_itor other) const { return !(*this == other); }
+        bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
+        bool operator!=(const html_itor& other) const { return !(*this == other); }
 
         reference operator*() const { return html_; }
         pointer operator->() const { return &html_; }
 
-        sview to_sview() const { return html_; }
-        sview GetFileName() const { return file_name_; }
+        EM::sv to_sview() const { return html_; }
+        EM::sv GetFileName() const { return file_name_; }
     };
 
-    typedef sview					value_type;
-    typedef typename html_itor::pointer			pointer;
-    typedef typename html_itor::pointer	const_pointer;
-    typedef typename html_itor::reference		reference;
-    typedef typename html_itor::reference	const_reference;
-    typedef html_itor                          iterator;
-    typedef html_itor                    const_iterator;
-    typedef size_t					size_type;
-    typedef ptrdiff_t					difference_type;
+    using value_type = EM::sv;
+    using pointer = html_itor::pointer;
+    using const_pointer = html_itor::pointer;
+    using reference = html_itor::reference;
+    using const_reference = html_itor::reference;
+    using iterator = html_itor;
+    using const_iterator = html_itor;
+    using size_type = size_t;
+    using difference_type = ptrdiff_t;
 
 public:
     /* ====================  LIFECYCLE     ======================================= */
-    HTML_FromFile (sview file_content);                /* constructor */
+    explicit HTML_FromFile (EM::sv file_content);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
-    const_iterator begin() const;
-    const_iterator end() const;
+    [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] const_iterator end() const;
 
-    size_type size() const { return std::distance(begin(), end()); }
-    bool empty() const { return file_content_.empty(); }
+    [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }
+    [[nodiscard]] bool empty() const { return file_content_.empty(); }
 
     /* ====================  MUTATORS      ======================================= */
 
@@ -124,7 +123,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    sview file_content_;
+    EM::sv file_content_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 

@@ -41,10 +41,10 @@ using namespace std::string_literals;
 // gumbo-query
 
 #include "gq/Document.h"
-#include "gq/Selection.h"
 #include "gq/Node.h"
+#include "gq/Selection.h"
 
-static int START_WITH = 5000;
+constexpr int START_WITH = 5000;
 
 /*
  *--------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ static int START_WITH = 5000;
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::TablesFromHTML (sview html)
+TablesFromHTML::TablesFromHTML (EM::sv html)
     : html_{html}
 {
 }  /* -----  end of method TablesFromHTML::TablesFromHTML  (constructor)  ----- */
@@ -76,13 +76,13 @@ TablesFromHTML::const_iterator TablesFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::table_itor::table_itor(sview html)
+TablesFromHTML::table_itor::table_itor(EM::sv html)
     : html_{html}
 {
     doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), regex_table_);
     if (doc_ != end_)
     {
-        current_table_ = sview(doc_->first, doc_->length());
+        current_table_ = EM::sv(doc_->first, doc_->length());
         try
         {
             BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
@@ -110,7 +110,7 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
     {
         if (++doc_ != end_)
         {
-            current_table_ = sview(doc_->first, doc_->length());
+            current_table_ = EM::sv(doc_->first, doc_->length());
             try
             {
                 BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
@@ -140,16 +140,16 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
     return *this;
 }		/* -----  end of method TablesFromHTML::table_itor::operator++  ----- */
 
-bool TablesFromHTML::table_itor::TableHasMarkup (sview table)
+bool TablesFromHTML::table_itor::TableHasMarkup (EM::sv table)
 {
-    auto have_td = table.find("</TD>") != sview::npos || table.find("</td>") != sview::npos;
-    auto have_tr = table.find("</TR>") != sview::npos || table.find("</tr>") != sview::npos;
+    auto have_td = table.find("</TD>") != EM::sv::npos || table.find("</td>") != EM::sv::npos;
+    auto have_tr = table.find("</TR>") != EM::sv::npos || table.find("</tr>") != EM::sv::npos;
 //    auto have_div = table.find("</div>") != std::string::npos;
 
     return have_td && have_tr;
 }		// -----  end of method TablesFromHTML::table_itor::TableHasMarkup  -----
 
-std::string TablesFromHTML::table_itor::CollectTableContent(sview a_table)
+std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
 {
 
     // let's try this...
@@ -168,7 +168,7 @@ std::string TablesFromHTML::table_itor::CollectTableContent(sview a_table)
     // loop through all tables in the html fragment
     // (which mostly will contain just 1 table.)
 
-    for (int indx = 0 ; indx < all_tables.nodeNum(); ++indx)
+    for (size_t indx = 0 ; indx < all_tables.nodeNum(); ++indx)
     {
         // now, for each table, extract all the text
 
@@ -198,7 +198,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
 
     CSelection a_table_rows = a_table.find("tr");
 
-    for (int indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
+    for (size_t indx = 0 ; indx < a_table_rows.nodeNum(); ++indx)
     {
         CNode a_table_row = a_table_rows.nodeAt(indx);
 
@@ -208,12 +208,12 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
 
         std::string new_row_data;
         new_row_data.reserve(1000);
-        for (int indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
+        for (size_t indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
         {
             CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
             CSelection a_table_cell_paras = a_table_row_cell.find("p");
             std::string text;
-            for(int indx = 0; indx < a_table_cell_paras.nodeNum(); ++indx)
+            for(size_t indx = 0; indx < a_table_cell_paras.nodeNum(); ++indx)
             {
                 CNode a_table_cell_para = a_table_cell_paras.nodeAt(indx);
                 text += ' ';
@@ -222,7 +222,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
             if (text.empty())
             {
                 CSelection a_table_cell_divs= a_table_row_cell.find("div");
-                for(int indx = 0; indx < a_table_cell_divs.nodeNum(); ++indx)
+                for(size_t indx = 0; indx < a_table_cell_divs.nodeNum(); ++indx)
                 {
                     CNode a_table_cell_div = a_table_cell_divs.nodeAt(indx);
                     text += ' ';

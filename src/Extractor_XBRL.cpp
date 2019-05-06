@@ -59,7 +59,7 @@ namespace bg = boost::gregorian;
 
 const boost::regex regex_SEC_header{R"***(<SEC-HEADER>.+?</SEC-HEADER>)***"};
 
-void ParseTheXML(sview document, const EM::SEC_Header_fields& fields)
+void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields)
 {
     // TODO: add error handling all over the place here.
 
@@ -149,7 +149,7 @@ void ParseTheXML(sview document, const EM::SEC_Header_fields& fields)
     std::cout << "Found: " << counter << "\n ****** \n";
 }
 
-//std::string ConvertPeriodEndDateToContextName(sview period_end_date)
+//std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
 //
 //{
 //    //  our given date is yyyy-mm-dd.
@@ -167,7 +167,7 @@ void ParseTheXML(sview document, const EM::SEC_Header_fields& fields)
 //    return result;
 //}
 
-void ParseTheXML_Labels(const sview document, const EM::SEC_Header_fields& fields)
+void ParseTheXML_Labels(const EM::sv document, const EM::SEC_Header_fields& fields)
 {
     std::ofstream logfile{"/tmp/file_l.txt"};
     logfile << document;
@@ -203,7 +203,7 @@ void ParseTheXML_Labels(const sview document, const EM::SEC_Header_fields& field
 
     std::cout << "\n ****** \n";
 }
-std::optional<EM::SEC_Header_fields> FilterFiles(sview file_content, sview form_type,
+std::optional<EM::SEC_Header_fields> FilterFiles(EM::sv file_content, EM::sv form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
     boost::cmatch results;
@@ -211,7 +211,7 @@ std::optional<EM::SEC_Header_fields> FilterFiles(sview file_content, sview form_
 
     if (found_it)
     {
-    	const sview SEC_header_content(results[0].first, results[0].length());
+    	const EM::sv SEC_header_content(results[0].first, results[0].length());
         SEC_Header file_header;
         file_header.UseData(SEC_header_content);
         file_header.ExtractHeaderFields();
@@ -231,7 +231,7 @@ std::optional<EM::SEC_Header_fields> FilterFiles(sview file_content, sview form_
     return std::nullopt;
 }
 
-void WriteDataToFile(const fs::path& output_file_name, sview document)
+void WriteDataToFile(const fs::path& output_file_name, EM::sv document)
 {
     std::ofstream output_file(output_file_name);
     if (not output_file)
@@ -241,13 +241,13 @@ void WriteDataToFile(const fs::path& output_file_name, sview document)
     output_file.close();
 }
 
-fs::path FindFileName(const fs::path& output_directory, sview document, const boost::regex& regex_fname)
+fs::path FindFileName(const fs::path& output_directory, EM::sv document, const boost::regex& regex_fname)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
     if (found_it)
     {
-        sview file_name(matches[1].first, matches[1].length());
+        EM::sv file_name(matches[1].first, matches[1].length());
         fs::path output_file_name{output_directory};
         output_file_name.append(file_name.begin(), file_name.end());
         return output_file_name;
@@ -255,13 +255,13 @@ fs::path FindFileName(const fs::path& output_directory, sview document, const bo
     throw std::runtime_error("Can't find file name in document.\n");
 }
 
-const sview FindFileType(sview document, const boost::regex& regex_ftype)
+const EM::sv FindFileType(EM::sv document, const boost::regex& regex_ftype)
 {
     boost::cmatch matches;
     bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
     if (found_it)
     {
-        const sview file_type(matches[1].first, matches[1].length());
+        const EM::sv file_type(matches[1].first, matches[1].length());
         return file_type;
     }
     else

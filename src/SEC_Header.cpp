@@ -45,7 +45,7 @@ namespace bg = boost::gregorian;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-void SEC_Header::UseData (sview file_content)
+void SEC_Header::UseData (EM::sv file_content)
 {
     const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 	boost::cmatch results;
