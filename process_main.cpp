@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
+#include <execution>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -103,7 +104,7 @@ int main(int argc, const char* argv[])
         ParseProgramOptions(argc, argv);
         CheckArgs();
 
-        auto the_filters = SelectExtractors(argc, argv);
+        auto the_filters = SelectExtractors(VariableMap);
 
         std::atomic<int> files_processed{0};
 
@@ -142,7 +143,8 @@ int main(int argc, const char* argv[])
             }
         });
 
-        std::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+//        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
         // let's see if we got a count...
 

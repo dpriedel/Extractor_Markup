@@ -327,8 +327,8 @@ bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, 
 
 fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& source_file_path, const std::string& destination_file_name)
 {
-	// want keep the directory hierarchy the same as on the remote system
-	// EXCCEPT for the remote system prefix (which is given to our ctor)
+	// want keep the directory hierarchy the same as on the source directory
+	// EXCEPT for the source directory prefix (which is given to our ctor)
 
 	// we will assume there is not trailing delimiter on the stored remote prefix.
 	// (even though we have no edit to enforce that for now.)
@@ -344,9 +344,12 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& sou
     }
 	auto destination_path_name = destination_prefix_;
 	destination_path_name /= source_index_name;
+    destination_path_name.remove_filename();
+    destination_path_name /= destination_file_name;
 	return destination_path_name;
 
 }		// -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
+
 namespace boost
 {
     // these functions are declared in the library headers but left to the user to define.

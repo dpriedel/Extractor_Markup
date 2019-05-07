@@ -370,7 +370,7 @@ std::string CollectFinancialStatementContent (EM::sv document_content)
 ////    return {};
 //}		/* -----  end of function FilterFoundHTML  ----- */
 
-FilterList SelectExtractors (int argc, const char* argv[])
+FilterList SelectExtractors (const po::variables_map& args)
 {
     // NOTE: we can have an arbitrary number of filters selected.
 
@@ -378,7 +378,7 @@ FilterList SelectExtractors (int argc, const char* argv[])
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-    filters.emplace_back(SS_data{argc, argv});
+    filters.emplace_back(args);
 //    filters.emplace_back(DocumentCounter{});
 
 //    filters.emplace_back(HTM_data{});
@@ -464,14 +464,18 @@ void XBRL_Label_data::UseExtractor(const fs::path& file_name, EM::sv file_conten
     }
 }
 
-SS_data::SS_data(int argc, const char* argv[])
+SS_data::SS_data(const po::variables_map& args)
 {
     fs::path source_prefix;
-    if (argc > 4)
+    if (args.count("form-dir") == 1)
     {
-        source_prefix = argv[4];
+        auto input_directory = args["form-dir"];
+        if (! input_directory.empty())
+        {
+            source_prefix = input_directory.as<fs::path>();
+        }
     }
-    hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, argv[3]);
+    hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, args["output-dir"].as<fs::path>().string());
 }
 
 void SS_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
@@ -484,7 +488,9 @@ void SS_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const
         {
             std::cout << "spread sheet\n";
 
-            auto output_file_name = FindFileName(output_directory, document, regex_fname);
+            std::string output_file_name{FindFileName(document)};
+            auto output_path_name = hierarchy_converter_(file_name, output_file_name);
+            std::cout << output_path_name << '\n';
 
             // now, we just need to drop the extraneous XML surrounding the data we need.
 
@@ -506,7 +512,7 @@ void SS_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const
                 throw std::runtime_error("Can't find end of spread sheet in document.\n");
             }
 
-            ConvertDataAndWriteToDisk(output_file_name, document);
+            ConvertDataAndWriteToDisk(output_path_name, document);
         }
     }
 }
@@ -575,6 +581,12 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv
         temp_file.put('\n');
     }
 	temp_file.close();
+
+    auto output_directory = output_file_name.parent_path();
+    if (! fs::exists(output_directory))
+    {
+        fs::create_directories(output_directory);
+    }
 
 	redi::ipstream in(catenate("uudecode -o ", output_file_name.string(), ' ', temp_file_name.string()));
 	// redi::ipstream in("html2text -b 0 --ignore-emphasis --ignore-images --ignore-links " + temp_file_name.string());

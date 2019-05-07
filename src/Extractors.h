@@ -43,6 +43,9 @@
 #include <variant>
 #include <vector>
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include "gq/Node.h"
 
 #include "Extractor.h"
@@ -89,7 +92,7 @@ struct XBRL_Label_data
 
 struct SS_data
 {
-    SS_data(int argc, const char* argv[]);
+    SS_data(const po::variables_map& args);
     void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
     void ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv content);
 
@@ -153,7 +156,7 @@ using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, 
       FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
-FilterList SelectExtractors(int argc, const char* argv[]);
+FilterList SelectExtractors (const po::variables_map& args);
 
 
 #endif /* end of include guard:  _EXTRACTORS__*/
