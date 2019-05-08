@@ -87,7 +87,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2) # $(OBJS3)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -D_GLIBCXX_PARALLEL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -100,10 +100,18 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=ExtractRelease
 
-CFG_LIB := -lpthread \
+CFG_LIB := -lpthread -lgomp -ltbb \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_regex-mt
+		-lboost_date_time-mt-x64 \
+		-lboost_regex-mt-x64 \
+		-lboost_program_options-mt-x64 \
+		-L/usr/local/lib \
+		-lgumbo \
+		-lgq \
+		-L/usr/lib \
+		-lpugixml \
+		-lpq -lpqxx
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
@@ -111,7 +119,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++2a -fPIC D_GLIBCXX_PARALLEL -fopenmp -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++2a -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
