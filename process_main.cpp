@@ -52,10 +52,12 @@ using namespace std::string_literals;
 
 namespace po = boost::program_options;
 
-#include "Extractor_XBRL.h"
-#include "Extractor_Utils.h"
-#include "Extractors.h"
+#include "spdlog/spdlog.h"
+
 #include "Extractor.h"
+#include "Extractor_Utils.h"
+#include "Extractor_XBRL.h"
+#include "Extractors.h"
 
 const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
 
@@ -114,7 +116,7 @@ int main(int argc, const char* argv[])
 
         auto scan_file([&the_filters, &files_processed](const auto& file_path)
         {
-            std::cout << "processing file: " << file_path << '\n';
+            spdlog::info(catenate("Processing file: ", file_path));
             const std::string file_content = LoadDataFileForUse(file_path.c_str());
 
             try
@@ -143,8 +145,8 @@ int main(int argc, const char* argv[])
             }
         });
 
-//        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
-        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+//        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
         // let's see if we got a count...
 

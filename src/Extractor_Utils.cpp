@@ -207,8 +207,7 @@ EM::sv FindFileType(EM::sv document)
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
 
-    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype);
-    if (found_it)
+    if (bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype); found_it)
     {
         const EM::sv file_type(matches[1].first, matches[1].length());
         return file_type;

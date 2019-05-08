@@ -378,11 +378,12 @@ FilterList SelectExtractors (const po::variables_map& args)
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-    filters.emplace_back(args);
+    filters.emplace_back(SS_data{args});
 //    filters.emplace_back(DocumentCounter{});
 
 //    filters.emplace_back(HTM_data{});
 //    filters.emplace_back(Count_SS{});
+    filters.emplace_back(Form_data{args});
 //    filters.emplace_back(BalanceSheet_data{});
 //    filters.emplace_back(FinancialStatements_data{});
 //    filters.emplace_back(Multiplier_data{});
@@ -635,6 +636,48 @@ void DocumentCounter::UseExtractor(const fs::path& file_name, EM::sv file_conten
     for (auto& document : documents)
     {
         ++document_counter;
+    }
+}
+
+Form_data::Form_data(const po::variables_map& args)
+{
+    fs::path source_prefix;
+    if (args.count("form-dir") == 1)
+    {
+        auto input_directory = args["form-dir"];
+        if (! input_directory.empty())
+        {
+            source_prefix = input_directory.as<fs::path>();
+        }
+    }
+    hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, args["output-dir"].as<fs::path>().string());
+
+    form_ = args["form"].as<std::string>();
+}
+
+void Form_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+{
+    auto documents = FindDocumentSections(file_content);
+
+    for (auto& document : documents)
+    {
+        auto document_type = FindFileType(document);
+        if (document_type != form_)
+        {
+            continue;
+        }
+        auto html = FindHTML(document);
+
+        std::string output_file_name{FindFileName(document)};
+        auto output_path_name = hierarchy_converter_(file_name, output_file_name);
+
+    auto output_directory = output_path_name.parent_path();
+    if (! fs::exists(output_directory))
+    {
+        fs::create_directories(output_directory);
+    }
+
+        WriteDataToFile(output_path_name, html);
     }
 }
 

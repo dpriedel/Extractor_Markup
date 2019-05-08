@@ -92,7 +92,7 @@ struct XBRL_Label_data
 
 struct SS_data
 {
-    SS_data(const po::variables_map& args);
+    explicit SS_data(const po::variables_map& args);
     void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields);
     void ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv content);
 
@@ -111,6 +111,15 @@ struct DocumentCounter
     int document_counter = 0;
 
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
+};
+
+struct Form_data
+{
+    explicit Form_data(const po::variables_map& args);
+    void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
+
+    ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
+    std::string form_;
 };
 
 struct HTM_data
@@ -153,7 +162,7 @@ struct ALL_data
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
 using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data,
-      FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, ALL_data>;
+      Form_data, FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors (const po::variables_map& args);
