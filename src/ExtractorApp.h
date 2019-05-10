@@ -158,6 +158,8 @@ private:
 	fs::path log_file_path_name_;
 	fs::path local_form_file_directory_;
 	fs::path single_file_to_process_;
+    fs::path SS_export_directory_;
+    fs::path HTML_export_directory_;
 
     std::vector<EM::sv> list_of_files_to_process_;
 
@@ -167,6 +169,8 @@ private:
 	bool replace_DB_content_{false};
 	bool help_requested_{false};
     bool filename_has_form_{false};
+    bool export_SS_files_{false};
+    bool export_problem_HTML_{false};
 
     static bool had_signal_;
 

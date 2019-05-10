@@ -237,9 +237,15 @@ void ExtractorApp::SetupProgramOptions ()
 		("begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
 		("end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
 		("form-dir", po::value<fs::path>(&local_form_file_directory_),	"directory of form files to be processed")
+		("SS-form-dir", po::value<fs::path>(&SS_export_directory_),	"directory to write Excel data files to.")
+		("HTML-form-dir", po::value<fs::path>(&HTML_export_directory_),	"directory to write problem HTML data files to.")
 		("file,f", po::value<fs::path>(&single_file_to_process_),	"single file to be processed.")
 		("replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
             "replace all DB content for each file. Default is 'false'")
+		("export-SS-data", po::value<bool>(&export_SS_files_)->default_value(false)->implicit_value(true),
+            "export Excel data if any. Default is 'false'")
+		("export-HTML-data", po::value<bool>(&export_problem_HTML_)->default_value(false)->implicit_value(true),
+            "export problem HTML data if any. Default is 'false'")
 		("list-file", po::value<std::string>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
@@ -377,6 +383,10 @@ bool ExtractorApp::CheckArgs ()
             "No files to process found.");
 
     BuildFilterList();
+
+    BOOST_ASSERT_MSG(export_SS_files_ && ! SS_export_directory_.empty(), "Must specify SS export directory.");
+
+    BOOST_ASSERT_MSG(export_problem_HTML_ && ! HTML_export_directory_.empty(), "Must specify problem HTML export directory.");
 
     return true;
 }       // -----  end of method ExtractorApp::CheckArgs  -----
