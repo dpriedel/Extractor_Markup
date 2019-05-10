@@ -100,8 +100,9 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=ExtractRelease
 
-CFG_LIB := -lpthread -lgomp -ltbb \
+CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
+		-lgomp \
 		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \

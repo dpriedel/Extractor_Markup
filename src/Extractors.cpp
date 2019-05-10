@@ -491,7 +491,7 @@ void SS_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const
 
             std::string output_file_name{FindFileName(document)};
             auto output_path_name = hierarchy_converter_(file_name, output_file_name);
-            std::cout << output_path_name << '\n';
+            spdlog::info(output_path_name.string());
 
             // now, we just need to drop the extraneous XML surrounding the data we need.
 
