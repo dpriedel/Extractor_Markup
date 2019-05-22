@@ -60,9 +60,10 @@ using namespace std::string_literals;
 
 static const char* NONE = "none";
 
-// NOTE: position of '-' in regex is important
+    // NOTE: position of '-' in regex is important
 
 const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -284,7 +285,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
         if (bool found_it = boost::regex_search(a.anchor_content_.begin(), a.html_document_.end(), matches,
                     regex_dollar_mults); found_it)
         {
-            EM::sv multiplier(matches[1].first, matches[1].length());
+            std::string multiplier(matches[1].first, matches[1].length());
             auto[multiplier_s, value] = TranslateMultiplier(multiplier);
             multipliers.emplace_back(MultiplierData{multiplier_s, a.html_document_, value});
         }
@@ -672,8 +673,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
                 financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        EM::sv multiplier(matches[1].str());
-        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(matches[1].str());
         financial_statements.balance_sheet_.multiplier_s_ = mult_s;
         financial_statements.balance_sheet_.multiplier_ = mult;
         ++how_many_matches;
@@ -681,8 +681,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        EM::sv multiplier(matches[1].str());
-        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(matches[1].str());
         financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
         financial_statements.statement_of_operations_.multiplier_ = mult;
         ++how_many_matches;
@@ -690,8 +689,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
     {
-        EM::sv multiplier(matches[1].str());
-        const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+        const auto&[mult_s, mult] = TranslateMultiplier(matches[1].str());
         financial_statements.cash_flows_.multiplier_s_ = mult_s;
         financial_statements.cash_flows_.multiplier_ = mult;
         ++how_many_matches;
@@ -706,7 +704,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
                     financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
         {
             EM::sv multiplier(matches[1].first, matches[1].length());
-            const auto&[mult_s, mult] = TranslateMultiplier(multiplier);
+            const auto&[mult_s, mult] = TranslateMultiplier(matches[1].str());
 
             //  fill in any missing values
 
@@ -899,12 +897,16 @@ MultDataList CreateMultiplierListWhenNoAnchors (EM::sv file_content)
     return results;
 }		/* -----  end of function CreateMultiplierListWhenNoAnchors  ----- */
 
-EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, std::string& multiplier)
+EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, const std::string& multiplier)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
     
     EM::Extractor_Values values;
+
+    // NOTE: position of '-' in regex is important
+
+//    static const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
 
     std::for_each(
             lines.begin(),
@@ -919,11 +921,11 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, s
             }
         );
 
-    const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+//    static const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
     std::for_each(values.begin(),
             values.end(),
-            [&multiplier, &regex_per_share] (auto& x)
+            [&multiplier] (auto& x)
             {
                 if(bool found_it = boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); ! found_it)
                 {
