@@ -77,7 +77,7 @@ namespace Extractor
 	// };
 	using Extractor_Labels = std::map<std::string, std::string>;
 	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
-}		/* -----  end of namespace Extractor  ----- */
+}		// namespace Extractor
 
 namespace EM = Extractor;
 

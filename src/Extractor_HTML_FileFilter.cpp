@@ -197,17 +197,9 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
 
     auto look_for_top_level([&anchor_filter_matcher] (auto html)
     {
-        try
-        {
-            AnchorsFromHTML anchors(html);
-            int how_many_matches = std::count_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
-            return how_many_matches >= 3;
-        }
-        catch(const HTMLException& e)
-        {
-            spdlog::error(catenate("Problem with an anchor: ", e.what(), '\n'));
-            return false;
-        }
+        AnchorsFromHTML anchors(html);
+        int how_many_matches = std::count_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
+        return how_many_matches >= 3;
     });
 
     HTML_FromFile htmls{file_content};
@@ -492,18 +484,25 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content)
 
     FinancialStatements financial_statements;
 
-    auto financial_content = FindFinancialContentUsingAnchors(file_content);
-    if (financial_content)
+    try
     {
-        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->first);
-        if (financial_statements.has_data())
+        auto financial_content = FindFinancialContentUsingAnchors(file_content);
+        if (financial_content)
         {
-            financial_statements.html_ = financial_content->second;
-            financial_statements.FindAndStoreMultipliers();
-            financial_statements.PrepareTableContent();
-            financial_statements.FindSharesOutstanding(file_content);
-            return financial_statements;
+            financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->first);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = financial_content->second;
+                financial_statements.FindAndStoreMultipliers();
+                financial_statements.PrepareTableContent();
+                financial_statements.FindSharesOutstanding(file_content);
+                return financial_statements;
+            }
         }
+    }
+    catch (const HTMLException& e)
+    {
+        spdlog::info(catenate("Problem with anchors: ", e.what(), ". continuing with the long way."));
     }
 
     // OK, we didn't have any success following anchors so do it the long way.
@@ -848,20 +847,23 @@ void FinancialStatements::FindSharesOutstanding(EM::sv file_content)
         // need to replace any commas we might have.
 
         const std::string delete_this{""};
-        const boost::regex regex_comma{R"***(,)***"};
-        shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma, delete_this);
+        const boost::regex regex_comma_parens{R"***([,)(])***"};
+        shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma_parens, delete_this);
 
         if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
                     outstanding_shares_); ec != std::errc())
         {
-            throw ExtractorException(catenate("Problem converting shares outstanding: ",
-                        std::make_error_code(ec).message(), '\n'));
+            spdlog::info(catenate("Problem converting shares outstanding: ",
+                        std::make_error_code(ec).message(), ". ", shares_outstanding));
         }
-        // apply multiplier if we got our value from a table value rather than a table label.
-
-        if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
+        else
         {
-            outstanding_shares_ *= statement_of_operations_.multiplier_;
+            if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
+            {
+                // apply multiplier if we got our value from a table value rather than a table label.
+                //
+                outstanding_shares_ *= statement_of_operations_.multiplier_;
+            }
         }
     }
     else
