@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS html_extracts.sec_filing_id CASCADE ;
 
 CREATE TABLE html_extracts.sec_filing_id
 (
-	filing_ID SERIAL UNIQUE,
+    filing_ID integer GENERATED ALWAYS AS IDENTITY UNIQUE,
 	cik TEXT NOT NULL,
 	company_name TEXT NOT NULL,
 	file_name TEXT NOT NULL,
@@ -32,7 +32,7 @@ DROP TABLE IF EXISTS html_extracts.sec_cash_flows_data ;
 
 CREATE TABLE html_extracts.sec_bal_sheet_data
 (
-	filing_data_ID SERIAL UNIQUE,
+    filing_data_ID integer GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
@@ -59,7 +59,7 @@ CREATE INDEX idx_bal_sheet ON html_extracts.sec_bal_sheet_data USING GIN (tsv);
 
 CREATE TABLE html_extracts.sec_stmt_of_ops_data
 (
-	filing_data_ID SERIAL UNIQUE,
+    filing_data_ID integer GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
@@ -86,7 +86,7 @@ CREATE INDEX idx_stmt_of_ops ON html_extracts.sec_stmt_of_ops_data USING GIN (ts
 
 CREATE TABLE html_extracts.sec_cash_flows_data
 (
-	filing_data_ID SERIAL UNIQUE,
+    filing_data_ID integer GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID integer REFERENCES html_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	html_label TEXT NOT NULL,
     html_value TEXT NOT NULL,
