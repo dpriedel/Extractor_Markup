@@ -384,9 +384,15 @@ bool ExtractorApp::CheckArgs ()
 
     BuildFilterList();
 
-    BOOST_ASSERT_MSG(export_SS_files_ && ! SS_export_directory_.empty(), "Must specify SS export directory.");
+    if (export_SS_files_)
+    {
+        BOOST_ASSERT_MSG(! SS_export_directory_.empty(), "Must specify SS export directory.");
+    }
 
-    BOOST_ASSERT_MSG(export_problem_HTML_ && ! HTML_export_directory_.empty(), "Must specify problem HTML export directory.");
+    if (export_problem_HTML_)
+    {
+        BOOST_ASSERT_MSG(! HTML_export_directory_.empty(), "Must specify problem HTML export directory.");
+    }
 
     return true;
 }       // -----  end of method ExtractorApp::CheckArgs  -----
