@@ -756,7 +756,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::ato
     spdlog::debug(catenate("Scanning file: ", file_name));
     const std::string file_content(LoadDataFileForUse(file_name));
 
-    SEC_Header SEC_data; SEC_data.UseData(file_content);
+    SEC_Header SEC_data;
+    SEC_data.UseData(file_content);
     SEC_data.ExtractHeaderFields();
     decltype(auto) SEC_fields = SEC_data.GetFields();
 
