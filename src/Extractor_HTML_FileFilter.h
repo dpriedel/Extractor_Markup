@@ -151,7 +151,7 @@ struct FinancialStatements
     [[nodiscard]] const EM::Extractor_Values& ListValues(void) const { return values_; }
 };
 
-EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, std::string& multiplier);
+EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, const std::string& multiplier);
 
 bool FindAndStoreMultipliersUsingAnchors(FinancialStatements& financial_statements);
 void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements);
