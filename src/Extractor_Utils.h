@@ -195,7 +195,7 @@ public:
 inline std::vector<EM::sv> split_string(EM::sv string_data, char delim)
 {
     std::vector<EM::sv> results;
-	for (auto it = 0; it != EM::sv::npos; ++it)
+	for (size_t it = 0; it < string_data.size(); ++it)
 	{
 		auto pos = string_data.find(delim, it);
         if (pos != EM::sv::npos)

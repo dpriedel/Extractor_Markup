@@ -99,7 +99,7 @@ public:
         explicit table_itor(EM::sv html);
 
         table_itor& operator++();
-        table_itor operator++(int) { table_itor retval = *this; ++(*this); return retval; }
+        const table_itor operator++(int) { table_itor retval = *this; ++(*this); return retval; }
 
         bool operator==(const table_itor& other) const { return doc_ == other.doc_; }
         bool operator!=(const table_itor& other) const { return !(*this == other); }

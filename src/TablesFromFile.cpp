@@ -178,7 +178,7 @@ std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
 
     // after parsing, let's do a little cleanup
 
-    std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, delete_this);
+    std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, one_space);
     clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
     clean_table_data = boost::regex_replace(clean_table_data, regex_dollar_tab, just_dollar);
     clean_table_data = boost::regex_replace(clean_table_data, regex_tabs_spaces, one_tab);
