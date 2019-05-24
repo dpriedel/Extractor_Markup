@@ -925,6 +925,10 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 
 //    static const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
+    // now, for all values except 'per share', apply the multiplier.
+    // for now, keep parens to indicate negative numbers.
+    // TODO: figure out if this should be replaced with negative sign.
+
     std::for_each(values.begin(),
             values.end(),
             [&multiplier] (auto& x)
@@ -942,8 +946,39 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
                     }
                 }
             });
+
+    // lastly, clean up the labels a little.
+
+    std::for_each(values.begin(), values.end(), [](auto& entry) { entry.first = CleanLabel(entry.first); } );
+
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  CleanLabel
+//  Description:  
+// =====================================================================================
+
+std::string CleanLabel (const std::string& label)
+{
+    static const std::string delete_this{""};
+    static const std::string single_space{" "};
+    static const boost::regex regex_punctuation{R"***([[:punct:]])***"};
+    static const boost::regex regex_leading_space{R"***(^[[:space:]]+)***"};
+    static const boost::regex regex_trailing_space{R"***([[:space:]]{1,}$)***"};
+    static const boost::regex regex_double_space{R"***([[:space:]]{2,})***"};
+
+    std::string cleaned_label = boost::regex_replace(label, regex_punctuation, single_space);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_leading_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_trailing_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_double_space, single_space);
+
+    // lastly, lowercase
+
+    std::for_each(cleaned_label.begin(), cleaned_label.end(), [] (char& c) { c = std::tolower(c); } );
+
+    return cleaned_label;
+}		// -----  end of function CleanLabel  -----
 
 bool BalanceSheet::ValidateContent ()
 {

@@ -153,6 +153,8 @@ struct FinancialStatements
 
 EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, const std::string& multiplier);
 
+std::string CleanLabel (const std::string& label);
+
 bool FindAndStoreMultipliersUsingAnchors(FinancialStatements& financial_statements);
 void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statements);
 
