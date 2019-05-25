@@ -216,8 +216,12 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
             for(size_t indx = 0; indx < a_table_cell_paras.nodeNum(); ++indx)
             {
                 CNode a_table_cell_para = a_table_cell_paras.nodeAt(indx);
-                text += ' ';
-                text += a_table_cell_para.text();
+                auto content = a_table_cell_para.ownText();
+                if (! content.empty())
+                {
+                    text += ' ';
+                    text += content;
+                }
             }
             if (text.empty())
             {
@@ -225,8 +229,12 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
                 for(size_t indx = 0; indx < a_table_cell_divs.nodeNum(); ++indx)
                 {
                     CNode a_table_cell_div = a_table_cell_divs.nodeAt(indx);
-                    text += ' ';
-                    text += a_table_cell_div.text();
+                    auto content = a_table_cell_div.ownText();
+                    if (! content.empty())
+                    {
+                        text += ' ';
+                        text += content;
+                    }
                 }
             }
             if (text.empty())
