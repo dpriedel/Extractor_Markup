@@ -75,10 +75,7 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     {
         return labels.at(key);
     }
-    else
-    {
-        return default_result;
-    }
+    return default_result;
 }
 
 EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections)
