@@ -71,12 +71,11 @@ const std::string::size_type START_WITH{1000000};
 
 const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::string& key, const std::string& default_result)
 {
-    try
+    if (labels.contains(key))
     {
-        const auto& value = labels.at(key);
-        return value;
+        return labels.at(key);
     }
-    catch(std::out_of_range& e)
+    else
     {
         return default_result;
     }
