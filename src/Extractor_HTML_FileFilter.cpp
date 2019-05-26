@@ -954,17 +954,7 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
-    for (auto it = values.begin(); it != values.end(); )
-    {
-        if (it->first.empty())
-        {
-            it = values.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    std::erase_if(values, [](auto& e) { return e.first.empty(); } );
 
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
