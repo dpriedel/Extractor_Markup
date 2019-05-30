@@ -168,7 +168,6 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // collect our data: name, context, units, decimals, value.
 
-//        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
         EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
             second_level_nodes.attribute("contextRef").value(), second_level_nodes.attribute("unitRef").value(),
             second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
@@ -281,22 +280,8 @@ std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& 
         {
             EM::sv role{label_node.attribute("xlink:role").value()};
             if (boost::algorithm::ends_with(role, "label") || boost::algorithm::ends_with(role, "Label"))
-//            if (boost::algorithm::ends_with(role, "role/label") || boost::algorithm::ends_with(role, "role/terseLabel")
-//                    || boost::algorithm::ends_with(role, "role/concept-label")
-//                    || boost::algorithm::ends_with(role, "role/periodEndLabel")
-//                    || boost::algorithm::ends_with(role, "role/periodStartLabel")
-//                    || boost::algorithm::ends_with(role, "role/verboseLabel")
-//                    || boost::algorithm::ends_with(role, "role/totalLabel"))
             {
                 EM::sv link_name{label_node.attribute("xlink:label").value()};
-//                if (auto pos = link_name.find('_'); pos != EM::sv::npos)
-//                {
-//                    link_name.remove_prefix(pos + 1);
-//                }
-//                if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
-//                {
-//                    link_name.remove_prefix(GAAP_PFX_LEN);
-//                }
                 labels.emplace_back(link_name, label_node.child_value());
             }
         }
@@ -325,21 +310,7 @@ std::map<EM::sv, EM::sv> FindLocElements (const pugi::xml_node& top_level_node,
                 throw XBRLException("Can't find href label start.");
             }
             href.remove_prefix(pos + 1);
-
-//            if (boost::algorithm::starts_with(href, US_GAAP_PFX))
-//            {
-//                href.remove_prefix(GAAP_PFX_LEN);
-//            }
             EM::sv link_name{loc_node.attribute("xlink:label").value()};
-//            if (auto pos = link_name.find('_'); pos != EM::sv::npos)
-//            {
-//                link_name.remove_prefix(pos + 1);
-//            }
-//            if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
-//            {
-//                link_name.remove_prefix(GAAP_PFX_LEN);
-//            }
-//            locs[link_name] = href;
             locs[href] = link_name;
         }
     }
@@ -362,24 +333,6 @@ std::map<EM::sv, EM::sv> FindLabelArcElements (const pugi::xml_node& top_level_n
             }
             EM::sv from{arc_node.attribute("xlink:from").value()};
             EM::sv to{arc_node.attribute("xlink:to").value()};
-
-//            if (auto pos = from.find('_'); pos != EM::sv::npos)
-//            {
-//                from.remove_prefix(pos + 1);
-//            }
-//            if (boost::algorithm::starts_with(from, US_GAAP_PFX))
-//            {
-//                from.remove_prefix(GAAP_PFX_LEN);
-//            }
-//            if (auto pos = to.find('_'); pos != EM::sv::npos)
-//            {
-//                to.remove_prefix(pos + 1);
-//            }
-//            if (boost::algorithm::starts_with(to, US_GAAP_PFX))
-//            {
-//                to.remove_prefix(GAAP_PFX_LEN);
-//            }
-//            arcs[to] = from;
             arcs[from] = to;
         }
     }
@@ -397,8 +350,6 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
         if (link_to == arcs.end())
         {
             // stand-alone link
-        
-//            std::cout << "stand-alone: ARCS: " << label << '\n';
             continue;
         }
         auto value = std::find_if(labels.begin(), labels.end(), [&link_to](const auto& e)
