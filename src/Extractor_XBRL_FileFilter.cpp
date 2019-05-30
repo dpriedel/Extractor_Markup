@@ -40,6 +40,7 @@
 #include "Extractor_XBRL_FileFilter.h"
 
 #include <algorithm>
+#include <experimental/array>
 
 #include <boost/algorithm/string/find.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -61,8 +62,8 @@ const auto GAAP_LEN{US_GAAP_NS.size()};
 const std::string US_GAAP_PFX{"us-gaap_"};
 const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 
-constexpr const char* MONTH_NAMES[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
-    "October", "November", "December"};
+decltype(auto) MONTH_NAMES = std::experimental::make_array("", "January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December");
 
 const std::string::size_type START_WITH{1000000};
 
@@ -168,7 +169,7 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
         // collect our data: name, context, units, decimals, value.
 
 //        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
-        EM::GAAP_Data fields{second_level_nodes.name() + GAAP_LEN,
+        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
             second_level_nodes.attribute("contextRef").value(), second_level_nodes.attribute("unitRef").value(),
             second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
 
@@ -198,7 +199,6 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 //  - find the link:label element with a matching xlink:label attribute.
 //  - retrieve the element value.
 //
-//  NOTE: we actually follow this path in reverse when we build our table.
 
 EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
 {
@@ -229,7 +229,6 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
     {
         labels = FindLabelElements(top_level_node, label_link_name, label_node_name.substr(namespace_prefix.size()));
     }
-
 
 //    std::cout << "LABELS:\n";
 //    for (auto [name, value] : labels)
@@ -281,17 +280,23 @@ std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& 
         for (auto label_node : links.children(label_node_name.c_str()))
         {
             EM::sv role{label_node.attribute("xlink:role").value()};
-            if (boost::algorithm::ends_with(role, "role/label"))
+            if (boost::algorithm::ends_with(role, "label") || boost::algorithm::ends_with(role, "Label"))
+//            if (boost::algorithm::ends_with(role, "role/label") || boost::algorithm::ends_with(role, "role/terseLabel")
+//                    || boost::algorithm::ends_with(role, "role/concept-label")
+//                    || boost::algorithm::ends_with(role, "role/periodEndLabel")
+//                    || boost::algorithm::ends_with(role, "role/periodStartLabel")
+//                    || boost::algorithm::ends_with(role, "role/verboseLabel")
+//                    || boost::algorithm::ends_with(role, "role/totalLabel"))
             {
                 EM::sv link_name{label_node.attribute("xlink:label").value()};
-                if (auto pos = link_name.find('_'); pos != EM::sv::npos)
-                {
-                    link_name.remove_prefix(pos + 1);
-                }
-                if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
-                {
-                    link_name.remove_prefix(GAAP_PFX_LEN);
-                }
+//                if (auto pos = link_name.find('_'); pos != EM::sv::npos)
+//                {
+//                    link_name.remove_prefix(pos + 1);
+//                }
+//                if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
+//                {
+//                    link_name.remove_prefix(GAAP_PFX_LEN);
+//                }
                 labels.emplace_back(link_name, label_node.child_value());
             }
         }
@@ -321,20 +326,21 @@ std::map<EM::sv, EM::sv> FindLocElements (const pugi::xml_node& top_level_node,
             }
             href.remove_prefix(pos + 1);
 
-            if (boost::algorithm::starts_with(href, US_GAAP_PFX))
-            {
-                href.remove_prefix(GAAP_PFX_LEN);
-            }
+//            if (boost::algorithm::starts_with(href, US_GAAP_PFX))
+//            {
+//                href.remove_prefix(GAAP_PFX_LEN);
+//            }
             EM::sv link_name{loc_node.attribute("xlink:label").value()};
-            if (auto pos = link_name.find('_'); pos != EM::sv::npos)
-            {
-                link_name.remove_prefix(pos + 1);
-            }
-            if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
-            {
-                link_name.remove_prefix(GAAP_PFX_LEN);
-            }
-            locs[link_name] = href;
+//            if (auto pos = link_name.find('_'); pos != EM::sv::npos)
+//            {
+//                link_name.remove_prefix(pos + 1);
+//            }
+//            if (boost::algorithm::starts_with(link_name, US_GAAP_PFX))
+//            {
+//                link_name.remove_prefix(GAAP_PFX_LEN);
+//            }
+//            locs[link_name] = href;
+            locs[href] = link_name;
         }
     }
     return locs;
@@ -349,26 +355,32 @@ std::map<EM::sv, EM::sv> FindLabelArcElements (const pugi::xml_node& top_level_n
     {
         for (auto arc_node : links.children(arc_node_name.c_str()))
         {
+            EM::sv use{arc_node.attribute("use").value()};
+            if (use == "prohibited")
+            {
+                continue;
+            }
             EM::sv from{arc_node.attribute("xlink:from").value()};
             EM::sv to{arc_node.attribute("xlink:to").value()};
 
-            if (auto pos = from.find('_'); pos != EM::sv::npos)
-            {
-                from.remove_prefix(pos + 1);
-            }
-            if (boost::algorithm::starts_with(from, US_GAAP_PFX))
-            {
-                from.remove_prefix(GAAP_PFX_LEN);
-            }
-            if (auto pos = to.find('_'); pos != EM::sv::npos)
-            {
-                to.remove_prefix(pos + 1);
-            }
-            if (boost::algorithm::starts_with(to, US_GAAP_PFX))
-            {
-                to.remove_prefix(GAAP_PFX_LEN);
-            }
-            arcs[to] = from;
+//            if (auto pos = from.find('_'); pos != EM::sv::npos)
+//            {
+//                from.remove_prefix(pos + 1);
+//            }
+//            if (boost::algorithm::starts_with(from, US_GAAP_PFX))
+//            {
+//                from.remove_prefix(GAAP_PFX_LEN);
+//            }
+//            if (auto pos = to.find('_'); pos != EM::sv::npos)
+//            {
+//                to.remove_prefix(pos + 1);
+//            }
+//            if (boost::algorithm::starts_with(to, US_GAAP_PFX))
+//            {
+//                to.remove_prefix(GAAP_PFX_LEN);
+//            }
+//            arcs[to] = from;
+            arcs[from] = to;
         }
     }
     return arcs;
@@ -379,24 +391,25 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
 {
     EM::Extractor_Labels result;
 
-    for (auto [link_to, value] : labels)
+    for (auto [href, label] : locs)
     {
-        auto link_from = arcs.find(link_to);
-        if (link_from == arcs.end())
+        auto link_to = arcs.find(label);
+        if (link_to == arcs.end())
         {
             // stand-alone link
         
-            std::cout << "stand-alone: ARCS\n";
-            continue;    
-        }
-        auto href = locs.find(link_from->second);
-        if (href == locs.end())
-        {
-            // non-gaap field
-            
+//            std::cout << "stand-alone: ARCS: " << label << '\n';
             continue;
         }
-       result.emplace(href->second, value); 
+        auto value = std::find_if(labels.begin(), labels.end(), [&link_to](const auto& e)
+                { return e.first == link_to->second ? true : false; } );
+        if (value == labels.end())
+        {
+            std::cout << "missing label: " << label << '\n';
+            continue;
+        }
+        result.emplace(href, value->second);
+
     }
     return result;
 }		/* -----  end of function AssembleLookupTable  ----- */
