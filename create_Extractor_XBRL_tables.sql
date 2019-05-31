@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS xbrl_extracts.sec_filing_id CASCADE ;
 
 CREATE TABLE xbrl_extracts.sec_filing_id
 (
-	filing_ID SERIAL UNIQUE,
+    filing_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	cik TEXT NOT NULL,
 	company_name TEXT NOT NULL,
 	file_name TEXT NOT NULL,
@@ -31,8 +31,8 @@ DROP TABLE IF EXISTS xbrl_extracts.sec_filing_data ;
 
 CREATE TABLE xbrl_extracts.sec_filing_data
 (
-	filing_data_ID SERIAL UNIQUE,
-	filing_ID integer REFERENCES xbrl_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
+    filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
+	filing_ID bigint REFERENCES xbrl_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	xbrl_label TEXT NOT NULL,
 	user_label TEXT NOT NULL,
     xbrl_value TEXT NOT NULL,
