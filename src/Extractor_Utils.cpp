@@ -39,7 +39,6 @@
 #include <fstream>
 #include <iostream>
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 #include <pqxx/pqxx>
@@ -225,7 +224,7 @@ EM::sv FindFileType(EM::sv document)
 EM::sv FindHTML (EM::sv document)
 {
     auto file_name = FindFileName(document);
-    if (boost::algorithm::ends_with(file_name, ".htm"))
+    if (file_name.ends_with(".htm"))
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
 

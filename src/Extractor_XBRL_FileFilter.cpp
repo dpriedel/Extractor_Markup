@@ -42,9 +42,6 @@
 #include <algorithm>
 #include <experimental/array>
 
-#include <boost/algorithm/string/find.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-
 #include "fmt/core.h"
 #include "spdlog/spdlog.h"
 
@@ -85,7 +82,7 @@ EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
-        if (boost::algorithm::ends_with(file_type, ".INS") && boost::algorithm::ends_with(file_name, ".xml"))
+        if (file_type.ends_with(".INS") && file_name.ends_with(".xml"))
         {
             return TrimExcessXML(document);
         }
@@ -99,7 +96,7 @@ EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
-        if (boost::algorithm::ends_with(file_type, ".LAB") && boost::algorithm::ends_with(file_name, ".xml"))
+        if (file_type.ends_with(".LAB") && file_name.ends_with(".xml"))
         {
             return TrimExcessXML(document);
         }
@@ -279,7 +276,7 @@ std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& 
         for (auto label_node : links.children(label_node_name.c_str()))
         {
             EM::sv role{label_node.attribute("xlink:role").value()};
-            if (boost::algorithm::ends_with(role, "label") || boost::algorithm::ends_with(role, "Label"))
+            if (role.ends_with("label") || role.ends_with("Label"))
             {
                 EM::sv link_name{label_node.attribute("xlink:label").value()};
                 labels.emplace_back(link_name, label_node.child_value());

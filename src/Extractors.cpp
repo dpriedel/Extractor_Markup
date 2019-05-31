@@ -1,4 +1,3 @@
-// =====================================================================================
 //
 //       Filename:  Extractors.cpp
 //
@@ -48,7 +47,6 @@
 #include <variant>
 #include <vector>
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 #include "spdlog/spdlog.h"
@@ -416,7 +414,7 @@ void XBRL_data::UseExtractor(const fs::path& file_name, EM::sv file_content, con
                 throw std::runtime_error("Can't find end of XBRL in document.\n");
             }
 
-            if (boost::algorithm::ends_with(file_type, ".INS") && output_file_name.extension() == ".xml")
+            if (file_type.ends_with(".INS") && output_file_name.extension() == ".xml")
             {
 
                 std::cout << "got one" << '\n';
@@ -453,7 +451,7 @@ void XBRL_Label_data::UseExtractor(const fs::path& file_name, EM::sv file_conten
                 throw std::runtime_error("Can't find end of XBRL in document.\n");
             }
 
-            if (boost::algorithm::ends_with(file_type, ".LAB") && output_file_name.extension() == ".xml")
+            if (file_type.ends_with(".LAB") && output_file_name.extension() == ".xml")
             {
 
                 std::cout << "got one" << '\n';
