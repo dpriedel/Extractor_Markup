@@ -55,6 +55,8 @@ namespace fs = std::filesystem;
 namespace bg = boost::gregorian;
 namespace po = boost::program_options;
 
+#include "spdlog/spdlog.h"
+
 #include "Extractor.h"
 
 class ExtractorApp
@@ -162,7 +164,9 @@ private:
     fs::path HTML_export_directory_;
 
     std::vector<EM::sv> list_of_files_to_process_;
-
+    
+    std::shared_ptr<spdlog::logger> logger_;
+    
     int max_forms_to_process_{-1};     // mainly for testing
     int max_at_a_time_{-1};             // how many concurrent downloads allowed
 
