@@ -350,7 +350,7 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
             continue;
         }
         auto value = std::find_if(labels.begin(), labels.end(), [&link_to](const auto& e)
-                { return e.first == link_to->second ? true : false; } );
+                { return e.first == link_to->second; } );
         if (value == labels.end())
         {
             std::cout << "missing label: " << label << '\n';

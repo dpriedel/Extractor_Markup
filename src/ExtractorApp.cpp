@@ -164,8 +164,10 @@ void ExtractorApp::ConfigureLogging()
     {
         // if we are running inside our test harness, logging may already by
         // running so we don't want to clobber it.
+        // different tests may use different names.
 
-        logger_ = spdlog::get("extractorlogger");
+        auto logger_name = log_file_path_name_.filename();
+        logger_ = spdlog::get(logger_name);
         if (! logger_)
         {
             fs::path log_dir = log_file_path_name_.parent_path();
@@ -174,7 +176,7 @@ void ExtractorApp::ConfigureLogging()
                 fs::create_directories(log_dir);
             }
 
-            logger_ = spdlog::basic_logger_mt("extractorlogger", log_file_path_name_.c_str());
+            logger_ = spdlog::basic_logger_mt(logger_name, log_file_path_name_.c_str());
             spdlog::set_default_logger(logger_);
         }
     }
@@ -894,6 +896,15 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             {
                 ep = std::current_exception();
             }
+            break;
+        }
+        catch (MaxFilesException& e)
+        {
+            // any 'expected' problems, we'll document them and continue on.
+
+            spdlog::error(e.what());
+            counters = AddTs(counters, {0, 0, 1});
+
             break;
         }
         catch (std::exception& e)
