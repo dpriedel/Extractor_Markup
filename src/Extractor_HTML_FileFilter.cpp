@@ -234,6 +234,11 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
         // found this on StackOverflow (but modified for my use)
         // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
 
+        if (looking_for.size() != anchor.name_.size())
+        {
+            return false;
+        }
+
         return std::equal(
                 looking_for.begin(), looking_for.end(),
                 anchor.name_.begin(), anchor.name_.end(),
