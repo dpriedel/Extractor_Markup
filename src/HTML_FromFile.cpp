@@ -3,7 +3,7 @@
  *
  *       Filename:  HTML_FromFile.cpp
  *
- *    Description:  class to make working with HTML content in EDGAR files
+ *    Description:  class to make working with HTML content in SEC files
  *                  fit in better with STL and maybe ranges
  *
  *        Version:  1.0

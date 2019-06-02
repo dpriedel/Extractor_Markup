@@ -2,7 +2,7 @@
 //
 //       Filename:  Extractor_XBRL_FileFilter.cpp
 //
-//    Description:  class which identifies EDGAR files which contain proper XML for extracting.
+//    Description:  class which identifies SEC files which contain proper XML for extracting.
 //
 //        Version:  1.0
 //        Created:  04/18/2018 16:12:16 AM
@@ -33,7 +33,7 @@
 
 // =====================================================================================
 //        Class:  Extractor_XBRL_FileFilter
-//  Description:  class which EDGAR files to extract data from.
+//  Description:  class which SEC files to extract data from.
 // =====================================================================================
 
 #include "Extractor_Utils.h"

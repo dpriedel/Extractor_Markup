@@ -366,7 +366,7 @@ bool ExtractorApp::CheckArgs ()
 
     if (! local_form_file_directory_.empty())
     {
-        BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_), ("Can't find EDGAR file directory: "
+        BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_), ("Can't find SEC file directory: "
                     + local_form_file_directory_.string()).c_str());
         BOOST_ASSERT_MSG(fs::is_directory(local_form_file_directory_),
                 ("Path :"s + local_form_file_directory_.string() + " is not a directory.").c_str());
@@ -1024,7 +1024,7 @@ void ExtractorApp::HandleSignal(int signal)
 
     ExtractorApp::had_signal_ = true;
 
-}		/* -----  end of method ExtractEDGAR_XBRL::HandleSignal  ----- */
+}		/* -----  end of method ExtractorApp::HandleSignal  ----- */
 
 void ExtractorApp::Shutdown ()
 {
