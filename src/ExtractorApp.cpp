@@ -240,7 +240,9 @@ bool ExtractorApp::Startup()
 
 void ExtractorApp::SetupProgramOptions ()
 {
-	mNewOptions.add_options()
+    mNewOptions = std::make_unique<po::options_description>();
+
+	mNewOptions->add_options()
 		("help,h", "produce help message")
 		("begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
 		("end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
@@ -279,11 +281,11 @@ void ExtractorApp::SetupProgramOptions ()
 
 void ExtractorApp::ParseProgramOptions ()
 {
-	auto options = po::parse_command_line(mArgc, mArgv, mNewOptions);
+	auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
 	po::store(options, mVariableMap);
 	if (this->mArgc == 1	||	mVariableMap.count("help") == 1)
 	{
-		std::cout << mNewOptions << "\n";
+		std::cout << *mNewOptions << "\n";
 		throw std::runtime_error("\nExiting after 'help'.");
 	}
 	po::notify(mVariableMap);    
@@ -292,11 +294,11 @@ void ExtractorApp::ParseProgramOptions ()
 
 void ExtractorApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
-	auto options = po::command_line_parser(tokens).options(mNewOptions).run();
+	auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
 	po::store(options, mVariableMap);
 	if (mVariableMap.count("help") == 1)
 	{
-		std::cout << mNewOptions << "\n";
+		std::cout << *mNewOptions << "\n";
 		throw std::runtime_error("\nExiting after 'help'.");
 	}
 	po::notify(mVariableMap);    

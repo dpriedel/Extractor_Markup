@@ -128,7 +128,7 @@ private:
 	using FilterList = std::vector<std::function<bool(const EM::SEC_Header_fields& header_fields, EM::sv)>>;
 
 	po::positional_options_description	mPositional;			//	old style options
-	po::options_description				mNewOptions;			//	new style options (with identifiers)
+    std::unique_ptr<po::options_description> mNewOptions;    	//	new style options (with identifiers)
 	po::variables_map					mVariableMap;
 
 	int mArgc = 0;
