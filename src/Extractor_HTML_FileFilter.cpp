@@ -640,7 +640,7 @@ bool FindAndStoreMultipliersUsingAnchors (FinancialStatements& financial_stateme
     anchors.push_back(financial_statements.cash_flows_.the_anchor_);
 
     auto multipliers = FindDollarMultipliers(anchors);
-    if (multipliers.size() > 0)
+    if (! multipliers.empty())
     {
         BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
         financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
