@@ -40,6 +40,7 @@
 #include <fstream>
 #include <iostream>
 //#include <regex>
+#include <boost/program_options.hpp>
 #include <boost/regex.hpp>
 #include <filesystem>
 // gumbo-query
@@ -48,6 +49,7 @@
 #include "gq/Node.h"
 #include "gq/Selection.h"
 
+namespace po = boost::program_options;
 namespace fs = std::filesystem;
 
 #include "pstreams/pstream.h"
@@ -58,29 +60,28 @@ namespace fs = std::filesystem;
 
 using namespace std::string_literals;
 
+po::positional_options_description	Positional;			//	old style options
+po::options_description				NewOptions;			//	new style options (with identifiers)
+po::variables_map					VariableMap;
+
+fs::path output_directory;
+fs::path input_file_name;
+std::string form_type;
+
+
+void SetupProgramOptions();
+void ParseProgramOptions(int argc, const char* argv[]);
+void CheckArgs();
+
 int main(int argc, const char* argv[])
 {
     auto result{0};
 
     try
     {
-        if (argc < 4)
-        {
-            throw std::runtime_error("Missing arguments: 'input file', 'output directory', 'form type' required.\n");
-        }
-        const fs::path output_directory{argv[2]};
-        if (fs::exists(output_directory))
-        {
-            fs::remove_all(output_directory);
-        }
-        fs::create_directories(output_directory);
-
-        const fs::path input_file_name {argv[1]};
-
-        if (! fs::exists(input_file_name) || fs::file_size(input_file_name) == 0)
-        {
-            throw std::runtime_error("Input file is missing or empty.\n");
-        }
+        SetupProgramOptions();
+        ParseProgramOptions(argc, argv);
+        CheckArgs();
 
         std::ifstream input_file{input_file_name};
 
@@ -89,21 +90,19 @@ int main(int argc, const char* argv[])
 
         std::atomic<int> files_processed{0};
 
-        const EM::sv form_type{argv[3]};
-
         auto use_file = FilterFiles(file_content, form_type, 1, files_processed);
         if (! use_file)
         {
             throw std::runtime_error("Bad input file.\n");
         }
 
-        auto the_filters = SelectExtractors(argc, argv);
+        auto the_filters = SelectExtractors(VariableMap);
 
         for(auto& e : the_filters)
         {
             try
             {
-                std::visit([&input_file_name, file_content, &use_file, &output_directory](auto &x)
+                std::visit([file_content, &use_file](auto &x)
                     {x.UseExtractor(input_file_name, file_content, output_directory, use_file.value());}, e);
             }
             catch(std::runtime_error& ex)
@@ -146,3 +145,65 @@ int main(int argc, const char* argv[])
     return result;
 
 }        // -----  end of method main  -----
+
+void SetupProgramOptions ()
+{
+	NewOptions.add_options()
+		("help,h",								"produce help message")
+		/* ("begin-date",	po::value<bg::date>(&this->begin_date_)->default_value(bg::day_clock::local_day()),
+         * "retrieve files with dates greater than or equal to") */
+		/* ("end-date",	po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to") */
+		("form",	po::value<std::string>(&form_type)->required(),	"name of form type[s] we are processing")
+		/* ("ticker",	po::value<std::string>(&this->ticker_),	"ticker to lookup and filter form downloads") */
+		("file,f",				po::value<fs::path>(&input_file_name)->required(),	"name of file containing data to be processed.")
+		/* ("mode,m",				po::value<std::string>(),
+         * "mode: either 'load' new data or 'update' existing data. Default is 'load'") */
+		/* ("output,o",			po::value<std::string>(),	"output file name") */
+		/* ("destination,d",		po::value<std::string>(),	"send data to file or DB. Default is 'stdout'.") */
+		/* ("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'") */
+		/* ("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1") */
+		/* ("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'") */
+//		("form-dir",		po::value<fs::path>(&input_directory),	"directory of form files to be processed")
+//		("list-file",		po::value<fs::path>(&file_list),	"path to file with list of files to process.")
+		("output-dir",		po::value<fs::path>(&output_directory)->required(),	"top level directory to save outputs to")
+//		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1),
+//            "maximum number of files to extract. Default of -1 means no limit.")
+//		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true),
+//            "form number is part of file path. Default is 'false'")
+		;
+
+}		// -----  end of method CollectEDGARApp::Do_SetupProgramOptions  -----
+
+void ParseProgramOptions(int argc, const char* argv[])
+{
+	decltype(auto) options = po::parse_command_line(argc, argv, NewOptions);
+	po::store(options, VariableMap);
+	if (argc == 1 || VariableMap.count("help"))
+	{
+		std::cout << NewOptions << "\n";
+		throw std::runtime_error("\nExit after 'help'.\n");
+	}
+	po::notify(VariableMap);    
+}		/* -----  end of function ParseProgramOptions  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CheckArgs
+ *  Description:  
+ * =====================================================================================
+ */
+void CheckArgs ()
+{
+    if (! fs::exists(input_file_name) || fs::file_size(input_file_name) == 0)
+    {
+        throw std::runtime_error(catenate("Unable to find input file:", input_file_name.string(), " or file is empty."));
+    }
+
+    if (fs::exists(output_directory))
+    {
+        fs::remove_all(output_directory);
+    }
+    fs::create_directories(output_directory);
+
+}		/* -----  end of function CheckArgs  ----- */
