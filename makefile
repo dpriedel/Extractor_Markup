@@ -32,7 +32,7 @@ endif
 
 OUTFILE := ExtractorApp
 
-CFG_INC := -I./src -I$(BOOSTDIR) -I/extra/gcc/cpp-json/include/
+CFG_INC := -I./src -I$(BOOSTDIR)
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
@@ -68,6 +68,8 @@ CFG_LIB := -lpthread \
 		-lboost_program_options-mt-x64 \
 		-lgumbo \
 		-lgq \
+		-lfmt \
+		-lspdlog \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml
@@ -78,7 +80,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -98,6 +100,8 @@ CFG_LIB := -lpthread \
 		-lboost_program_options-mt-x64 \
 		-lgumbo \
 		-lgq \
+		-lfmt \
+		-lspdlog \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml
@@ -111,7 +115,7 @@ DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration

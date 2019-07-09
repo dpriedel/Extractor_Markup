@@ -67,7 +67,7 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=ProcessDebug
 
-CFG_LIB := -lpthread -lgomp -ltbb \
+CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-x64 \
@@ -76,6 +76,8 @@ CFG_LIB := -lpthread -lgomp -ltbb \
 		-L/usr/local/lib \
 		-lgumbo \
 		-lgq \
+		-lfmt \
+		-lspdlog \
 		-L/usr/lib \
 		-lpugixml \
 		-lpq -lpqxx
@@ -87,8 +89,10 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2) # $(OBJS3)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -fsanitize=thread -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
-LINK := $(CPP)  -g -fsanitize=thread -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
+# COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -fsanitize=thread -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
+# LINK := $(CPP)  -g -fsanitize=thread -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
 
@@ -102,7 +106,6 @@ OUTDIR=ExtractRelease
 
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
-		-lgomp \
 		-L$(BOOSTDIR)/lib \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
