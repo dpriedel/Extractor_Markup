@@ -42,6 +42,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <locale>
+#include <sstream>
 #include <string>
 
 namespace fs = std::filesystem;
@@ -98,6 +100,16 @@ struct line_only_whitespace : std::ctype<char>
 
 int main(int argc, const char* argv[])
 {
+// from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77704
+// libstdc++ concurrency problem.  helps some but still
+// a bunch of data races.
+    const std::ctype<char>& ct (std::use_facet<std::ctype<char>> (std::locale ()));
+
+    for (size_t i (0); i != 256; ++i)
+    {
+        ct.narrow (static_cast<char> (i), '\0');
+    }
+
     auto result{0};
 
     try
@@ -118,7 +130,6 @@ int main(int argc, const char* argv[])
         {
             spdlog::info(catenate("Processing file: ", file_path));
             const std::string file_content = LoadDataFileForUse(file_path.c_str());
-
             try
             {
                 auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
