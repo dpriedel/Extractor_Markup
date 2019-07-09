@@ -117,7 +117,7 @@ public:
         using reference = table_itor::reference;
         using const_reference = table_itor::reference;
         using iterator = table_itor;
-        using const_iterator = table_itor;
+        using const_iterator = const table_itor;
         using size_type = size_t;
         using difference_type = ptrdiff_t;
 
@@ -127,7 +127,9 @@ public:
 
         /* ====================  ACCESSORS     ======================================= */
 
+    [[nodiscard]] iterator begin();
     [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
         /* ====================  MUTATORS      ======================================= */

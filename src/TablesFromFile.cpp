@@ -58,11 +58,22 @@ TablesFromHTML::TablesFromHTML (EM::sv html)
 {
 }  /* -----  end of method TablesFromHTML::TablesFromHTML  (constructor)  ----- */
 
-TablesFromHTML::const_iterator TablesFromHTML::begin () const
+TablesFromHTML::iterator TablesFromHTML::begin ()
 {
     iterator it{html_};
     return it;
 }		/* -----  end of method TablesFromHTML::begin  ----- */
+
+TablesFromHTML::const_iterator TablesFromHTML::begin () const
+{
+    const_iterator it{html_};
+    return it;
+}		/* -----  end of method TablesFromHTML::begin  ----- */
+
+TablesFromHTML::iterator TablesFromHTML::end ()
+{
+    return {};
+}		/* -----  end of method TablesFromHTML::end  ----- */
 
 TablesFromHTML::const_iterator TablesFromHTML::end () const
 {

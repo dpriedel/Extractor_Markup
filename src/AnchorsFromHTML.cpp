@@ -58,10 +58,20 @@ AnchorsFromHTML::AnchorsFromHTML (EM::sv html)
 {
 }  /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
 
-AnchorsFromHTML::const_iterator AnchorsFromHTML::begin () const
+AnchorsFromHTML::iterator AnchorsFromHTML::begin ()
 {
     return iterator(html_);
 }		/* -----  end of method AnchorsFromHTML::begin  ----- */
+
+AnchorsFromHTML::const_iterator AnchorsFromHTML::begin () const
+{
+    return const_iterator(html_);
+}		/* -----  end of method AnchorsFromHTML::begin  ----- */
+
+AnchorsFromHTML::iterator AnchorsFromHTML::end ()
+{
+    return {};
+}		/* -----  end of method AnchorsFromHTML::end  ----- */
 
 AnchorsFromHTML::const_iterator AnchorsFromHTML::end () const
 {

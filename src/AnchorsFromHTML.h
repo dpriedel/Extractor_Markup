@@ -104,7 +104,7 @@ public:
         using reference = anchor_itor::reference;
         using const_reference = anchor_itor::reference;
         using iterator = anchor_itor;
-        using const_iterator = anchor_itor;
+        using const_iterator = const anchor_itor;
         using size_type = size_t;
         using difference_type = ptrdiff_t;
 
@@ -114,7 +114,9 @@ public:
 
         /* ====================  ACCESSORS     ======================================= */
 
+    [[nodiscard]] iterator begin();
     [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
     [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }

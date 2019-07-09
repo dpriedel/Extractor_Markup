@@ -52,11 +52,22 @@ HTML_FromFile::HTML_FromFile (EM::sv file_content)
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
 
-HTML_FromFile::const_iterator HTML_FromFile::begin () const
+HTML_FromFile::iterator HTML_FromFile::begin ()
 {
     iterator it{file_content_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
+
+HTML_FromFile::const_iterator HTML_FromFile::begin () const
+{
+    const_iterator it{file_content_};
+    return it;
+}		/* -----  end of method HTML_FromFile::begin  ----- */
+
+HTML_FromFile::iterator HTML_FromFile::end ()
+{
+    return {};
+}		/* -----  end of method HTML_FromFile::end  ----- */
 
 HTML_FromFile::const_iterator HTML_FromFile::end () const
 {
@@ -81,6 +92,7 @@ HTML_FromFile::html_itor::html_itor (EM::sv file_content)
         if (! html_.empty())
         {
             file_name_ = FindFileName(document);
+            file_type_ = FindFileType(document);
             break;
         }
     }
@@ -95,6 +107,7 @@ HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
         if (! html_.empty())
         {
             file_name_ = FindFileName(document);
+            file_type_ = FindFileType(document);
             break;
         }
     }

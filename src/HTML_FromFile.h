@@ -68,6 +68,7 @@ public:
         EM::sv file_content_;
         mutable EM::sv html_;
         EM::sv file_name_;
+        EM::sv file_type_;
 
     public:
 
@@ -75,7 +76,7 @@ public:
         explicit html_itor(EM::sv file_content);
 
         html_itor& operator++();
-        html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
+        const html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
 
         bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
         bool operator!=(const html_itor& other) const { return !(*this == other); }
@@ -85,6 +86,7 @@ public:
 
         EM::sv to_sview() const { return html_; }
         EM::sv GetFileName() const { return file_name_; }
+        EM::sv GetFileType() const { return file_type_; }
     };
 
     using value_type = EM::sv;
@@ -93,7 +95,7 @@ public:
     using reference = html_itor::reference;
     using const_reference = html_itor::reference;
     using iterator = html_itor;
-    using const_iterator = html_itor;
+    using const_iterator = const html_itor;
     using size_type = size_t;
     using difference_type = ptrdiff_t;
 
@@ -103,7 +105,9 @@ public:
 
     /* ====================  ACCESSORS     ======================================= */
 
+    [[nodiscard]] iterator begin();
     [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
     [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }
