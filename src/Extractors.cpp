@@ -376,7 +376,7 @@ FilterList SelectExtractors (const po::variables_map& args)
 
 //    filters.emplace_back(XBRL_data{});
 //    filters.emplace_back(XBRL_Label_data{});
-    filters.emplace_back(SS_data{args});
+//    filters.emplace_back(SS_data{args});
 //    filters.emplace_back(DocumentCounter{});
 
 //    filters.emplace_back(HTM_data{});
@@ -655,27 +655,25 @@ Form_data::Form_data(const po::variables_map& args)
 
 void Form_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
-    auto documents = FindDocumentSections(file_content);
+    HTML_FromFile htmls{file_content};
 
-    for (auto& document : documents)
+    for (auto html = htmls.begin(); html != htmls.end(); ++html)
     {
-        auto document_type = FindFileType(document);
-        if (document_type != form_)
+        if (html.GetFileType() != form_)
         {
             continue;
         }
-        auto html = FindHTML(document);
 
-        std::string output_file_name{FindFileName(document)};
-        auto output_path_name = hierarchy_converter_(file_name, output_file_name);
+        auto output_path_name = hierarchy_converter_(file_name, fs::path{html.GetFileName()});
 
-    auto output_directory = output_path_name.parent_path();
-    if (! fs::exists(output_directory))
-    {
-        fs::create_directories(output_directory);
-    }
+        auto output_directory = output_path_name.parent_path();
+        if (! fs::exists(output_directory))
+        {
+            fs::create_directories(output_directory);
+        }
 
-        WriteDataToFile(output_path_name, html);
+        WriteDataToFile(output_path_name, *html);
+        break;
     }
 }
 
@@ -1149,7 +1147,7 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
         }
         // apply multiplier if we got our value from a table value rather than a table label.
 
-        if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
+        if (use_multiplier && ! shares_outstanding.ends_with(",000"))
         {
             financial_statements.outstanding_shares_ *= financial_statements.statement_of_operations_.multiplier_;
         }
