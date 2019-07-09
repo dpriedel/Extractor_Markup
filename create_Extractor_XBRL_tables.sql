@@ -8,6 +8,8 @@ CREATE TABLE xbrl_extracts.sec_filing_id
 (
     filing_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	cik TEXT NOT NULL,
+	alternate_id1 TEXT,
+	alternate_id2 TEXT,
 	company_name TEXT NOT NULL,
 	file_name TEXT NOT NULL,
 	symbol TEXT ,
