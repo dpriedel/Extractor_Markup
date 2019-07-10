@@ -254,7 +254,7 @@ void ExtractorApp::SetupProgramOptions ()
             "replace all DB content for each file. Default is 'false'")
 		("export-SS-data", po::value<bool>(&export_SS_files_)->default_value(false)->implicit_value(true),
             "export Excel data if any. Default is 'false'")
-		("export-HTML-data", po::value<bool>(&export_problem_HTML_)->default_value(false)->implicit_value(true),
+		("export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true),
             "export problem HTML data if any. Default is 'false'")
 		("list-file", po::value<std::string>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
@@ -399,9 +399,9 @@ bool ExtractorApp::CheckArgs ()
         BOOST_ASSERT_MSG(! SS_export_directory_.empty(), "Must specify SS export directory.");
     }
 
-    if (export_problem_HTML_)
+    if (export_HTML_forms_)
     {
-        BOOST_ASSERT_MSG(! HTML_export_directory_.empty(), "Must specify problem HTML export directory.");
+        BOOST_ASSERT_MSG(! HTML_export_directory_.empty(), "Must specify HTML export directory.");
     }
 
     return true;
@@ -413,7 +413,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
 
-    list_of_files_to_process_ = split_string(file_list_data_, '\n');
+    list_of_files_to_process_ = split_string_to_sv(file_list_data_, '\n');
 
     spdlog::debug(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
@@ -595,7 +595,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
-        auto the_tables = FindAndExtractFinancialStatements(file_content);
+        auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
         BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find required HTML financial tables: "
                     + input_file_name.string()).c_str());
 
@@ -747,7 +747,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_H
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
         EM::sv file_content)
 {
-    auto the_tables = FindAndExtractFinancialStatements(file_content);
+    auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());

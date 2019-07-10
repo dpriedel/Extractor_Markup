@@ -251,7 +251,7 @@ EM::sv FindHTML (EM::sv document)
     return {};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (const std::vector<EM::sv>& form_types, EM::sv file_name)
+bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_name)
 {
     auto check_for_form_in_name([&file_name](auto form_type)
     {

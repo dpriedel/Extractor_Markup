@@ -151,9 +151,9 @@ private:
     std::string file_list_data_;
     std::string list_of_files_to_process_path_;
 
-	std::vector<EM::sv> form_list_;
-	std::vector<EM::sv> CIK_list_;
-	std::vector<EM::sv> SIC_list_;
+	std::vector<std::string> form_list_;
+	std::vector<std::string> CIK_list_;
+	std::vector<std::string> SIC_list_;
 
 	FilterList filters_;
 
@@ -174,7 +174,7 @@ private:
 	bool help_requested_{false};
     bool filename_has_form_{false};
     bool export_SS_files_{false};
-    bool export_problem_HTML_{false};
+    bool export_HTML_forms_{false};
 
     static bool had_signal_;
 

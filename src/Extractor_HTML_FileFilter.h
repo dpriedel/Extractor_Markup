@@ -68,7 +68,7 @@ struct FinancialDocumentFilter
 {
     std::vector<std::string> forms_;
 
-    FinancialDocumentFilter(const std::initializer_list<std::string>& forms) : forms_{forms} {}
+    explicit FinancialDocumentFilter(const std::vector<std::string>& forms) : forms_{forms} {}
 
     bool operator()(const HtmlInfo& html_info);
 };
@@ -216,7 +216,7 @@ bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, EM::sv
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(EM::sv file_content, const std::initializer_list<std::string>& forms);
+FinancialStatements FindAndExtractFinancialStatements(EM::sv file_content, const std::vector<std::string>& forms);
 
 FinancialStatements ExtractFinancialStatements(EM::sv financial_content);
 

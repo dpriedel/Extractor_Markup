@@ -98,26 +98,26 @@ void FinancialStatements::PrepareTableContent ()
 {
     if (! balance_sheet_.empty())
     {
-        balance_sheet_.lines_ = split_string(balance_sheet_.parsed_data_, '\n');
+        balance_sheet_.lines_ = split_string_to_sv(balance_sheet_.parsed_data_, '\n');
         balance_sheet_.values_ = CollectStatementValues(balance_sheet_.lines_, balance_sheet_.multiplier_s_);
         std::copy(balance_sheet_.values_.begin(), balance_sheet_.values_.end(), std::back_inserter(values_));
     }
     if (! statement_of_operations_.empty())
     {
-        statement_of_operations_.lines_ = split_string(statement_of_operations_.parsed_data_, '\n');
+        statement_of_operations_.lines_ = split_string_to_sv(statement_of_operations_.parsed_data_, '\n');
         statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.multiplier_s_);
         std::copy(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
                 std::back_inserter(values_));
     }
     if (! cash_flows_.empty())
     {
-        cash_flows_.lines_ = split_string(cash_flows_.parsed_data_, '\n');
+        cash_flows_.lines_ = split_string_to_sv(cash_flows_.parsed_data_, '\n');
         cash_flows_.values_ = CollectStatementValues(cash_flows_.lines_, cash_flows_.multiplier_s_);
         std::copy(cash_flows_.values_.begin(), cash_flows_.values_.end(), std::back_inserter(values_));
     }
     if (! stockholders_equity_.empty())
     {
-        stockholders_equity_.lines_ = split_string(stockholders_equity_.parsed_data_, '\n');
+        stockholders_equity_.lines_ = split_string_to_sv(stockholders_equity_.parsed_data_, '\n');
         stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.multiplier_s_);
         std::copy(stockholders_equity_.values_.begin(), stockholders_equity_.values_.end(), std::back_inserter(values_));
     }
@@ -464,7 +464,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, const std::initializer_list<std::string>& forms)
+FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, const std::vector<std::string>& forms)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -849,7 +849,7 @@ void FinancialStatements::FindSharesOutstanding(EM::sv file_content)
             TablesFromHTML tables{html_};
             for (const auto& table : tables)
             {
-                auto lines = split_string(table, '\n');
+                auto lines = split_string_to_sv(table, '\n');
                 if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
                 {
                     use_multiplier = true;

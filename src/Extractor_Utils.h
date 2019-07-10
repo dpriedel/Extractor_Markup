@@ -192,9 +192,29 @@ public:
 
 // function to split a string on a delimiter and return a vector of string-views
 
-inline std::vector<EM::sv> split_string(EM::sv string_data, char delim)
+inline std::vector<EM::sv> split_string_to_sv(EM::sv string_data, char delim)
 {
     std::vector<EM::sv> results;
+	for (size_t it = 0; it < string_data.size(); ++it)
+	{
+		auto pos = string_data.find(delim, it);
+        if (pos != EM::sv::npos)
+        {
+    		results.emplace_back(string_data.substr(it, pos - it));
+        }
+        else
+        {
+    		results.emplace_back(string_data.substr(it));
+            break;
+        }
+		it = pos;
+	}
+    return results;
+}
+
+inline std::vector<std::string> split_string(EM::sv string_data, char delim)
+{
+    std::vector<std::string> results;
 	for (size_t it = 0; it < string_data.size(); ++it)
 	{
 		auto pos = string_data.find(delim, it);
@@ -236,7 +256,7 @@ auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content, 
 	return (... && (ts(SEC_fields, file_content)));
 }
 
-bool FormIsInFileName(const std::vector<EM::sv>& form_types, EM::sv file_name);
+bool FormIsInFileName(const std::vector<std::string>& form_types, EM::sv file_name);
 
 std::vector<EM::sv> LocateDocumentSections(EM::sv file_content);
 
@@ -255,32 +275,32 @@ struct FileHasXBRL
 
 struct FileHasFormType
 {
-    explicit FileHasFormType(const std::vector<EM::sv>& form_list)
+    explicit FileHasFormType(const std::vector<std::string>& form_list)
         : form_list_{form_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<EM::sv>& form_list_;
+    const std::vector<std::string>& form_list_;
 };
 
 struct FileHasCIK
 {
-    explicit FileHasCIK(const std::vector<EM::sv>& CIK_list)
+    explicit FileHasCIK(const std::vector<std::string>& CIK_list)
         : CIK_list_{CIK_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<EM::sv>& CIK_list_;
+    const std::vector<std::string>& CIK_list_;
 };
 
 struct FileHasSIC
 {
-    explicit FileHasSIC(const std::vector<EM::sv>& SIC_list)
+    explicit FileHasSIC(const std::vector<std::string>& SIC_list)
         : SIC_list_{SIC_list} {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
 
-    const std::vector<EM::sv>& SIC_list_;
+    const std::vector<std::string>& SIC_list_;
 };
 
 struct NeedToUpdateDBContent
