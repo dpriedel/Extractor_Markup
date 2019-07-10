@@ -51,6 +51,7 @@
 #include "Extractor.h"
 #include "AnchorsFromHTML.h"
 #include "Extractor_Utils.h"
+#include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
 // HTML content related functions
@@ -58,6 +59,18 @@
 struct FileHasHTML
 {
     bool operator()(const EM::SEC_Header_fields&, EM::sv file_content);
+};
+
+// use this to find which embedded document has the financial statements
+// we may be processing multiple statements so it could be a list.
+
+struct FinancialDocumentFilter
+{
+    std::vector<std::string> forms_;
+
+    FinancialDocumentFilter(const std::initializer_list<std::string>& forms) : forms_{forms} {}
+
+    bool operator()(const HtmlInfo& html_info);
 };
 
 // Extracting the desired content from each financial statement section
@@ -179,7 +192,7 @@ using MultDataList = std::vector<MultiplierData>;
 
 std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
-bool FinancialDocumentFilter (EM::sv html);
+//bool FinancialDocumentFilter (const HtmlInfo& html_info);
 
 std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::sv file_content);
 
@@ -189,7 +202,7 @@ MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
 //std::vector<EM::sv> LocateFinancialTables(const MultDataList& multiplier_data);
 
-std::vector<EM::sv> Find_HTML_Documents (EM::sv file_content);
+std::vector<HtmlInfo> Find_HTML_Documents (EM::sv file_content);
 
 bool BalanceSheetFilter(EM::sv table);
 
@@ -203,7 +216,7 @@ bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, EM::sv
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(EM::sv file_content);
+FinancialStatements FindAndExtractFinancialStatements(EM::sv file_content, const std::initializer_list<std::string>& forms);
 
 FinancialStatements ExtractFinancialStatements(EM::sv financial_content);
 

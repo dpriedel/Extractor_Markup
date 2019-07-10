@@ -88,11 +88,11 @@ HTML_FromFile::html_itor::html_itor (EM::sv file_content)
     for (; doc_ != end_; ++doc_)
     {
         EM::sv document(doc_->first, doc_->length());
-        html_ = FindHTML(document);
-        if (! html_.empty())
+        html_info_.html_ = FindHTML(document);
+        if (! html_info_.html_.empty())
         {
-            file_name_ = FindFileName(document);
-            file_type_ = FindFileType(document);
+            html_info_.file_name_ = FindFileName(document);
+            html_info_.file_type_ = FindFileType(document);
             break;
         }
     }
@@ -103,11 +103,11 @@ HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
     for (++doc_; doc_ != end_; ++doc_)
     {
         EM::sv document(doc_->first, doc_->length());
-        html_ = FindHTML(document);
-        if (! html_.empty())
+        html_info_.html_ = FindHTML(document);
+        if (! html_info_.html_.empty())
         {
-            file_name_ = FindFileName(document);
-            file_type_ = FindFileType(document);
+            html_info_.file_name_ = FindFileName(document);
+            html_info_.file_type_ = FindFileType(document);
             break;
         }
     }

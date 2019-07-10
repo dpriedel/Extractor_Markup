@@ -84,9 +84,9 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::sv
  *  Description:  
  * =====================================================================================
  */
-std::vector<EM::sv> Find_HTML_Documents (EM::sv file_content)
+std::vector<HtmlInfo> Find_HTML_Documents (EM::sv file_content)
 {
-    std::vector<EM::sv> results;
+    std::vector<HtmlInfo> results;
 
     HTML_FromFile htmls{file_content};
     std::copy(htmls.begin(), htmls.end(), std::back_inserter(results));
@@ -133,26 +133,9 @@ bool FinancialStatements::ValidateContent ()
  *  Description:  
  * =====================================================================================
  */
-bool FinancialDocumentFilter (EM::sv html)
+bool FinancialDocumentFilter::operator() (const HtmlInfo& html_info)
 {
-    static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    if (boost::regex_search(html.cbegin(), html.cend(), regex_finance_statements))
-    {
-        if (boost::regex_search(html.cbegin(), html.cend(), regex_operations))
-        {
-            if (boost::regex_search(html.cbegin(), html.cend(), regex_cash_flow))
-            {
-                return true;
-            }
-        }
-    }
-    return false;
+    return std::find(forms_.begin(), forms_.end(), html_info.file_type_) != forms_.end();
 }		/* -----  end of function FinancialDocumentFilter  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
@@ -197,7 +180,7 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
 
     auto look_for_top_level([&anchor_filter_matcher] (auto html)
     {
-        AnchorsFromHTML anchors(html);
+        AnchorsFromHTML anchors(html.html_);
         int how_many_matches = std::count_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
         return how_many_matches >= 3;
     });
@@ -211,7 +194,7 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
 
     if (financial_content != htmls.end())
     {
-        return (std::optional(std::make_pair(*financial_content, financial_content.GetFileName())));
+        return (std::optional(std::make_pair(financial_content->html_, financial_content->file_name_)));
     }
     return {};
 }		/* -----  end of function FindFinancialContentUsingAnchors  ----- */
@@ -481,28 +464,33 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content)
+FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, const std::initializer_list<std::string>& forms)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
     FinancialStatements financial_statements;
+    FinancialDocumentFilter document_filter{forms};
+
+    HTML_FromFile htmls{file_content};
+
+    auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
+    if (financial_content == htmls.end())
+    {
+        return financial_statements;
+    }
 
     try
     {
-        auto financial_content = FindFinancialContentUsingAnchors(file_content);
-        if (financial_content)
+        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->html_);
+        if (financial_statements.has_data())
         {
-            financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->first);
-            if (financial_statements.has_data())
-            {
-                financial_statements.html_ = financial_content->second;
-                financial_statements.FindAndStoreMultipliers();
-                financial_statements.PrepareTableContent();
-                financial_statements.FindSharesOutstanding(file_content);
-                return financial_statements;
-            }
+            financial_statements.html_ = financial_content->html_;
+            financial_statements.FindAndStoreMultipliers();
+            financial_statements.PrepareTableContent();
+            financial_statements.FindSharesOutstanding(file_content);
+            return financial_statements;
         }
     }
     catch (const HTMLException& e)
@@ -514,20 +502,45 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content)
     // we need to do the loops manually since the first match we get
     // may not be the actual content we want.
 
-    HTML_FromFile htmls{file_content};
-
-    for (auto html : htmls)
+    financial_statements = ExtractFinancialStatements(financial_content->html_);
+    if (financial_statements.has_data())
     {
-        if (FinancialDocumentFilter(html))
+        financial_statements.html_ = financial_content->html_;
+        financial_statements.FindAndStoreMultipliers();
+        financial_statements.PrepareTableContent();
+        financial_statements.FindSharesOutstanding(file_content);
+        return financial_statements;
+    }
+    else
+    {
+        //  do it the hard way
+
+        static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
+        static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
+        static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
+            boost::regex_constants::normal | boost::regex_constants::icase};
+
+        for (auto & html_info : htmls)
         {
-            financial_statements = ExtractFinancialStatements(html);
-            if (financial_statements.has_data())
+            if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_finance_statements))
             {
-                financial_statements.html_ = html;
-                financial_statements.FindAndStoreMultipliers();
-                financial_statements.PrepareTableContent();
-                financial_statements.FindSharesOutstanding(file_content);
-                return financial_statements;
+                if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_operations))
+                {
+                    if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_cash_flow))
+                    {
+                        financial_statements = ExtractFinancialStatements(html_info.html_);
+                        if (financial_statements.has_data())
+                        {
+                            financial_statements.html_ = html_info.html_;
+                            financial_statements.FindAndStoreMultipliers();
+                            financial_statements.PrepareTableContent();
+                            financial_statements.FindSharesOutstanding(file_content);
+                            return financial_statements;
+                        }
+                    }
+                }
             }
         }
     }

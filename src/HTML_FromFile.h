@@ -52,13 +52,21 @@
  *  I'm using iterators for now because I'm not ready to jump fully into ranges.
  * =====================================================================================
  */
+
+struct HtmlInfo
+{
+    EM::sv html_;
+    EM::sv file_name_;
+    EM::sv file_type_;
+};
+
 class HTML_FromFile
 {
 public:
 
     class html_itor: public std::iterator<
                     std::forward_iterator_tag,      // html_itor_category
-                    EM::sv                           // value_type
+                    HtmlInfo                       // value_type
                     >
     {
         const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
@@ -66,10 +74,9 @@ public:
         boost::cregex_token_iterator end_;
 
         EM::sv file_content_;
-        mutable EM::sv html_;
-        EM::sv file_name_;
-        EM::sv file_type_;
 
+        HtmlInfo html_info_;
+        
     public:
 
         html_itor() = default;
@@ -81,17 +88,14 @@ public:
         bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
         bool operator!=(const html_itor& other) const { return !(*this == other); }
 
-        reference operator*() const { return html_; }
-        pointer operator->() const { return &html_; }
-
-        EM::sv to_sview() const { return html_; }
-        EM::sv GetFileName() const { return file_name_; }
-        EM::sv GetFileType() const { return file_type_; }
+        reference operator*() { return html_info_; }
+        pointer operator->() { return &html_info_; }
     };
 
-    using value_type = EM::sv;
+
+    using value_type = html_itor::value_type;
     using pointer = html_itor::pointer;
-    using const_pointer = html_itor::pointer;
+    using const_pointer = const html_itor::pointer;
     using reference = html_itor::reference;
     using const_reference = html_itor::reference;
     using iterator = html_itor;
