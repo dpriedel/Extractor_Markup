@@ -476,14 +476,30 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, cons
     HTML_FromFile htmls{file_content};
 
     auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
-    if (financial_content == htmls.end())
+    if (financial_content != htmls.end())
     {
-        return financial_statements;
-    }
+        try
+        {
+            financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->html_);
+            if (financial_statements.has_data())
+            {
+                financial_statements.html_ = financial_content->html_;
+                financial_statements.FindAndStoreMultipliers();
+                financial_statements.PrepareTableContent();
+                financial_statements.FindSharesOutstanding(file_content);
+                return financial_statements;
+            }
+        }
+        catch (const HTMLException& e)
+        {
+            spdlog::info(catenate("Problem with anchors: ", e.what(), ". continuing with the long way."));
+        }
 
-    try
-    {
-        financial_statements = ExtractFinancialStatementsUsingAnchors(financial_content->html_);
+        // OK, we didn't have any success following anchors so do it the long way.
+        // we need to do the loops manually since the first match we get
+        // may not be the actual content we want.
+
+        financial_statements = ExtractFinancialStatements(financial_content->html_);
         if (financial_statements.has_data())
         {
             financial_statements.html_ = financial_content->html_;
@@ -493,52 +509,32 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, cons
             return financial_statements;
         }
     }
-    catch (const HTMLException& e)
+
+    //  do it the hard way
+
+    static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    for (auto & html_info : htmls)
     {
-        spdlog::info(catenate("Problem with anchors: ", e.what(), ". continuing with the long way."));
-    }
-
-    // OK, we didn't have any success following anchors so do it the long way.
-    // we need to do the loops manually since the first match we get
-    // may not be the actual content we want.
-
-    financial_statements = ExtractFinancialStatements(financial_content->html_);
-    if (financial_statements.has_data())
-    {
-        financial_statements.html_ = financial_content->html_;
-        financial_statements.FindAndStoreMultipliers();
-        financial_statements.PrepareTableContent();
-        financial_statements.FindSharesOutstanding(file_content);
-        return financial_statements;
-    }
-    else
-    {
-        //  do it the hard way
-
-        static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
-            boost::regex_constants::normal | boost::regex_constants::icase};
-        static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
-            boost::regex_constants::normal | boost::regex_constants::icase};
-        static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
-            boost::regex_constants::normal | boost::regex_constants::icase};
-
-        for (auto & html_info : htmls)
+        if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_finance_statements))
         {
-            if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_finance_statements))
+            if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_operations))
             {
-                if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_operations))
+                if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_cash_flow))
                 {
-                    if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_cash_flow))
+                    financial_statements = ExtractFinancialStatements(html_info.html_);
+                    if (financial_statements.has_data())
                     {
-                        financial_statements = ExtractFinancialStatements(html_info.html_);
-                        if (financial_statements.has_data())
-                        {
-                            financial_statements.html_ = html_info.html_;
-                            financial_statements.FindAndStoreMultipliers();
-                            financial_statements.PrepareTableContent();
-                            financial_statements.FindSharesOutstanding(file_content);
-                            return financial_statements;
-                        }
+                        financial_statements.html_ = html_info.html_;
+                        financial_statements.FindAndStoreMultipliers();
+                        financial_statements.PrepareTableContent();
+                        financial_statements.FindSharesOutstanding(file_content);
+                        return financial_statements;
                     }
                 }
             }

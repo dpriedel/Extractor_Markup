@@ -69,7 +69,7 @@ public:
                     HtmlInfo                       // value_type
                     >
     {
-        const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+        boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
         boost::cregex_token_iterator doc_;
         boost::cregex_token_iterator end_;
 
