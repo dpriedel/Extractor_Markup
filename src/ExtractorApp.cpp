@@ -67,7 +67,6 @@
 
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
-#include "Extractor_Utils.h"
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
@@ -75,18 +74,18 @@ using namespace std::string_literals;
 // This ctype facet does NOT classify spaces and tabs as whitespace
 // from cppreference example
 
-struct line_only_whitespace : std::ctype<char>
-{
-    static const mask* make_table()
-    {
-        // make a copy of the "C" locale table
-        static std::vector<mask> v(classic_table(), classic_table() + table_size);
-        v['\t'] &= ~space;      // tab will not be classified as whitespace
-        v[' '] &= ~space;       // space will not be classified as whitespace
-        return &v[0];
-    }
-    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
-};
+//struct line_only_whitespace : std::ctype<char>
+//{
+//    static const mask* make_table()
+//    {
+//        // make a copy of the "C" locale table
+//        static std::vector<mask> v(classic_table(), classic_table() + table_size);
+//        v['\t'] &= ~space;      // tab will not be classified as whitespace
+//        v[' '] &= ~space;       // space will not be classified as whitespace
+//        return &v[0];
+//    }
+//    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs) {}
+//};
 
 bool ExtractorApp::had_signal_ = false;
 
@@ -247,8 +246,9 @@ void ExtractorApp::SetupProgramOptions ()
 		("begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
 		("end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
 		("form-dir", po::value<fs::path>(&local_form_file_directory_),	"directory of form files to be processed")
-		("SS-form-dir", po::value<fs::path>(&SS_export_directory_),	"directory to write Excel data files to.")
-		("HTML-form-dir", po::value<fs::path>(&HTML_export_directory_),	"directory to write problem HTML data files to.")
+//		("SS-form-dir", po::value<fs::path>(&SS_export_directory_),	"directory to write Excel data files to.")
+		("HTML-forms-to-dir", po::value<fs::path>(&HTML_export_target_directory_),	"directory to write exported HTML data files to.")
+		("HTML-forms-from-dir", po::value<fs::path>(&HTML_export_source_directory_),	"directory to read exported HTML data files from.")
 		("file,f", po::value<fs::path>(&single_file_to_process_),	"single file to be processed.")
 		("replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
             "replace all DB content for each file. Default is 'false'")
@@ -328,9 +328,6 @@ bool ExtractorApp::CheckArgs ()
         spdlog::info("Neither begin date nor end date specified. No date range filtering to be done.");
     }
 
-    //  the user may specify multiple form types in a comma delimited list. We need to parse the entries out
-    //  of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
-
     if (! mode_.empty())
     {
         BOOST_ASSERT_MSG(mode_ == "HTML"s || mode_ == "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
@@ -341,6 +338,9 @@ bool ExtractorApp::CheckArgs ()
         BOOST_ASSERT_MSG(DB_mode_ == "test"s || DB_mode_ == "live"s, "DB-mode must be: 'test' or 'live'.");
         schema_prefix_ = (DB_mode_ == "test" ? "" : "live_");
     }
+
+    //  the user may specify multiple form types in a comma delimited list. We need to parse the entries out
+    //  of that list and place into ultimate home.  If just a single entry, copy it to our form list destination too.
 
     if (! form_.empty())
     {
@@ -361,9 +361,9 @@ bool ExtractorApp::CheckArgs ()
 
     if (! single_file_to_process_.empty())
     {
-        BOOST_ASSERT_MSG(fs::exists(single_file_to_process_), ("Can't find file: " + single_file_to_process_.string()).c_str());
-        BOOST_ASSERT_MSG(fs::is_regular_file(single_file_to_process_), ("Path :"s + single_file_to_process_.string()
-                    + " is not a regular file.").c_str());
+        BOOST_ASSERT_MSG(fs::exists(single_file_to_process_), catenate("Can't find file: ", single_file_to_process_.string()).c_str());
+        BOOST_ASSERT_MSG(fs::is_regular_file(single_file_to_process_), catenate("Path :", single_file_to_process_.string(),
+                    " is not a regular file.").c_str());
     }
 
     if (! local_form_file_directory_.empty())
@@ -401,7 +401,9 @@ bool ExtractorApp::CheckArgs ()
 
     if (export_HTML_forms_)
     {
-        BOOST_ASSERT_MSG(! HTML_export_directory_.empty(), "Must specify HTML export directory.");
+        BOOST_ASSERT_MSG(! HTML_export_source_directory_.empty(), "Must specify HTML export source directory.");
+        BOOST_ASSERT_MSG(! HTML_export_target_directory_.empty(), "Must specify HTML export target directory.");
+        hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
     }
 
     return true;
@@ -469,31 +471,40 @@ void ExtractorApp::BuildFilterList()
 
 void ExtractorApp::Run()
 {
-    std::tuple<int, int, int> counters;
+    std::tuple<int, int, int> single_counters{0, 0, 0};
 
     // for now, I know this is all we are doing.
 
     if (! single_file_to_process_.empty())
     {
-        counters = this->LoadSingleFileToDB(single_file_to_process_);
+        single_counters = this->LoadSingleFileToDB(single_file_to_process_);
     }
+
+    std::tuple<int, int, int> list_counters{0, 0, 0};
 
     if (! list_of_files_to_process_.empty())
     {
         if (max_at_a_time_ < 1)
         {
-            counters = this->LoadFilesFromListToDB();
+            list_counters = this->LoadFilesFromListToDB();
         }
         else
         {
-            counters = this->LoadFilesFromListToDBConcurrently();
+            list_counters = this->LoadFilesFromListToDBConcurrently();
         }
     }
 
+    std::tuple<int, int, int> local_counters{0, 0, 0};
+
     if (! local_form_file_directory_.empty())
     {
-        counters = this->ProcessDirectory();
+        local_counters = this->ProcessDirectory();
     }
+
+    std::tuple<int, int, int> counters{0, 0, 0};
+    counters = AddTs(counters, single_counters);
+    counters = AddTs(counters, list_counters);
+    counters = AddTs(counters, local_counters);
 
     auto [success_counter, skipped_counter, error_counter] = counters;
 
@@ -585,7 +596,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
 
     try
     {
-        const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
+        const std::string file_content(LoadDataFileForUse(input_file_name.c_str()));
 
         SEC_Header SEC_data;
         SEC_data.UseData(file_content);
@@ -594,6 +605,15 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
 
         bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
+
+        if (export_HTML_forms_)
+        {
+            if (ExportHtmlFromSingleFile(file_content, input_file_name))
+            {
+                return {1, 0, 0};
+            }
+            return {0, 0, 1};
+        }
 
         auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
         BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find required HTML financial tables: "
@@ -617,6 +637,61 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
     }
     return {0, 1, 0};
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_HTML  ----- */
+
+
+bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path& file_name)
+{
+    // reuse top level logic from financial statements.
+    // we don't need to actually isolate the financial data, just be sure it's there.
+
+    static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    auto regex_document_filter([] (const auto& html_info)
+        {
+            if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_finance_statements))
+            {
+                if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_operations))
+                {
+                    if (boost::regex_search(html_info.html_.cbegin(), html_info.html_.cend(), regex_cash_flow))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+
+    HTML_FromFile htmls{file_content};
+
+    auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), regex_document_filter);
+    if (financial_content != htmls.end())
+    {
+        auto output_path_name = hierarchy_converter_(file_name, {std::string(financial_content->file_name_)});
+
+        auto output_directory = output_path_name.parent_path();
+        if (! fs::exists(output_directory))
+        {
+            fs::create_directories(output_directory);
+        }
+
+        std::ofstream output_file(output_path_name);
+        if (not output_file)
+        {
+            throw(std::runtime_error(catenate("Can't open output file: ", output_path_name.string())));
+        }
+
+        output_file.write(financial_content->html_.data(), financial_content->html_.length());
+        output_file.close();
+        
+        return true;
+    }
+    return false;
+}		// -----  end of method ExtractorApp::ExportHtmlFromSingleFile  ----- 
 
 std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 {
@@ -747,6 +822,11 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_H
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
         EM::sv file_content)
 {
+    if (export_HTML_forms_)
+    {
+        return ExportHtmlFromSingleFile(file_content, file_name);
+    }
+
     auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 

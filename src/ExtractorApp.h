@@ -58,6 +58,7 @@ namespace po = boost::program_options;
 #include "spdlog/spdlog.h"
 
 #include "Extractor.h"
+#include "Extractor_Utils.h"
 
 class ExtractorApp
 {
@@ -105,6 +106,7 @@ protected:
     bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
     bool LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
     bool LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool ExportHtmlFromSingleFile(EM::sv file_content, const fs::path& file_name);
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, EM::sv file_name);
 
@@ -130,6 +132,8 @@ private:
 	po::positional_options_description	mPositional;			//	old style options
     std::unique_ptr<po::options_description> mNewOptions;    	//	new style options (with identifiers)
 	po::variables_map					mVariableMap;
+
+    ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
 
 	int mArgc = 0;
 	char** mArgv = nullptr;
@@ -161,7 +165,8 @@ private:
 	fs::path local_form_file_directory_;
 	fs::path single_file_to_process_;
     fs::path SS_export_directory_;
-    fs::path HTML_export_directory_;
+    fs::path HTML_export_source_directory_;
+    fs::path HTML_export_target_directory_;
 
     std::vector<EM::sv> list_of_files_to_process_;
     
