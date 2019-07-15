@@ -133,7 +133,7 @@ private:
     std::unique_ptr<po::options_description> mNewOptions;    	//	new style options (with identifiers)
 	po::variables_map					mVariableMap;
 
-    ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
+    ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
 
 	int mArgc = 0;
 	char** mArgv = nullptr;

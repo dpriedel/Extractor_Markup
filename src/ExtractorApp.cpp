@@ -403,7 +403,7 @@ bool ExtractorApp::CheckArgs ()
     {
         BOOST_ASSERT_MSG(! HTML_export_source_directory_.empty(), "Must specify HTML export source directory.");
         BOOST_ASSERT_MSG(! HTML_export_target_directory_.empty(), "Must specify HTML export target directory.");
-        hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
+        html_hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
     }
 
     return true;
@@ -669,9 +669,15 @@ bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path
     HTML_FromFile htmls{file_content};
 
     auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), regex_document_filter);
+    if (financial_content == htmls.end())
+    {
+        spdlog::info(catenate("Unable to find financial content in file: ", file_name.string(), " Looking for forms..."));
+        FinancialDocumentFilter document_filter(form_list_);
+        financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
+    }
     if (financial_content != htmls.end())
     {
-        auto output_path_name = hierarchy_converter_(file_name, {std::string(financial_content->file_name_)});
+        auto output_path_name = html_hierarchy_converter_(file_name, {std::string(financial_content->file_name_)});
 
         auto output_directory = output_path_name.parent_path();
         if (! fs::exists(output_directory))
@@ -690,6 +696,8 @@ bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path
         
         return true;
     }
+    spdlog::info(catenate("Unable to find any form content in file: ", file_name.string()));
+
     return false;
 }		// -----  end of method ExtractorApp::ExportHtmlFromSingleFile  ----- 
 

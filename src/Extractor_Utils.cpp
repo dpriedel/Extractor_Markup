@@ -342,8 +342,8 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& sou
     }
 	auto destination_path_name = destination_prefix_;
 	destination_path_name /= source_index_name;
-    destination_path_name.remove_filename();
-    destination_path_name /= destination_file_name;
+//    destination_path_name.remove_filename();
+    destination_path_name += ('_' + destination_file_name);
 	return destination_path_name;
 
 }		// -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
