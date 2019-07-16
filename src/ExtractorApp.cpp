@@ -602,13 +602,14 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         SEC_data.UseData(file_content);
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
+        auto sec_header = SEC_data.GetHeader();
 
         bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
         if (export_HTML_forms_)
         {
-            if (ExportHtmlFromSingleFile(file_content, input_file_name))
+            if (ExportHtmlFromSingleFile(file_content, input_file_name, sec_header))
             {
                 return {1, 0, 0};
             }
@@ -639,7 +640,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_HTML  ----- */
 
 
-bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path& file_name)
+bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path& file_name, EM::sv sec_header)
 {
     // reuse top level logic from financial statements.
     // we don't need to actually isolate the financial data, just be sure it's there.
@@ -685,14 +686,16 @@ bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path
             fs::create_directories(output_directory);
         }
 
-        std::ofstream output_file(output_path_name);
-        if (not output_file)
+        std::ofstream exported_file(output_path_name);
+        if (not exported_file)
         {
             throw(std::runtime_error(catenate("Can't open output file: ", output_path_name.string())));
         }
 
-        output_file.write(financial_content->html_.data(), financial_content->html_.length());
-        output_file.close();
+        exported_file.write(sec_header.data(), sec_header.size());
+        exported_file.put('\n');
+        exported_file.write(financial_content->document_.data(), financial_content->document_.size());
+        exported_file.close();
         
         return true;
     }
@@ -741,10 +744,11 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             SEC_data.UseData(file_content);
             SEC_data.ExtractHeaderFields();
             decltype(auto) SEC_fields = SEC_data.GetFields();
+            auto sec_header = SEC_data.GetHeader();
 
             if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
             {
-                LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
+                LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
             }
             else
             {
@@ -797,7 +801,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
-        EM::sv file_content)
+        EM::sv file_content, EM::sv sec_header)
 {
     spdlog::debug(catenate("Loading contents from file: ", file_name));
 
@@ -805,7 +809,7 @@ bool ExtractorApp::LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header
     {
         return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, file_content);
     }
-    return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content);
+    return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, file_content, sec_header);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
@@ -828,11 +832,11 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_H
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
-        EM::sv file_content)
+        EM::sv file_content, EM::sv sec_header)
 {
     if (export_HTML_forms_)
     {
-        return ExportHtmlFromSingleFile(file_content, file_name);
+        return ExportHtmlFromSingleFile(file_content, file_name, sec_header);
     }
 
     auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
@@ -864,12 +868,13 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::ato
     SEC_data.UseData(file_content);
     SEC_data.ExtractHeaderFields();
     decltype(auto) SEC_fields = SEC_data.GetFields();
+    auto sec_header = SEC_data.GetHeader();
 
     if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
     {
         try
         {
-            LoadFileFromFolderToDB(file_name, SEC_fields, file_content) ? ++success_counter : ++skipped_counter;
+            LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
         }
         catch(const ExtractorException& e)
         {

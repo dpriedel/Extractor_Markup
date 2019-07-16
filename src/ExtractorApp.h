@@ -103,10 +103,12 @@ protected:
 	void BuildListOfFilesToProcess();
 	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content, std::atomic<int>* forms_processed);
 
-    bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
+            EM::sv sec_header);
     bool LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
-    bool LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
-    bool ExportHtmlFromSingleFile(EM::sv file_content, const fs::path& file_name);
+    bool LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
+            EM::sv sec_header);
+    bool ExportHtmlFromSingleFile(EM::sv file_content, const fs::path& file_name, EM::sv sec_header);
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, EM::sv file_name);
 

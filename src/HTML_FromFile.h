@@ -55,6 +55,7 @@
 
 struct HtmlInfo
 {
+    EM::sv document_;
     EM::sv html_;
     EM::sv file_name_;
     EM::sv file_type_;

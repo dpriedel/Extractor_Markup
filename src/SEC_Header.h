@@ -52,6 +52,7 @@ class SEC_Header
 		// ====================  ACCESSORS     =======================================
 
 		[[nodiscard]] const EM::SEC_Header_fields& GetFields() const		{ return parsed_header_data_; }
+        [[nodiscard]] EM::sv GetHeader(void) const     { return header_data_; }
 
 		// ====================  MUTATORS      =======================================
 

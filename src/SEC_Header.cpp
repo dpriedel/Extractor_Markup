@@ -53,7 +53,7 @@ void SEC_Header::UseData (EM::sv file_content)
 	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);
     BOOST_ASSERT_MSG(found_it, "Can't find SEC Header");
 
-    header_data_ = results[0].first, results[0].length();
+    header_data_ = EM::sv(results[0].first, results[0].length());
 }		// -----  end of method SEC_Header::UseData  -----
 
 void SEC_Header::ExtractHeaderFields ()
