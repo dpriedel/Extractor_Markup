@@ -911,19 +911,19 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
     struct sigaction sa_old;
     struct sigaction sa_new;
 
+    // ok, get ready to handle keyboard interrupts, if any.
+
     sa_new.sa_handler = ExtractorApp::HandleSignal;
     sigemptyset(&sa_new.sa_mask);
     sa_new.sa_flags = 0;
     sigaction(SIGINT, &sa_new, &sa_old);
 
+    ExtractorApp::had_signal_= false;
+
     // make exception handling a little bit better (I think).
     // If some kind of system error occurs, it may affect more than 1 of
     // our our tasks so let's check each of them and log any exceptions
     // which occur. We'll then rethrow our first exception.
-
-    // ok, get ready to handle keyboard interrupts, if any.
-
-    ExtractorApp::had_signal_= false;
 
     std::exception_ptr ep{nullptr};
 
@@ -937,11 +937,6 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
     std::vector<std::future<std::tuple<int, int, int>>> tasks;
     tasks.reserve(max_at_a_time_);
 
-//    auto do_work([this, &forms_processed](int i)
-//    {
-//        return this->LoadFileAsync(list_of_files_to_process_[i], &forms_processed);
-//    });
-
     // prime the pump...
 
     size_t current_file{0};
@@ -949,12 +944,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
     {
         // queue up our tasks up to the limit.
 
-        // for some strange reason, this does not compile (but it should)
         tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
         list_of_files_to_process_[current_file], &forms_processed));
-
-        // so, use this instead.
-//        tasks.emplace_back(std::async(std::launch::async, do_work, current_file));
     }
 
     int continue_here{0};
@@ -1010,11 +1001,11 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             counters = AddTs(counters, {0, 0, 1});
 
 //            // OK, let's remember our first time here.
-//
-//            if (! ep)
-//            {
-//                ep = std::current_exception();
-//            }
+
+            if (! ep)
+            {
+                ep = std::current_exception();
+            }
 //            break;
         }
         catch (...)
