@@ -554,8 +554,16 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const fs::path& 
         const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
 
         SEC_Header SEC_data;
-        SEC_data.UseData(file_content);
-        SEC_data.ExtractHeaderFields();
+        try
+        {
+            SEC_data.UseData(file_content);
+            SEC_data.ExtractHeaderFields();
+        }
+        catch(const std::exception& e)
+        {
+            spdlog::error(e.what());
+            return {0, 0, 1};
+        }
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
         bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
@@ -599,8 +607,16 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         const std::string file_content(LoadDataFileForUse(input_file_name.c_str()));
 
         SEC_Header SEC_data;
-        SEC_data.UseData(file_content);
-        SEC_data.ExtractHeaderFields();
+        try
+        {
+            SEC_data.UseData(file_content);
+            SEC_data.ExtractHeaderFields();
+        }
+        catch(const std::exception& e)
+        {
+            spdlog::error(e.what());
+            return {0, 0, 1};
+        }
         decltype(auto) SEC_fields = SEC_data.GetFields();
         auto sec_header = SEC_data.GetHeader();
 
@@ -741,8 +757,16 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             const std::string file_content(LoadDataFileForUse(file_name));
 
             SEC_Header SEC_data;
-            SEC_data.UseData(file_content);
-            SEC_data.ExtractHeaderFields();
+            try
+            {
+                SEC_data.UseData(file_content);
+                SEC_data.ExtractHeaderFields();
+            }
+            catch(const std::exception& e)
+            {
+                spdlog::error(e.what());
+                ++skipped_counter;
+            }
             decltype(auto) SEC_fields = SEC_data.GetFields();
             auto sec_header = SEC_data.GetHeader();
 
@@ -865,8 +889,16 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::ato
     const std::string file_content(LoadDataFileForUse(file_name));
 
     SEC_Header SEC_data;
-    SEC_data.UseData(file_content);
-    SEC_data.ExtractHeaderFields();
+    try
+    {
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
+    }
+    catch(const std::exception& e)
+    {
+        spdlog::error(e.what());
+        return {0, 0, 1};
+    }
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
