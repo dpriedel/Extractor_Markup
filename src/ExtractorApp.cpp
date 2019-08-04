@@ -200,8 +200,7 @@ void ExtractorApp::ConfigureLogging()
 
 bool ExtractorApp::Startup()
 {
-    spdlog::info(("\n\n*** Begin run "
-           + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n"));
+    spdlog::info(catenate("\n\n*** Begin run ", boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()), " ***\n"));
     bool result{true};
 	try
 	{	
@@ -445,7 +444,10 @@ void ExtractorApp::BuildFilterList()
     if (mode_ == "HTML"s)
     {
         filters_.push_back(FileHasHTML{});
-        filters_.push_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
+        if (! export_HTML_forms_)
+        {
+            filters_.push_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
+        }
     }
     else
     {
@@ -695,6 +697,12 @@ bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path
     if (financial_content != htmls.end())
     {
         auto output_path_name = html_hierarchy_converter_(file_name, {std::string(financial_content->file_name_)});
+
+        if (! replace_DB_content_ && fs::exists(output_path_name))
+        {
+            spdlog::info(catenate("File: ", output_path_name.string(), " exists and 'replace' not specified."));
+            return false;
+        }
 
         auto output_directory = output_path_name.parent_path();
         if (! fs::exists(output_directory))
@@ -1146,7 +1154,6 @@ void ExtractorApp::HandleSignal(int signal)
 
 void ExtractorApp::Shutdown ()
 {
-    spdlog::info("\n\n*** End run "
-            + boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()) + " ***\n");
+    spdlog::info(catenate("\n\n*** End run ", boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()), " ***\n"));
 }       // -----  end of method ExtractorApp::Shutdown  -----
 
