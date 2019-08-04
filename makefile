@@ -115,7 +115,7 @@ DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
-COMPILE=$(CPP) -c  -x c++  -O2  -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O2  -std=c++2a -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
