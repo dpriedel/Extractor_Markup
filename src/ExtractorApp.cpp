@@ -556,16 +556,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const fs::path& 
         const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
 
         SEC_Header SEC_data;
-        try
-        {
-            SEC_data.UseData(file_content);
-            SEC_data.ExtractHeaderFields();
-        }
-        catch(const std::exception& e)
-        {
-            spdlog::error(e.what());
-            return {0, 0, 1};
-        }
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
         bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
@@ -609,16 +601,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         const std::string file_content(LoadDataFileForUse(input_file_name.c_str()));
 
         SEC_Header SEC_data;
-        try
-        {
-            SEC_data.UseData(file_content);
-            SEC_data.ExtractHeaderFields();
-        }
-        catch(const std::exception& e)
-        {
-            spdlog::error(e.what());
-            return {0, 0, 1};
-        }
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
         auto sec_header = SEC_data.GetHeader();
 
@@ -643,6 +627,11 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
 
 //        did_load = true;
         did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
+    }
+    catch(const std::system_error& e)
+    {
+        spdlog::error(catenate("System error while processing file: ", input_file_name.string(), ". ", e.what(), " Processing stopped."));
+        throw;
     }
     catch(const std::exception& e)
     {
@@ -765,16 +754,8 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             const std::string file_content(LoadDataFileForUse(file_name));
 
             SEC_Header SEC_data;
-            try
-            {
-                SEC_data.UseData(file_content);
-                SEC_data.ExtractHeaderFields();
-            }
-            catch(const std::exception& e)
-            {
-                spdlog::error(e.what());
-                ++skipped_counter;
-            }
+            SEC_data.UseData(file_content);
+            SEC_data.ExtractHeaderFields();
             decltype(auto) SEC_fields = SEC_data.GetFields();
             auto sec_header = SEC_data.GetHeader();
 
@@ -792,6 +773,18 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             // reached our limit of files to process, so let's get out of here.
 
             ++error_counter;
+            spdlog::error(catenate("Max files reached: ", file_name, ". ", e.what()));
+            spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
+                    " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
+                    ". Errors: ", error_counter, "."));
+            throw;
+        }
+        catch(std::system_error& e)
+        {
+            // reached our limit of files to process, so let's get out of here.
+
+            ++error_counter;
+            spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
             spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                     " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
                     ". Errors: ", error_counter, "."));
@@ -800,10 +793,10 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
         catch(std::exception& e)
         {
             ++error_counter;
+            spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
             spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter) ,
                     " files. Successes: ", success_counter, ". Skips: ", skipped_counter ,
                     ". Errors: ", error_counter, "."));
-            spdlog::error(catenate("Problem processing file: ", file_name, ". ", e.what()));
         }
     }
 }		/* -----  end of method ExtractorApp::Do_SingleFile  ----- */
@@ -897,41 +890,14 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::ato
     const std::string file_content(LoadDataFileForUse(file_name));
 
     SEC_Header SEC_data;
-    try
-    {
-        SEC_data.UseData(file_content);
-        SEC_data.ExtractHeaderFields();
-    }
-    catch(const std::exception& e)
-    {
-        spdlog::error(e.what());
-        return {0, 0, 1};
-    }
+    SEC_data.UseData(file_content);
+    SEC_data.ExtractHeaderFields();
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
     if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
     {
-        try
-        {
-            LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
-        }
-        catch(const ExtractorException& e)
-        {
-            spdlog::error(e.what());
-            ++error_counter;
-        }
-        catch(const pqxx::sql_error& e)
-        {
-            spdlog::error(catenate("Database error: ", e.what()));
-            spdlog::error(catenate("Query was: ", e.query()));
-            ++error_counter;
-        }
-        catch(const std::exception& e)
-        {
-            spdlog::error(e.what());
-            ++error_counter;
-        }
+        LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
     }
     else
     {
@@ -1016,12 +982,9 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
                     ". Message: ", ec.message()));
             counters = AddTs(counters, {0, 0, 1});
 
-            // OK, let's remember our first time here.
+            // OK, let's be sure this propagates
 
-            if (! ep)
-            {
-                ep = std::current_exception();
-            }
+            ep = std::current_exception();
             break;
         }
         catch (MaxFilesException& e)
@@ -1031,7 +994,25 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
 
+            if (! ep)
+            {
+                ep = std::current_exception();
+            }
             break;
+        }
+        catch(const pqxx::sql_error& e)
+        {
+            spdlog::error(catenate("Database error: ", e.what()));
+            spdlog::error(catenate("Query was: ", e.query()));
+            counters = AddTs(counters, {0, 0, 1});
+
+//            // OK, let's remember our first time here.
+
+            if (! ep)
+            {
+                ep = std::current_exception();
+            }
+//            break;
         }
         catch (std::exception& e)
         {
@@ -1064,7 +1045,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             break;
         }
 
-        if (ep || ExtractorApp::had_signal_)
+//        if (ep || ExtractorApp::had_signal_)
+        if (ExtractorApp::had_signal_)
         {
             break;
         }
