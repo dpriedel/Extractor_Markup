@@ -705,10 +705,26 @@ bool ExtractorApp::ExportHtmlFromSingleFile (EM::sv file_content, const fs::path
             throw(std::runtime_error(catenate("Can't open output file: ", output_path_name.string())));
         }
 
+        // we can just dump out our content but...we need to verify that we actually wrote it
+        // the disk could be full or some other problem could occur so, let's check..
+
+        errno = 0;
         exported_file.write(sec_header.data(), sec_header.size());
+        if (exported_file.fail())
+        {
+            std::error_code err{errno, std::system_category()};
+            throw std::system_error{err, catenate("Unable to complete export of HTML content: ", file_name.string())};
+        }
         exported_file.put('\n');
+
+        errno = 0;
         exported_file.write(financial_content->document_.data(), financial_content->document_.size());
         exported_file.close();
+        if (exported_file.fail())
+        {
+            std::error_code err{errno, std::system_category()};
+            throw std::system_error{err, catenate("Unable to complete export of HTML content: ", file_name.string())};
+        }
         
         return true;
     }
