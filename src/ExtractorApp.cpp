@@ -520,7 +520,7 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv 
     bool use_file{true};
     for (const auto& filter : filters_)
     {
-        use_file = use_file && filter(SEC_fields, file_content);
+        use_file = filter(SEC_fields, file_content);
         if (! use_file)
         {
             break;
