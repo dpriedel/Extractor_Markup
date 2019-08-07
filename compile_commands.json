@@ -214,6 +214,7 @@
             "-DBOOST_ENABLE_ASSERT_HANDLER",
             "-fPIC",
             "-I./src",
+            "-I/usr/local/include",
             "-I/extra/boost/boost-1.70_gcc-9",
             "-march=native",
             "-o",
