@@ -44,6 +44,7 @@
 #include <filesystem>
 #include <functional>
 #include <tuple>
+#include <variant>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -101,7 +102,8 @@ protected:
 
 	void BuildFilterList();
 	void BuildListOfFilesToProcess();
-	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content, std::atomic<int>* forms_processed);
+	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, std::string_view file_name,
+            EM::sv file_content, std::atomic<int>* forms_processed);
 
     bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
             EM::sv sec_header);
@@ -129,7 +131,9 @@ private:
 
 		// ====================  DATA MEMBERS  =======================================
 
-	using FilterList = std::vector<std::function<bool(const EM::SEC_Header_fields& header_fields, EM::sv)>>;
+    using FilterTypes = std::variant<FileHasCIK, FileHasSIC, FileHasXBRL, FileHasFormType, FileHasHTML, FileIsWithinDateRange,
+          NeedToUpdateDBContent>;
+    using FilterList = std::vector<FilterTypes>;
 
 	po::positional_options_description	mPositional;			//	old style options
     std::unique_ptr<po::options_description> mNewOptions;    	//	new style options (with identifiers)

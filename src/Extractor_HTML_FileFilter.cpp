@@ -67,19 +67,6 @@ const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constant
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  FileHasHTML::operator()
- *  Description:  
- * =====================================================================================
- */
-bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::sv file_content) 
-{
-    const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
-
-    return boost::regex_search(file_content.cbegin(), file_content.cend(), regex_fname);
-}		/* -----  end of function FileHasHTML::operator()  ----- */
-
-/* 
- * ===  FUNCTION  ======================================================================
  *         Name:  Find_HTML_Documents
  *  Description:  
  * =====================================================================================

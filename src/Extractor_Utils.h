@@ -270,7 +270,16 @@ EM::sv FindHTML(EM::sv document);
 
 struct FileHasXBRL
 {
-    bool operator()(const EM::SEC_Header_fields&, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields&, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileHasXBRL"};
+};
+
+struct FileHasHTML
+{
+    bool operator()(const EM::SEC_Header_fields&, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileHasHTML"};
 };
 
 struct FileHasFormType
@@ -278,7 +287,9 @@ struct FileHasFormType
     explicit FileHasFormType(const std::vector<std::string>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileHasFormType"};
 
     const std::vector<std::string>& form_list_;
 };
@@ -288,7 +299,9 @@ struct FileHasCIK
     explicit FileHasCIK(const std::vector<std::string>& CIK_list)
         : CIK_list_{CIK_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileHasCIK"};
 
     const std::vector<std::string>& CIK_list_;
 };
@@ -298,7 +311,9 @@ struct FileHasSIC
     explicit FileHasSIC(const std::vector<std::string>& SIC_list)
         : SIC_list_{SIC_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileHasSIC"};
 
     const std::vector<std::string>& SIC_list_;
 };
@@ -308,7 +323,9 @@ struct NeedToUpdateDBContent
     NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
         : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const ;
+
+    const std::string filter_name_{"NeedToUpdateDBContent"};
 
     const std::string schema_name_;
     bool replace_DB_content_;
@@ -319,7 +336,9 @@ struct FileIsWithinDateRange
     FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const ;
+
+    const std::string filter_name_{"FileIsWithinDateRange"};
 
     const bg::date& begin_date_;
     const bg::date& end_date_;

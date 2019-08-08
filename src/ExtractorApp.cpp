@@ -443,15 +443,15 @@ void ExtractorApp::BuildFilterList()
 
     if (mode_ == "HTML"s)
     {
-        filters_.push_back(FileHasHTML{});
+        filters_.emplace_back(FileHasHTML{});
         if (! export_HTML_forms_)
         {
-            filters_.push_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
+            filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
         }
     }
     else
     {
-        filters_.push_back(FileHasXBRL{});
+        filters_.emplace_back(FileHasXBRL{});
         //TODO: set up replace filter for XBRL content too
     }
 
@@ -514,15 +514,18 @@ void ExtractorApp::Run()
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
-bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
+bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, std::string_view file_name, EM::sv file_content,
         std::atomic<int>* forms_processed)
 {
     bool use_file{true};
     for (const auto& filter : filters_)
     {
-        use_file = filter(SEC_fields, file_content);
+        use_file = std::visit([&SEC_fields, file_content](auto& f) -> bool { return f(SEC_fields, file_content); }, filter);
         if (! use_file)
         {
+            spdlog::debug(catenate(file_name, ": File skipped because of filter: ",
+                        std::visit([](auto& f) -> std::string { return f.filter_name_; }, filter),
+                        "."));
             break;
         }
     }
@@ -553,14 +556,14 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const fs::path& 
 
     try
     {
-        const std::string file_content(LoadDataFileForUse(input_file_name.string().c_str()));
+        const std::string file_content(LoadDataFileForUse(input_file_name.c_str()));
 
         SEC_Header SEC_data;
         SEC_data.UseData(file_content);
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
+        bool use_file = this->ApplyFilters(SEC_fields, input_file_name.string(), file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
         auto document_sections{LocateDocumentSections(file_content)};
@@ -606,7 +609,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         decltype(auto) SEC_fields = SEC_data.GetFields();
         auto sec_header = SEC_data.GetHeader();
 
-        bool use_file = this->ApplyFilters(SEC_fields, file_content, &forms_processed);
+        bool use_file = this->ApplyFilters(SEC_fields, input_file_name.string(), file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
         if (export_HTML_forms_)
@@ -775,7 +778,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             decltype(auto) SEC_fields = SEC_data.GetFields();
             auto sec_header = SEC_data.GetHeader();
 
-            if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
+            if (bool use_file = this->ApplyFilters(SEC_fields, file_name,  file_content, forms_processed); use_file)
             {
                 LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
             }
@@ -911,7 +914,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::ato
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
-    if (bool use_file = this->ApplyFilters(SEC_fields, file_content, forms_processed); use_file)
+    if (bool use_file = this->ApplyFilters(SEC_fields, file_name, file_content, forms_processed); use_file)
     {
         LoadFileFromFolderToDB(file_name, SEC_fields, file_content, sec_header) ? ++success_counter : ++skipped_counter;
     }

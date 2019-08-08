@@ -56,11 +56,6 @@
 
 // HTML content related functions
 
-struct FileHasHTML
-{
-    bool operator()(const EM::SEC_Header_fields&, EM::sv file_content);
-};
-
 // use this to find which embedded document has the financial statements
 // we may be processing multiple statements so it could be a list.
 
