@@ -37,11 +37,12 @@
 #include "Extractors.h"
 #include "Extractor_XBRL.h"
 
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <filesystem>
+#include <array>
 #include <charconv>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <system_error>
 #include <variant>
@@ -53,7 +54,7 @@
 
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
-
+#include "Extractor_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
@@ -169,9 +170,9 @@ EM::sv FindTableOfContents (EM::sv document)
     CDocument the_filing;
     the_filing.parse(std::string{html});
     CSelection all_anchors = the_filing.find("a");
-    if (all_anchors.nodeNum())
+    if (all_anchors.nodeNum() > 0)
     {
-        for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+        for (size_t indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
         {
             CNode an_anchor = all_anchors.nodeAt(indx);
             std::cout << "anchor text: " << an_anchor.text() << '\n';
@@ -210,7 +211,7 @@ std::string CollectAllAnchors (EM::sv document)
     CDocument the_filing;
     the_filing.parse(std::string{html});
     CSelection all_anchors = the_filing.find("a");
-    for (int indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
+    for (size_t indx = 0 ; indx < all_anchors.nodeNum(); ++indx)
     {
         auto an_anchor = all_anchors.nodeAt(indx);
         auto anchor_parent = an_anchor.parent();
@@ -381,11 +382,11 @@ FilterList SelectExtractors (const po::variables_map& args)
 
 //    filters.emplace_back(HTM_data{});
 //    filters.emplace_back(Count_SS{});
-    filters.emplace_back(Form_data{args});
+//    filters.emplace_back(Form_data{args});
 //    filters.emplace_back(BalanceSheet_data{});
 //    filters.emplace_back(FinancialStatements_data{});
-//    filters.emplace_back(Multiplier_data{});
-//    filters.emplace_back(Shares_data{});
+    filters.emplace_back(Multiplier_data{args});
+    filters.emplace_back(Shares_data{args});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -527,7 +528,7 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv
 
     fs::path temp_file_name;
     std::error_code ec;
-    char buffer[L_tmpnam];
+    std::array<char, L_tmpnam> buffer{'\0'};
 
     // give it 5 tries...
     
@@ -535,20 +536,17 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv
     while (true)
     {
         temp_file_name = fs::temp_directory_path();
-        if (std::tmpnam(buffer))
+        if (std::tmpnam(buffer.data()) != nullptr)
         {
-            temp_file_name /= buffer;
+            temp_file_name /= buffer.data();
             if(bool did_create = fs::create_directory(temp_file_name, ec); did_create)
             {
                 break;
             }
-            else
+            ++n;
+            if (n >= 5)
             {
-                ++n;
-                if (n >= 5)
-                {
-                    throw std::runtime_error("Can't create temp directory.\n");
-                }
+                throw std::runtime_error("Can't create temp directory.\n");
             }
         }
         else
@@ -596,12 +594,14 @@ void SS_data::ConvertDataAndWriteToDisk(const fs::path& output_file_name, EM::sv
     // embedded return characters (which would be stripped off if we did
     // readline.
 
-    char buf[1024];
+    std::array<char, 1024> buf{'\0'};
     std::streamsize bytes_read;
     while (! in.eof())
     {
-        while ((bytes_read = in.out().readsome(buf, sizeof(buf))) > 0)
-            str1.append(buf, bytes_read);
+        while ((bytes_read = in.out().readsome(buf.data(), buf.max_size())) > 0)
+        {
+            str1.append(buf.data(), bytes_read);
+        }
     }
 
 	// let's be neat and not leave temp files laying around
@@ -659,12 +659,12 @@ void Form_data::UseExtractor(const fs::path& file_name, EM::sv file_content, con
 
     for (auto html = htmls.begin(); html != htmls.end(); ++html)
     {
-        if (html.GetFileType() != form_)
+        if (html->file_type_ != form_)
         {
             continue;
         }
 
-        auto output_path_name = hierarchy_converter_(file_name, fs::path{html.GetFileName()});
+        auto output_path_name = hierarchy_converter_(file_name, fs::path{html->file_name_});
 
         auto output_directory = output_path_name.parent_path();
         if (! fs::exists(output_directory))
@@ -672,7 +672,7 @@ void Form_data::UseExtractor(const fs::path& file_name, EM::sv file_content, con
             fs::create_directories(output_directory);
         }
 
-        WriteDataToFile(output_path_name, *html);
+        WriteDataToFile(output_path_name, html->html_);
         break;
     }
 }
@@ -716,7 +716,7 @@ void HTM_data::UseExtractor(const fs::path& file_name, EM::sv file_content, cons
             the_filing.parse(std::string{document});
             CSelection c = the_filing.find("table");
 
-            for (int indx = 0 ; indx < c.nodeNum(); ++indx)
+            for (size_t indx = 0 ; indx < c.nodeNum(); ++indx)
             {
                 CNode pNode = c.nodeAt(indx);
 
@@ -738,17 +738,17 @@ void FinancialStatements_data::UseExtractor(const fs::path& file_name, EM::sv fi
     // we locate the HTML document in the file which contains the financial statements.
     // we then convert that to text and save the output.
 
-    auto financial_statements = FindAndExtractFinancialStatements(file_content);
+    auto financial_statements = FindAndExtractFinancialStatements(file_content, {form_});
 
     auto output_file_name = FindFileName(output_directory, financial_statements.html_, regex_fname);
     output_file_name.replace_extension(".txt");
 
     if (financial_statements.has_data())
     {
-        WriteDataToFile(output_file_name, "\nBalance Sheet\n"s + financial_statements.balance_sheet_.parsed_data_ +
-                "\nStatement of Operations\n"s +financial_statements.statement_of_operations_.parsed_data_ +
-                "\nCash Flows\n"s + financial_statements.cash_flows_.parsed_data_ +
-                "\nStockholders Equity\n"s +financial_statements.stockholders_equity_.parsed_data_);
+        WriteDataToFile(output_file_name, catenate("\nBalance Sheet\n", financial_statements.balance_sheet_.parsed_data_,
+                "\nStatement of Operations\n", financial_statements.statement_of_operations_.parsed_data_,
+                "\nCash Flows\n", financial_statements.cash_flows_.parsed_data_,
+                "\nStockholders Equity\n", financial_statements.stockholders_equity_.parsed_data_));
     }
     else
     {
@@ -832,16 +832,17 @@ void Multiplier_data::UseExtractor(const fs::path& file_name, EM::sv file_conten
 
     for (auto html = htmls.begin(); html != htmls.end(); ++html)
     {
-        if (FinancialDocumentFilter(*html))
+        FinancialDocumentFilter document_filter{{form_}};
+        if (document_filter(*html))
         {
             auto output_file_name{output_directory};
-            output_file_name = output_file_name /= html.GetFileName();
+            output_file_name = output_file_name /= html->file_name_;
 //            output_file_name.replace_extension(".txt");
 
-            financial_statements = ExtractFinancialStatements(*html);
+            financial_statements = ExtractFinancialStatements(html->html_);
             if (financial_statements.has_data())
             {
-                financial_statements.html_ = *html;
+                financial_statements.html_ = html->html_;
                 financial_statements.PrepareTableContent();
                 FindMultipliers(financial_statements, output_file_name);
                 return;
@@ -855,31 +856,31 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     // to find multipliers we can take advantage of anchors if any
     // otherwise, we just need to scan the html document to try and find them.
     
-    if (financial_statements.balance_sheet_.has_anchor())
-    {
-        // if one has anchor so must all of them.
-
-        AnchorList anchors;
-        anchors.push_back(financial_statements.balance_sheet_.the_anchor_);
-        anchors.push_back(financial_statements.statement_of_operations_.the_anchor_);
-        anchors.push_back(financial_statements.cash_flows_.the_anchor_);
-
-        auto multipliers = FindDollarMultipliers(anchors);
-        if (multipliers.size() > 0)
-        {
-            BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
-            financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
-            std::cout <<  "Balance Sheet multiplier: " << multipliers[0].multiplier_ << '\n';
-            financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
-            std::cout <<  "Stmt of Ops multiplier: " << multipliers[1].multiplier_ << '\n';
-            financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
-            std::cout <<  "Cash flows multiplier: " << multipliers[2].multiplier_ << '\n';
-
-            spdlog::info("Found multiplers using anchors.\n");
-            return;
-        }
-        spdlog::info("Have anchors but no multipliers found. Trying the 'hard' way.\n");
-    }
+//    if (financial_statements.balance_sheet_.has_anchor())
+//    {
+//        // if one has anchor so must all of them.
+//
+//        AnchorList anchors;
+//        anchors.push_back(financial_statements.balance_sheet_.the_anchor_);
+//        anchors.push_back(financial_statements.statement_of_operations_.the_anchor_);
+//        anchors.push_back(financial_statements.cash_flows_.the_anchor_);
+//
+//        auto multipliers = FindDollarMultipliers(anchors);
+//        if (! multipliers.empty())
+//        {
+//            BOOST_ASSERT_MSG(multipliers.size() == anchors.size(), "Not all multipliers found.\n");
+//            financial_statements.balance_sheet_.multiplier_ = multipliers[0].multiplier_value_;
+//            std::cout <<  "Balance Sheet multiplier: " << multipliers[0].multiplier_ << '\n';
+//            financial_statements.statement_of_operations_.multiplier_ = multipliers[1].multiplier_value_;
+//            std::cout <<  "Stmt of Ops multiplier: " << multipliers[1].multiplier_ << '\n';
+//            financial_statements.cash_flows_.multiplier_ = multipliers[2].multiplier_value_;
+//            std::cout <<  "Cash flows multiplier: " << multipliers[2].multiplier_ << '\n';
+//
+//            spdlog::info("Found multiplers using anchors.\n");
+//            return;
+//        }
+//        spdlog::info("Have anchors but no multipliers found. Trying the 'hard' way.\n");
+//    }
     // let's try looking in the parsed data first.
     // we may or may not find all of our values there so we need to keep track.
 
@@ -925,56 +926,57 @@ void Multiplier_data::FindMultipliers (FinancialStatements& financial_statements
     }
     if (how_many_matches < 3)
     {
-        // fill in any missing values with first value found and hope for the best.
+        spdlog::info(catenate("Found: ", how_many_matches, " multipliers. Filling in rest with default."));
+        // fill in any missing values with default value and hope for the best.
 
-        boost::cmatch matches;
-
-        if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
-                    financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
-        {
-            EM::sv multiplier(matches[1].first, matches[1].length());
-            std::cout <<  "Found Generic multiplier: " << multiplier << '\n';
-            const auto&[mult_s, value] = TranslateMultiplier(multiplier);
-            std::cout <<  "Using Generic multiplier: " << mult_s << '\n';
+//        boost::cmatch matches;
+//
+//        if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
+//                    financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
+//        {
+//            EM::sv multiplier(matches[1].first, matches[1].length());
+//            std::cout <<  "Found Generic multiplier: " << multiplier << '\n';
+//            const auto&[mult_s, value] = TranslateMultiplier(multiplier);
+//            std::cout <<  "Using Generic multiplier: " << mult_s << '\n';
 
             //  fill in any missing values
 
             if (financial_statements.balance_sheet_.multiplier_ == 0)
             {
-                financial_statements.balance_sheet_.multiplier_ = value;
-                financial_statements.balance_sheet_.multiplier_s_ = mult_s;
+                financial_statements.balance_sheet_.multiplier_ = 1;
+//                financial_statements.balance_sheet_.multiplier_s_ = mult_s;
             }
             if (financial_statements.statement_of_operations_.multiplier_ == 0)
             {
-                financial_statements.statement_of_operations_.multiplier_ = value;
-                financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
+                financial_statements.statement_of_operations_.multiplier_ = 1;
+//                financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
             }
             if (financial_statements.cash_flows_.multiplier_ == 0)
             {
-                financial_statements.cash_flows_.multiplier_ = value;
-                financial_statements.cash_flows_.multiplier_s_ = mult_s;
+                financial_statements.cash_flows_.multiplier_ = 1;
+//                financial_statements.cash_flows_.multiplier_s_ = mult_s;
             }
-        }
-        else
-        {
-            spdlog::info("Can't find any dolloar mulitpliers. Using default.\n");
-
-            // let's just go with 1 -- a likely value in this case
-            //
-            financial_statements.balance_sheet_.multiplier_ = 1;
-            financial_statements.balance_sheet_.multiplier_s_ = "";
-            financial_statements.statement_of_operations_.multiplier_ = 1;
-            financial_statements.statement_of_operations_.multiplier_s_ = "";
-            financial_statements.cash_flows_.multiplier_ = 1;
-            financial_statements.cash_flows_.multiplier_s_ = "";
+//        }
+//        else
+//        {
+//            spdlog::info("Can't find any dolloar mulitpliers. Using default.\n");
+//
+//            // let's just go with 1 -- a likely value in this case
+//            //
+//            financial_statements.balance_sheet_.multiplier_ = 1;
+//            financial_statements.balance_sheet_.multiplier_s_ = "";
+//            financial_statements.statement_of_operations_.multiplier_ = 1;
+//            financial_statements.statement_of_operations_.multiplier_s_ = "";
+//            financial_statements.cash_flows_.multiplier_ = 1;
+//            financial_statements.cash_flows_.multiplier_s_ = "";
 
             WriteDataToFile(file_name, financial_statements.html_);
-        }
+//        }
     }
-    else
-    {
-        spdlog::info("Found all multiplers the 'hard' way.\n");
-    }
+//    else
+//    {
+//        spdlog::info("Found all multiplers the 'hard' way.\n");
+//    }
 }		/* -----  end of method Multiplier_data::FindMultipliers  ----- */
 
 void Shares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
@@ -1011,12 +1013,13 @@ void Shares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, c
 
     for (auto html : htmls)
     {
-        if (FinancialDocumentFilter(html))
+        FinancialDocumentFilter document_filter{{form_}};
+        if (document_filter(html))
         {
-            financial_statements = ExtractFinancialStatements(html);
+            financial_statements = ExtractFinancialStatements(html.html_);
             if (financial_statements.has_data())
             {
-                financial_statements.html_ = html;
+                financial_statements.html_ = html.html_;
                 financial_statements.PrepareTableContent();
                 financial_statements.FindAndStoreMultipliers();
                 FindSharesOutstanding(file_content, financial_statements, fields);
@@ -1120,7 +1123,7 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
             TablesFromHTML tables{financial_statements.html_};
             for (const auto& table : tables)
             {
-                auto lines = split_string(table, '\n');
+                auto lines = split_string_to_sv(table, '\n');
                 if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
                 {
                     use_multiplier = true;

@@ -116,9 +116,11 @@ struct DocumentCounter
 struct Form_data
 {
     explicit Form_data(const po::variables_map& args);
+
     void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 
     ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
+
     std::string form_;
 };
 
@@ -129,7 +131,11 @@ struct HTM_data
 
 struct FinancialStatements_data
 {
+    explicit FinancialStatements_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+
     void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
+
+    std::string form_;
 };
 
 struct BalanceSheet_data
@@ -139,16 +145,24 @@ struct BalanceSheet_data
 
 struct Multiplier_data
 {
+    explicit Multiplier_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
     void FindMultipliers(FinancialStatements& financial_statements, const fs::path& file_name);
+
+    std::string form_;
 };
 
 struct Shares_data
 {
+    explicit Shares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
     void FindSharesOutstanding(EM::sv file_content, FinancialStatements& financial_statements, const EM::SEC_Header_fields& fields);
+
+    std::string form_;
 };
 
 // this filter will export all document sections.

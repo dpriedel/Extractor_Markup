@@ -262,17 +262,30 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_n
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     return (file_content.find(R"***(<XBRL>)***") != EM::sv::npos);
 }		/* -----  end of method FileHasXBRL::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  FileHasHTML::operator()
+ *  Description:  
+ * =====================================================================================
+ */
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::sv file_content) const
+{
+    const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
+
+    return boost::regex_search(file_content.cbegin(), file_content.cend(), regex_fname);
+}		/* -----  end of function FileHasHTML::operator()  ----- */
+
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -284,12 +297,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file
     return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
@@ -315,7 +328,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content)
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
 {
     auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
 
