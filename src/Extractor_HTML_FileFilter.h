@@ -74,6 +74,7 @@ struct FinancialDocumentFilter
 struct BalanceSheet
 {
     AnchorData the_anchor_;
+    EM::sv raw_data_;
     std::string parsed_data_;
     std::vector<EM::sv> lines_;
     EM::Extractor_Values values_;
@@ -90,6 +91,7 @@ struct BalanceSheet
 struct StatementOfOperations
 {
     AnchorData the_anchor_;
+    EM::sv raw_data_;
     std::string parsed_data_;
     std::vector<EM::sv> lines_;
     EM::Extractor_Values values_;
@@ -106,6 +108,7 @@ struct StatementOfOperations
 struct CashFlows
 {
     AnchorData the_anchor_;
+    EM::sv raw_data_;
     std::string parsed_data_;
     std::vector<EM::sv> lines_;
     EM::Extractor_Values values_;
@@ -122,6 +125,7 @@ struct CashFlows
 struct StockholdersEquity
 {
     AnchorData the_anchor_;
+    EM::sv raw_data_;
     std::string parsed_data_;
     std::vector<EM::sv> lines_;
     EM::Extractor_Values values_;
@@ -143,6 +147,8 @@ struct FinancialStatements
     StockholdersEquity stockholders_equity_;
     EM::Extractor_Values values_;
     EM::sv html_;
+    const char* financial_statements_begin_ = nullptr;         // pointer to anchor/first part
+    size_t financial_statements_len_ = 0;                       // offset of end of last part
     long int outstanding_shares_ = -1;
 
     [[nodiscard]] bool has_data() const
@@ -188,6 +194,8 @@ using MultDataList = std::vector<MultiplierData>;
 std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
 //bool FinancialDocumentFilter (const HtmlInfo& html_info);
+
+EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content);
 
 std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::sv file_content);
 
@@ -257,6 +265,7 @@ StatementType FindStatementContent(EM::sv financial_content, AnchorsFromHTML anc
         if (stmt_dest != anchors.end())
         {
             stmt_type.the_anchor_ = *stmt_dest;
+            const char* anchor_begin = stmt_type.the_anchor_.anchor_content_.data();
 
             TablesFromHTML tables{EM::sv{stmt_dest->anchor_content_.data(),
                 financial_content.size() - (stmt_dest->anchor_content_.data() - financial_content.data())}};
@@ -264,6 +273,8 @@ StatementType FindStatementContent(EM::sv financial_content, AnchorsFromHTML anc
             if (stmt != tables.end())
             {
                 stmt_type.parsed_data_ = *stmt;
+                size_t total_len = stmt.to_sview().data() + stmt.to_sview().size() - anchor_begin;
+                stmt_type.raw_data_ = {anchor_begin, total_len};
                 return stmt_type;
             }
         }

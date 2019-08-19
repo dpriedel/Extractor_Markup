@@ -36,6 +36,7 @@
 //  Description:  class which SEC files to extract data from.
 // =====================================================================================
 
+#include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <iostream>
@@ -124,6 +125,42 @@ bool FinancialDocumentFilter::operator() (const HtmlInfo& html_info)
 {
     return std::find(forms_.begin(), forms_.end(), html_info.file_type_) != forms_.end();
 }		/* -----  end of function FinancialDocumentFilter  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  FindFinancialContentTopLevelAnchor
+//  Description:  if we have anchors, let's find the very beginning of our statements.
+// =====================================================================================
+
+EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content)
+{
+    static const boost::regex regex_finance_statements
+    {R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    const auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
+
+    auto anchor_filter_matcher([&document_anchor_filter](const auto& anchor)
+        {
+            return document_anchor_filter(anchor);
+
+        });
+
+    AnchorsFromHTML anchors(financial_content);
+    auto found_it = std::find_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
+    if (found_it == anchors.end())
+    {
+        return {};
+    }
+
+    // what we really need is the anchor destination;
+
+    auto dest_anchor = FindDestinationAnchor(*found_it, anchors);
+    if (dest_anchor != anchors.end())
+    {
+        return dest_anchor->anchor_content_;
+    }
+    return {};
+}		// -----  end of function FindFinancialContentTopLevelAnchor  -----
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FindFinancialContentUsingAnchors
@@ -545,14 +582,32 @@ FinancialStatements ExtractFinancialStatements (EM::sv financial_content)
     if (balance_sheet != tables.end())
     {
         the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
+        the_tables.balance_sheet_.raw_data_ = balance_sheet.to_sview();
+
         auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
         if (statement_of_ops != tables.end())
         {
             the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops;
+            the_tables.statement_of_operations_.raw_data_ = statement_of_ops.to_sview();
+
             auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
             if (cash_flows != tables.end())
             {
                 the_tables.cash_flows_.parsed_data_ = *cash_flows;
+                the_tables.cash_flows_.raw_data_ = cash_flows.to_sview();
+
+                auto data_starts_at = std::min({ the_tables.balance_sheet_.raw_data_.data(),
+                        the_tables.statement_of_operations_.raw_data_.data(),
+                        the_tables.cash_flows_.raw_data_.data()},
+                        [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                the_tables.financial_statements_begin_ = data_starts_at;
+
+                auto data_ends_at = std::max({the_tables.balance_sheet_.raw_data_.data() + the_tables.balance_sheet_.raw_data_.size(),
+                        the_tables.statement_of_operations_.raw_data_.data() + the_tables.statement_of_operations_.raw_data_.size(),
+                        the_tables.cash_flows_.raw_data_.data() + the_tables.cash_flows_.raw_data_.size()},
+                        [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
+
 //                auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
 //                if (stockholders_equity != tables.end())
 //                {
@@ -601,24 +656,48 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_con
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     the_tables.cash_flows_ = FindStatementContent<CashFlows>(financial_content, anchors, regex_cash_flow, CashFlowsFilter);
+    if (the_tables.cash_flows_.empty())
+    {
+        return the_tables;
+    }
 
 //    static const boost::regex regex_equity{R"***((?:stockh|shareh).*?equit)***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    // if we got here then we have found our tables.  Now let's collect a little extra data
+    // to help our search for mulitpliers.
+
+    EM::sv top_level_anchor = FindFinancialContentTopLevelAnchor(financial_content);
+    if (! top_level_anchor.empty())
+    {
+        auto data_starts_at = std::min({top_level_anchor.data(),
+                the_tables.balance_sheet_.raw_data_.data(),
+                the_tables.statement_of_operations_.raw_data_.data(),
+                the_tables.cash_flows_.raw_data_.data()},
+                [](auto& lhs, auto& rhs) { return lhs < rhs; });
+        the_tables.financial_statements_begin_ = data_starts_at;
+
+        auto data_ends_at = std::max({the_tables.balance_sheet_.raw_data_.data() + the_tables.balance_sheet_.raw_data_.size(),
+                the_tables.statement_of_operations_.raw_data_.data() + the_tables.statement_of_operations_.raw_data_.size(),
+                the_tables.cash_flows_.raw_data_.data() + the_tables.cash_flows_.raw_data_.size()},
+                [](auto& lhs, auto& rhs) { return lhs < rhs; });
+        the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
+    }
 
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatementsUsingAnchors  ----- */
 
 void FinancialStatements::FindAndStoreMultipliers()
 {
-    if (balance_sheet_.has_anchor())
-    {
-        // if one has anchor so must all of them.
-
-        if (FindAndStoreMultipliersUsingAnchors(*this))
-        {
-            return;
-        }
-    }
+//    if (balance_sheet_.has_anchor())
+//    {
+//        // if one has anchor so must all of them.
+//
+//        if (FindAndStoreMultipliersUsingAnchors(*this))
+//        {
+//            return;
+//        }
+//    }
     FindAndStoreMultipliersUsingContent(*this);
 }		/* -----  end of method FinancialStatements::FindAndStoreMultipliers  ----- */
 
@@ -677,6 +756,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
         financial_statements.balance_sheet_.multiplier_s_ = mult_s;
         financial_statements.balance_sheet_.multiplier_ = mult;
         ++how_many_matches;
+        spdlog::debug(catenate("Balance sheet multiplier: ", mult_s));
     }
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
                 financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
@@ -685,6 +765,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
         financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
         financial_statements.statement_of_operations_.multiplier_ = mult;
         ++how_many_matches;
+        spdlog::debug(catenate("Statement of Ops multiplier: ", mult_s));
     }
     if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
                 financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults); found_it)
@@ -693,49 +774,49 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
         financial_statements.cash_flows_.multiplier_s_ = mult_s;
         financial_statements.cash_flows_.multiplier_ = mult;
         ++how_many_matches;
+        spdlog::debug(catenate("Cash flows multiplier: ", mult_s));
     }
     if (how_many_matches < 3)
     {
-        // fill in any missing values with first value found and hope for the best.
+        // scan through the whole block of finaancial statements to see if we can find it.
+        
+        int mult;
+        std::string multiplier_s;
 
         boost::cmatch matches;
 
-        if (bool found_it = boost::regex_search(financial_statements.html_.cbegin(),
-                    financial_statements.html_.cend(), matches, regex_dollar_mults); found_it)
+        if (bool found_it = boost::regex_search(financial_statements.financial_statements_begin_,
+                    financial_statements.financial_statements_begin_ + financial_statements.financial_statements_len_,
+                    matches, regex_dollar_mults); found_it)
         {
-            EM::sv multiplier(matches[1].first, matches[1].length());
-            const auto&[mult_s, mult] = TranslateMultiplier(matches[1].str());
-
-            //  fill in any missing values
-
-            if (financial_statements.balance_sheet_.multiplier_ == 0)
-            {
-                financial_statements.balance_sheet_.multiplier_ = mult;
-                financial_statements.balance_sheet_.multiplier_s_ = mult_s;
-            }
-            if (financial_statements.statement_of_operations_.multiplier_ == 0)
-            {
-                financial_statements.statement_of_operations_.multiplier_ = mult;
-                financial_statements.statement_of_operations_.multiplier_s_ = mult_s;
-            }
-            if (financial_statements.cash_flows_.multiplier_ == 0)
-            {
-                financial_statements.cash_flows_.multiplier_ = mult;
-                financial_statements.cash_flows_.multiplier_s_ = mult_s;
-            }
+            EM::sv multiplier(matches[1].str());
+            const auto&[mult_s, value] = TranslateMultiplier(multiplier);
+            mult = value;
+            multiplier_s = mult_s;
+            spdlog::debug(catenate("Found generic multiplier: ", multiplier_s, " Filling in with it."));
         }
         else
         {
-            spdlog::info("Can't find any dollar mulitpliers. Using default.\n");
+            mult = 1;
+            multiplier_s = "";
+            spdlog::debug("Using default multiplier. Filling in with it.");
+        }
+        //  fill in any missing values
 
-            // let's just go with 1 -- a likely value in this case
-            //
-            financial_statements.balance_sheet_.multiplier_ = 1;
-            financial_statements.balance_sheet_.multiplier_s_ = "";
-            financial_statements.statement_of_operations_.multiplier_ = 1;
-            financial_statements.statement_of_operations_.multiplier_s_ = "";
-            financial_statements.cash_flows_.multiplier_ = 1;
-            financial_statements.cash_flows_.multiplier_s_ = "";
+        if (financial_statements.balance_sheet_.multiplier_ == 0)
+        {
+            financial_statements.balance_sheet_.multiplier_ = mult;
+            financial_statements.balance_sheet_.multiplier_s_ = multiplier_s;
+        }
+        if (financial_statements.statement_of_operations_.multiplier_ == 0)
+        {
+            financial_statements.statement_of_operations_.multiplier_ = mult;
+            financial_statements.statement_of_operations_.multiplier_s_ = multiplier_s;
+        }
+        if (financial_statements.cash_flows_.multiplier_ == 0)
+        {
+            financial_statements.cash_flows_.multiplier_ = mult;
+            financial_statements.cash_flows_.multiplier_s_ = multiplier_s;
         }
     }
 }		/* -----  end of function FindAndStoreMultipliersUsingContent  ----- */
