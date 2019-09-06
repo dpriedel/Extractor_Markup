@@ -578,22 +578,25 @@ FinancialStatements ExtractFinancialStatements (EM::sv financial_content)
 
     FinancialStatements the_tables;
 
-    auto balance_sheet = std::find_if(tables.begin(), tables.end(), BalanceSheetFilter);
+    auto balance_sheet = std::find_if(tables.begin(), tables.end(),
+            [](const auto& x) { return BalanceSheetFilter(x.current_table_parsed_); });
     if (balance_sheet != tables.end())
     {
-        the_tables.balance_sheet_.parsed_data_ = *balance_sheet;
+        the_tables.balance_sheet_.parsed_data_ = balance_sheet->current_table_parsed_;
         the_tables.balance_sheet_.raw_data_ = balance_sheet.to_sview();
 
-        auto statement_of_ops = std::find_if(tables.begin(), tables.end(), StatementOfOperationsFilter);
+        auto statement_of_ops = std::find_if(tables.begin(), tables.end(),
+                [](const auto& x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
         if (statement_of_ops != tables.end())
         {
-            the_tables.statement_of_operations_.parsed_data_ = *statement_of_ops;
+            the_tables.statement_of_operations_.parsed_data_ = statement_of_ops->current_table_parsed_;
             the_tables.statement_of_operations_.raw_data_ = statement_of_ops.to_sview();
 
-            auto cash_flows = std::find_if(tables.begin(), tables.end(), CashFlowsFilter);
+            auto cash_flows = std::find_if(tables.begin(), tables.end(),
+                    [](const auto& x) { return CashFlowsFilter(x.current_table_parsed_); });
             if (cash_flows != tables.end())
             {
-                the_tables.cash_flows_.parsed_data_ = *cash_flows;
+                the_tables.cash_flows_.parsed_data_ = cash_flows->current_table_parsed_;
                 the_tables.cash_flows_.raw_data_ = cash_flows.to_sview();
 
                 auto data_starts_at = std::min({ the_tables.balance_sheet_.raw_data_.data(),
@@ -913,7 +916,7 @@ void FinancialStatements::FindSharesOutstanding(EM::sv file_content)
             TablesFromHTML tables{html_};
             for (const auto& table : tables)
             {
-                auto lines = split_string_to_sv(table, '\n');
+                auto lines = split_string_to_sv(table.current_table_parsed_, '\n');
                 if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
                 {
                     use_multiplier = true;

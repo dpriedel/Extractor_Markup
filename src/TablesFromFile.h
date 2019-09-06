@@ -45,6 +45,14 @@
 
 class CNode;
 
+// let's keep our found table content here,
+
+struct TableData
+{
+    EM::sv current_table_html_;
+    std::string current_table_parsed_;
+};
+
 /*
  * =====================================================================================
  *        Class:  TablesFromHTML
@@ -57,7 +65,10 @@ public:
 
     class table_itor: public std::iterator<
                     std::forward_iterator_tag,      // iterator_category
-                    std::string                     // value_type
+                    TableData,                     // value_type
+                    ptrdiff_t,
+                    TableData const *,
+                    TableData const &
                     >
     {
         const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
@@ -86,8 +97,8 @@ public:
 
 
         EM::sv html_;
-        mutable EM::sv current_table_;
-        mutable std::string table_content_;
+        
+        TableData table_data_;
 
         std::string CollectTableContent(EM::sv html);
         std::string ExtractTextDataFromTable (CNode& a_table);
@@ -104,49 +115,42 @@ public:
         bool operator==(const table_itor& other) const { return doc_ == other.doc_; }
         bool operator!=(const table_itor& other) const { return !(*this == other); }
 
-        reference operator*() const { return table_content_; };
-        pointer operator->() const { return &table_content_; }
+        reference operator*() const { return table_data_; };
+        pointer operator->() const { return &table_data_; }
 
-        EM::sv to_sview() const { return current_table_; }
+        EM::sv to_sview() const { return table_data_.current_table_html_; }
         bool TableHasMarkup (EM::sv table);
     };
 
-        using value_type = std::string;
-        using pointer = table_itor::pointer;
-        using const_pointer = table_itor::pointer;
-        using reference = table_itor::reference;
-        using const_reference = table_itor::reference;
-        using iterator = table_itor;
-        using const_iterator = const table_itor;
-        using size_type = size_t;
-        using difference_type = ptrdiff_t;
+    using iterator = table_itor;
+    using const_iterator = table_itor;
 
-    public:
-        /* ====================  LIFECYCLE     ======================================= */
-        explicit TablesFromHTML (EM::sv html);                             /* constructor */
+public:
+    /* ====================  LIFECYCLE     ======================================= */
+    explicit TablesFromHTML (EM::sv html);                             /* constructor */
 
-        /* ====================  ACCESSORS     ======================================= */
+    /* ====================  ACCESSORS     ======================================= */
 
     [[nodiscard]] iterator begin();
     [[nodiscard]] const_iterator begin() const;
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-        /* ====================  MUTATORS      ======================================= */
+    /* ====================  MUTATORS      ======================================= */
 
-        /* ====================  OPERATORS     ======================================= */
+    /* ====================  OPERATORS     ======================================= */
 
-    protected:
-        /* ====================  METHODS       ======================================= */
+protected:
+    /* ====================  METHODS       ======================================= */
 
-        /* ====================  DATA MEMBERS  ======================================= */
+    /* ====================  DATA MEMBERS  ======================================= */
 
-    private:
-        /* ====================  METHODS       ======================================= */
+private:
+    /* ====================  METHODS       ======================================= */
 
-        /* ====================  DATA MEMBERS  ======================================= */
+    /* ====================  DATA MEMBERS  ======================================= */
 
-        EM::sv html_;
+    EM::sv html_;
 
 }; /* -----  end of class TablesFromHTML  ----- */
 

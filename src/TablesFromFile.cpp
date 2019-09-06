@@ -93,11 +93,11 @@ TablesFromHTML::table_itor::table_itor(EM::sv html)
     doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), regex_table_);
     if (doc_ != end_)
     {
-        current_table_ = EM::sv(doc_->first, doc_->length());
+        table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
         try
         {
-            BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
-            table_content_ = CollectTableContent(current_table_);
+            BOOST_ASSERT_MSG(TableHasMarkup(table_data_.current_table_html_), "No HTML markup found in table...Skipping...");
+            table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
         }
         catch (AssertionException& e)
         {
@@ -121,11 +121,11 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
     {
         if (++doc_ != end_)
         {
-            current_table_ = EM::sv(doc_->first, doc_->length());
+            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
             try
             {
-                BOOST_ASSERT_MSG(TableHasMarkup(current_table_), "No HTML markup found in table...Skipping...");
-                table_content_ = CollectTableContent(current_table_);
+                BOOST_ASSERT_MSG(TableHasMarkup(table_data_.current_table_html_), "No HTML markup found in table...Skipping...");
+                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
                 done = true;
             }
             catch (AssertionException& e)
@@ -143,8 +143,8 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
         }
         else
         {
-            current_table_ = {};
-            table_content_.erase();
+            table_data_.current_table_html_ = {};
+            table_data_.current_table_parsed_.erase();
             done = true;
         }
     }

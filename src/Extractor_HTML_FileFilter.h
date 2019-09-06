@@ -269,10 +269,11 @@ StatementType FindStatementContent(EM::sv financial_content, AnchorsFromHTML anc
 
             TablesFromHTML tables{EM::sv{stmt_dest->anchor_content_.data(),
                 financial_content.size() - (stmt_dest->anchor_content_.data() - financial_content.data())}};
-            auto stmt = std::find_if(tables.begin(), tables.end(), stmt_type_filter);
+            auto stmt = std::find_if(tables.begin(), tables.end(),
+                    [&stmt_type_filter](const auto& x) { return stmt_type_filter(x.current_table_parsed_); });
             if (stmt != tables.end())
             {
-                stmt_type.parsed_data_ = *stmt;
+                stmt_type.parsed_data_ = stmt->current_table_parsed_;
                 size_t total_len = stmt.to_sview().data() + stmt.to_sview().size() - anchor_begin;
                 stmt_type.raw_data_ = {anchor_begin, total_len};
                 return stmt_type;
