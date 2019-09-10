@@ -5,7 +5,7 @@
  *
  *    Description:  Extract HTML tables from a block of text.
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  12/21/2018 09:23:04 AM
  *       Revision:  none
  *       Compiler:  gcc
@@ -44,6 +44,8 @@ using namespace std::string_literals;
 #include "gq/Node.h"
 #include "gq/Selection.h"
 
+#include "spdlog/spdlog.h"
+
 constexpr int START_WITH = 5000;
 
 /*
@@ -53,20 +55,15 @@ constexpr int START_WITH = 5000;
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::TablesFromHTML (EM::sv html)
-    : html_{html}
-{
-}  /* -----  end of method TablesFromHTML::TablesFromHTML  (constructor)  ----- */
-
 TablesFromHTML::iterator TablesFromHTML::begin ()
 {
-    iterator it{html_};
+    iterator it{this};
     return it;
 }		/* -----  end of method TablesFromHTML::begin  ----- */
 
 TablesFromHTML::const_iterator TablesFromHTML::begin () const
 {
-    const_iterator it{html_};
+    const_iterator it{this};
     return it;
 }		/* -----  end of method TablesFromHTML::begin  ----- */
 
@@ -87,28 +84,43 @@ TablesFromHTML::const_iterator TablesFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::table_itor::table_itor(EM::sv html)
-    : html_{html}
+TablesFromHTML::table_itor::table_itor(TablesFromHTML const * tables)
+    : tables_{tables}
 {
-    doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), regex_table_);
+    if (tables_ == nullptr)
+    {
+        return;
+    }
+    html_ = tables_->GetHTML();
+
+    doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), tables_->regex_table_);
     if (doc_ != end_)
     {
-        table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
         try
         {
-            BOOST_ASSERT_MSG(TableHasMarkup(table_data_.current_table_html_), "No HTML markup found in table...Skipping...");
-            table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
+            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
+            if (TableHasMarkup(table_data_.current_table_html_))
+            {
+                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
+            }
+            else
+            {
+                spdlog::debug("Little or no HTML found in table...Skipping.");
+                operator++();
+            }
         }
         catch (AssertionException& e)
         {
             // let's ignore it and continue.
 
+            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
             operator++();
         }
         catch (HTMLException& e)
         {
             // let's ignore it and continue.
 
+            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
             operator++();
         }
     }
@@ -116,28 +128,42 @@ TablesFromHTML::table_itor::table_itor(EM::sv html)
 
 TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
 {
+    if (tables_ == nullptr)
+    {
+        return *this;
+    }
+
     bool done = false;
     while (! done)
     {
         if (++doc_ != end_)
         {
-            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
             try
             {
-                BOOST_ASSERT_MSG(TableHasMarkup(table_data_.current_table_html_), "No HTML markup found in table...Skipping...");
-                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
-                done = true;
+                table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
+                if (TableHasMarkup(table_data_.current_table_html_))
+                {
+                    table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
+                    done = true;
+                }
+                else
+                {
+                    spdlog::debug("Little or no HTML found in table...Skipping.");
+                    continue;
+                }
             }
             catch (AssertionException& e)
             {
                 // let's ignore it and continue.
 
+                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
                 continue;
             }
             catch (HTMLException& e)
             {
                 // let's ignore it and continue.
 
+                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
                 continue;
             }
         }
@@ -145,6 +171,7 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
         {
             table_data_.current_table_html_ = {};
             table_data_.current_table_parsed_.erase();
+            tables_ = nullptr;
             done = true;
         }
     }
@@ -167,8 +194,9 @@ std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
 
     std::string tmp;
     tmp.reserve(a_table.size());
-    boost::regex_replace(std::back_inserter(tmp), a_table.begin(), a_table.end(), regex_bogus_em_dash, pseudo_em_dash);
-    tmp = boost::regex_replace(tmp, regex_real_em_dash, pseudo_em_dash);
+    boost::regex_replace(std::back_inserter(tmp), a_table.begin(), a_table.end(),
+            tables_->regex_bogus_em_dash, tables_->pseudo_em_dash);
+    tmp = boost::regex_replace(tmp, tables_->regex_real_em_dash, tables_->pseudo_em_dash);
 
     std::string table_data;
     table_data.reserve(START_WITH);
@@ -189,13 +217,13 @@ std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
 
     // after parsing, let's do a little cleanup
 
-    std::string clean_table_data = boost::regex_replace(table_data, regex_hi_ascii, one_space);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_multiple_spaces, one_space);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_dollar_tab, just_dollar);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_tabs_spaces, one_tab);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_tab_before_paren, just_paren);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_space_tab, one_tab);
-    clean_table_data = boost::regex_replace(clean_table_data, regex_leading_tab, delete_this);
+    std::string clean_table_data = boost::regex_replace(table_data, tables_->regex_hi_ascii, tables_->one_space);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_multiple_spaces, tables_->one_space);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_dollar_tab, tables_->just_dollar);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_tabs_spaces, tables_->one_tab);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_tab_before_paren, tables_->just_paren);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_space_tab, tables_->one_tab);
+    clean_table_data = boost::regex_replace(clean_table_data, tables_->regex_leading_tab, tables_->delete_this);
 
     return clean_table_data;
 }		/* -----  end of function TablesFromHTML::table_itor::CollectTableContent  ----- */
@@ -279,7 +307,7 @@ std::string TablesFromHTML::table_itor::FilterFoundHTML (const std::string& new_
     // (I'll add them where I want them.)
 
     static const boost::regex regex_line_breaks{R"***([\x0a\x0d])***"};
-    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, one_space);
+    std::string clean_row_data = boost::regex_replace(new_row_data, regex_line_breaks, tables_->one_space);
 
     return clean_row_data;
 }		/* -----  end of function TablesFromHTML::table_itor::FilterFoundHTML  ----- */

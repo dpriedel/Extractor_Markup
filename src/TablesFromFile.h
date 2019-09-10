@@ -5,7 +5,7 @@
  *
  *    Description:  Extract HTML tables from a block of text.
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  12/21/2018 09:22:12 AM
  *       Revision:  none
  *       Compiler:  gcc
@@ -39,6 +39,8 @@
 #include <iterator>
 #include <string>
 
+#include <range/v3/all.hpp>
+
 #include <boost/regex.hpp>
 
 #include "Extractor.h"
@@ -51,6 +53,11 @@ struct TableData
 {
     EM::sv current_table_html_;
     std::string current_table_parsed_;
+
+    bool operator==(TableData const& rhs) const
+    {
+        return current_table_html_ == rhs.current_table_html_;
+    }
 };
 
 /*
@@ -64,12 +71,15 @@ class TablesFromHTML
 public:
 
     class table_itor;
+
     using iterator = table_itor;
     using const_iterator = table_itor;
 
 public:
     /* ====================  LIFECYCLE     ======================================= */
-    explicit TablesFromHTML (EM::sv html);                             /* constructor */
+
+    TablesFromHTML() = default;
+    explicit TablesFromHTML (EM::sv html) : html_{html} { }         /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -88,11 +98,40 @@ protected:
     /* ====================  DATA MEMBERS  ======================================= */
 
 private:
+
+    friend class table_itor;
+
     /* ====================  METHODS       ======================================= */
+
+    EM::sv GetHTML(void) const { return html_; }
 
     /* ====================  DATA MEMBERS  ======================================= */
 
     EM::sv html_;
+
+    // these regexes are used to help parse the HTML.
+
+    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    // used to clean up the parsed data
+
+    const boost::regex regex_bogus_em_dash{R"***(&#151;)***"};
+    const boost::regex regex_real_em_dash{R"***(&#8212;)***"};
+    const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    const boost::regex regex_space_tab{R"***( \t)***"};
+    const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
+    const boost::regex regex_tabs_spaces{R"***(\t[ \t]+)***"};
+    const boost::regex regex_dollar_tab{R"***(\$\t)***"};
+    const boost::regex regex_leading_tab{R"***(^\t)***"};
+
+    const std::string pseudo_em_dash = "---";
+    const std::string delete_this = "";
+    const std::string one_space = " ";
+    const std::string one_tab = R"***(\t)***";
+    const std::string just_paren = ")";
+    const std::string just_dollar = "$";
 
 }; /* -----  end of class TablesFromHTML  ----- */
 
@@ -102,19 +141,20 @@ private:
 //  Description:  iterator from contents of TablesFromHTML container.
 // =====================================================================================
 //
-class TablesFromHTML::table_itor: public std::iterator<
-                std::forward_iterator_tag,      // iterator_category
-                TableData,                     // value_type
-                ptrdiff_t,
-                TableData const *,
-                TableData const &
-                >
+class TablesFromHTML::table_itor
 {
 public:
+
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = TableData;
+    using difference_type = ptrdiff_t;
+    using pointer = TableData *;
+    using reference = TableData &;
+
     // ====================  LIFECYCLE     ======================================= 
 
-    table_itor() = default;
-    explicit table_itor(EM::sv html);
+    table_itor() : tables_{nullptr} { }
+    explicit table_itor(TablesFromHTML const* tables);
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -128,7 +168,7 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    bool operator==(const table_itor& other) const { return doc_ == other.doc_; }
+    bool operator==(const table_itor& other) const { return tables_ == other.tables_ && table_data_ == other.table_data_; }
     bool operator!=(const table_itor& other) const { return !(*this == other); }
 
     reference operator*() const { return table_data_; };
@@ -148,34 +188,67 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
     boost::cregex_token_iterator doc_;
     boost::cregex_token_iterator end_;
 
-    // used to clean up the data
-
-    const boost::regex regex_bogus_em_dash{R"***(&#151;)***"};
-    const boost::regex regex_real_em_dash{R"***(&#8212;)***"};
-    const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-    const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-    const boost::regex regex_space_tab{R"***( \t)***"};
-    const boost::regex regex_tab_before_paren{R"***(\t+\))***"};
-    const boost::regex regex_tabs_spaces{R"***(\t[ \t]+)***"};
-    const boost::regex regex_dollar_tab{R"***(\$\t)***"};
-    const boost::regex regex_leading_tab{R"***(^\t)***"};
-
-    const std::string pseudo_em_dash = "---";
-    const std::string delete_this = "";
-    const std::string one_space = " ";
-    const std::string one_tab = R"***(\t)***";
-    const std::string just_paren = ")";
-    const std::string just_dollar = "$";
-
-
+    TablesFromHTML const * tables_;
     EM::sv html_;
     
-    TableData table_data_;
+    mutable TableData table_data_;
 }; // -----  end of class TablesFromHTML::table_itor  ----- 
 
+
+struct TablesFromHTMLRange : ranges::view_facade<TablesFromHTMLRange>
+{
+private:
+    friend ranges::range_access;
+    TablesFromHTML tables_;
+    struct cursor
+    {
+    private:
+        TablesFromHTML::const_iterator iter_;
+    public:
+        cursor() = default;
+        explicit cursor(TablesFromHTML::const_iterator it)
+          : iter_(it)
+        {}
+        TableData const & read() const
+        {
+            return *iter_;
+        }
+        bool equal(cursor const &that) const
+        {
+            return iter_ == that.iter_;
+        }
+        void next()
+        {
+            ++iter_;
+        }
+//        void prev()
+//        {
+//            --iter;
+//        }
+//        std::ptrdiff_t distance_to(cursor const &that) const
+//        {
+//            return that.iter - iter;
+//        }
+//        void advance(std::ptrdiff_t n)
+//        {
+//            iter += n;
+//        }
+    };
+    cursor begin_cursor() const
+    {
+        return cursor{tables_.begin()};
+    }
+    cursor end_cursor() const
+    {
+        return cursor{tables_.end()};
+    }
+public:
+    TablesFromHTMLRange() = default;
+    TablesFromHTMLRange(const TablesFromHTML& tables)
+      : tables_{tables}
+    {}
+};
 #endif   /* ----- #ifndef TABLESFROMFILE_INC  ----- */
