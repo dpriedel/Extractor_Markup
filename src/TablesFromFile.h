@@ -103,7 +103,7 @@ private:
 
     /* ====================  METHODS       ======================================= */
 
-    EM::sv GetHTML(void) const { return html_; }
+    [[nodiscard]] EM::sv GetHTML(void) const { return html_; }
 
     /* ====================  DATA MEMBERS  ======================================= */
 
@@ -183,6 +183,9 @@ private:
     // ====================  METHODS       ======================================= 
 
     std::string CollectTableContent(EM::sv html);
+
+    // a_table is non-const because the qumbo-query library doesn't do 'const'
+
     std::string ExtractTextDataFromTable (CNode& a_table);
     std::string FilterFoundHTML (const std::string& new_row_data);
 
@@ -197,20 +200,27 @@ private:
     mutable TableData table_data_;
 }; // -----  end of class TablesFromHTML::table_itor  ----- 
 
+// this code is based on the view_facade test case in the range-v3 package.
 
 struct TablesFromHTMLRange : ranges::view_facade<TablesFromHTMLRange>
 {
 private:
+
     friend ranges::range_access;
+
     TablesFromHTML tables_;
+
     struct cursor
     {
     private:
+
         TablesFromHTML::const_iterator iter_;
+
     public:
+
         cursor() = default;
         explicit cursor(TablesFromHTML::const_iterator it)
-          : iter_(it)
+          : iter_(std::move(it))
         {}
         TableData const & read() const
         {
@@ -237,17 +247,20 @@ private:
 //            iter += n;
 //        }
     };
-    cursor begin_cursor() const
+
+    [[nodiscard]] cursor begin_cursor() const
     {
         return cursor{tables_.begin()};
     }
-    cursor end_cursor() const
+    [[nodiscard]] cursor end_cursor() const
     {
         return cursor{tables_.end()};
     }
+
 public:
+
     TablesFromHTMLRange() = default;
-    TablesFromHTMLRange(const TablesFromHTML& tables)
+    explicit TablesFromHTMLRange(const TablesFromHTML& tables)
       : tables_{tables}
     {}
 };
