@@ -6,7 +6,7 @@
  *    Description:  class to make working with HTML content in SEC files
  *                  fit in better with STL and maybe ranges
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  12/13/2018 02:26:57 PM
  *       Revision:  none
  *       Compiler:  gcc
@@ -65,47 +65,15 @@ class HTML_FromFile
 {
 public:
 
-    class html_itor: public std::iterator<
-                    std::forward_iterator_tag,      // html_itor_category
-                    HtmlInfo                       // value_type
-                    >
-    {
-        boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-        boost::cregex_token_iterator doc_;
-        boost::cregex_token_iterator end_;
+    class html_itor;
 
-        EM::sv file_content_;
-
-        HtmlInfo html_info_;
-        
-    public:
-
-        html_itor() = default;
-        explicit html_itor(EM::sv file_content);
-
-        html_itor& operator++();
-        const html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
-
-        bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
-        bool operator!=(const html_itor& other) const { return !(*this == other); }
-
-        reference operator*() { return html_info_; }
-        pointer operator->() { return &html_info_; }
-    };
-
-
-    using value_type = html_itor::value_type;
-    using pointer = html_itor::pointer;
-    using const_pointer = const html_itor::pointer;
-    using reference = html_itor::reference;
-    using const_reference = html_itor::reference;
     using iterator = html_itor;
-    using const_iterator = const html_itor;
-    using size_type = size_t;
-    using difference_type = ptrdiff_t;
+    using const_iterator = html_itor;
 
 public:
     /* ====================  LIFECYCLE     ======================================= */
+
+    HTML_FromFile() = default;
     explicit HTML_FromFile (EM::sv file_content);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
@@ -115,7 +83,6 @@ public:
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }
     [[nodiscard]] bool empty() const { return file_content_.empty(); }
 
     /* ====================  MUTATORS      ======================================= */
@@ -135,5 +102,60 @@ private:
     EM::sv file_content_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
+
+
+// =====================================================================================
+//        Class:  HTML_FromFile::html_itor
+//  Description:  Range compatible iterator for HTML_FromFile container.
+// =====================================================================================
+
+class HTML_FromFile::html_itor
+{
+public:
+
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = HtmlInfo;
+    using difference_type = ptrdiff_t;
+    using pointer = HtmlInfo *;
+    using reference = HtmlInfo &;
+
+    // ====================  LIFECYCLE     ======================================= 
+
+    html_itor() = default;
+    explicit html_itor(EM::sv file_content);
+
+    // ====================  ACCESSORS     ======================================= 
+
+    // ====================  MUTATORS      ======================================= 
+
+    html_itor& operator++();
+    html_itor operator++(int) { html_itor retval = *this; ++(*this); return retval; }
+
+    // ====================  OPERATORS     ======================================= 
+
+    bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
+    bool operator!=(const html_itor& other) const { return !(*this == other); }
+
+    reference operator*() const { return html_info_; }
+    pointer operator->() const { return &html_info_; }
+
+protected:
+    // ====================  METHODS       ======================================= 
+
+    // ====================  DATA MEMBERS  ======================================= 
+
+private:
+    // ====================  METHODS       ======================================= 
+
+    // ====================  DATA MEMBERS  ======================================= 
+    
+    boost::cregex_token_iterator doc_;
+    boost::cregex_token_iterator end_;
+
+    EM::sv file_content_;
+
+    mutable HtmlInfo html_info_;
+
+}; // -----  end of class HTML_FromFile::html_itor  ----- 
 
 #endif   /* ----- #ifndef HTML_FromFile_INC  ----- */

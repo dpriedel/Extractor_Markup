@@ -63,7 +63,7 @@ struct TableData
 /*
  * =====================================================================================
  *        Class:  TablesFromHTML
- *  Description:  iterate over tables (if any) in block of text.
+ *  Description:  Range compatible class to iterate over tables (if any) in block of text.
  * =====================================================================================
  */
 class TablesFromHTML
@@ -138,7 +138,7 @@ private:
 
 // =====================================================================================
 //        Class:  TablesFromHTML::table_itor
-//  Description:  iterator from contents of TablesFromHTML container.
+//  Description:  Range compatible iterator from contents of TablesFromHTML container.
 // =====================================================================================
 //
 class TablesFromHTML::table_itor

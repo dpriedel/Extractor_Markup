@@ -6,7 +6,7 @@
  *    Description:  Range compatible class to extract anchors
  *                  from a chunk of HTML
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  12/14/2018 03:41:02 PM
  *       Revision:  none
  *       Compiler:  gcc
@@ -66,79 +66,102 @@ class AnchorsFromHTML
 {
 public:
 
-    class anchor_itor: public std::iterator<
-                       std::forward_iterator_tag,      // iterator_category
-                       AnchorData                      // value_type
-                       >
-    {
-        EM::sv html_;
-        const char* anchor_begin_ = nullptr;
-        const char* anchor_end_ = nullptr;
-        mutable AnchorData the_anchor_;
+    class anchor_itor;
 
-        std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
-        const char* FindAnchorEnd(const char* begin, const char* end, int level);
-        AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::sv html);
-        
-    public:
+    using iterator = anchor_itor;
+    using const_iterator = anchor_itor;
 
-        anchor_itor() = default;
-        explicit anchor_itor(EM::sv html);
+public:
+    /* ====================  LIFECYCLE     ======================================= */
 
-        anchor_itor& operator++();
-        anchor_itor operator++(int) { anchor_itor retval = *this; ++(*this); return retval; }
+    AnchorsFromHTML() = default;
+    explicit AnchorsFromHTML (EM::sv html);                             /* constructor */
 
-        bool operator==(const anchor_itor& other) const
-            { return anchor_begin_ == other.anchor_begin_ && anchor_end_ == other.anchor_end_; }
-        bool operator!=(const anchor_itor& other) const { return !(*this == other); }
-
-        reference operator*() const { return the_anchor_; }
-        pointer operator->() const { return &the_anchor_; }
-
-        EM::sv to_sview() const { return the_anchor_.anchor_content_; }
-    };
-
-        using value_type = EM::sv;
-        using pointer = anchor_itor::pointer;
-        using const_pointer = anchor_itor::pointer;
-        using reference = anchor_itor::reference;
-        using const_reference = anchor_itor::reference;
-        using iterator = anchor_itor;
-        using const_iterator = const anchor_itor;
-        using size_type = size_t;
-        using difference_type = ptrdiff_t;
-
-    public:
-        /* ====================  LIFECYCLE     ======================================= */
-        explicit AnchorsFromHTML (EM::sv html);                             /* constructor */
-
-        /* ====================  ACCESSORS     ======================================= */
+    /* ====================  ACCESSORS     ======================================= */
 
     [[nodiscard]] iterator begin();
     [[nodiscard]] const_iterator begin() const;
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] size_type size() const { return std::distance(begin(), end()); }
     [[nodiscard]] bool empty() const { return html_.empty(); }
 
-        /* ====================  MUTATORS      ======================================= */
+    /* ====================  MUTATORS      ======================================= */
 
-        /* ====================  OPERATORS     ======================================= */
+    /* ====================  OPERATORS     ======================================= */
 
-    protected:
-        /* ====================  METHODS       ======================================= */
+protected:
+    /* ====================  METHODS       ======================================= */
 
-        /* ====================  DATA MEMBERS  ======================================= */
+    /* ====================  DATA MEMBERS  ======================================= */
 
-    private:
-        /* ====================  METHODS       ======================================= */
+private:
+    /* ====================  METHODS       ======================================= */
 
-        /* ====================  DATA MEMBERS  ======================================= */
+    /* ====================  DATA MEMBERS  ======================================= */
 
-        EM::sv html_;
+    EM::sv html_;
 
 }; /* -----  end of class AnchorsFromHTML  ----- */
 
+
+// =====================================================================================
+//        Class:  AnchorsFromHTML::anchor_itor
+//  Description:  Range compatible iterator for AnchorsFromHTML container.
+// =====================================================================================
+
+class AnchorsFromHTML::anchor_itor
+{
+public:
+
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = AnchorData;
+    using difference_type = ptrdiff_t;
+    using pointer = AnchorData *;
+    using reference = AnchorData &;
+
+    // ====================  LIFECYCLE     ======================================= 
+
+    anchor_itor() = default;
+    explicit anchor_itor(EM::sv html);
+
+    // ====================  ACCESSORS     ======================================= 
+
+    EM::sv to_sview() const { return the_anchor_.anchor_content_; }
+
+    // ====================  MUTATORS      ======================================= 
+
+    anchor_itor& operator++();
+    anchor_itor operator++(int) { anchor_itor retval = *this; ++(*this); return retval; }
+
+    // ====================  OPERATORS     ======================================= 
+
+    bool operator==(const anchor_itor& rhs) const
+        { return anchor_begin_ == rhs.anchor_begin_ && anchor_end_ == rhs.anchor_end_; }
+    bool operator!=(const anchor_itor& rhs) const { return !(*this == rhs); }
+
+    reference operator*() const { return the_anchor_; }
+    pointer operator->() const { return &the_anchor_; }
+
+protected:
+    // ====================  METHODS       ======================================= 
+
+    // ====================  DATA MEMBERS  ======================================= 
+
+private:
+    // ====================  METHODS       ======================================= 
+
+    std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
+    const char* FindAnchorEnd(const char* begin, const char* end, int level);
+    AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::sv html);
+
+    // ====================  DATA MEMBERS  ======================================= 
+
+    EM::sv html_;
+    const char* anchor_begin_ = nullptr;
+    const char* anchor_end_ = nullptr;
+    mutable AnchorData the_anchor_;
+
+}; // -----  end of class AnchorsFromHTML::anchor_itor  ----- 
 
 #endif   /* ----- #ifndef ANCHORSFROMHTML_INC  ----- */

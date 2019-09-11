@@ -84,6 +84,7 @@ HTML_FromFile::const_iterator HTML_FromFile::end () const
 HTML_FromFile::html_itor::html_itor (EM::sv file_content)
     : file_content_{file_content}
 {
+    const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
     doc_ = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc_);
     for (; doc_ != end_; ++doc_)
     {
