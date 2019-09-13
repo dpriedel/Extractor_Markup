@@ -247,7 +247,7 @@ inline auto MakeAnchorFilterForStatementType(const boost::regex& stmt_anchor_reg
 
 // function pointer for our main filter
 
-typedef bool(StmtTypeFilter)(EM::sv);
+using StmtTypeFilter = bool(*)(EM::sv);
 
 // here's the guts of the routine.
 // using 'template normal programming' as from: https://www.youtube.com/watch?v=vwrXHznaYLA
