@@ -230,7 +230,7 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
  *  Description:  
  * =====================================================================================
  */
-AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors)
+AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorsFromHTML& anchors)
 {
     EM::sv looking_for = financial_anchor.href_;
     looking_for.remove_prefix(1);               // need to skip '#'

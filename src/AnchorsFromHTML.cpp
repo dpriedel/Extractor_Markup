@@ -60,12 +60,12 @@ AnchorsFromHTML::AnchorsFromHTML (EM::sv html)
 
 AnchorsFromHTML::iterator AnchorsFromHTML::begin ()
 {
-    return iterator(html_);
+    return iterator(this);
 }		/* -----  end of method AnchorsFromHTML::begin  ----- */
 
 AnchorsFromHTML::const_iterator AnchorsFromHTML::begin () const
 {
-    return const_iterator(html_);
+    return const_iterator(this);
 }		/* -----  end of method AnchorsFromHTML::begin  ----- */
 
 AnchorsFromHTML::iterator AnchorsFromHTML::end ()
@@ -85,15 +85,16 @@ AnchorsFromHTML::const_iterator AnchorsFromHTML::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::anchor_itor::anchor_itor (EM::sv html)
-    : html_{html}
+AnchorsFromHTML::anchor_itor::anchor_itor (const AnchorsFromHTML* anchors)
+    : anchors_{anchors}
 {
+    html_ = anchors_->html_;
     if (html_.empty())
     {
         return;
     }
-    anchor_begin_ = html_.begin();
-    anchor_end_ = html.end();
+    anchor_search_start = html_.begin();
+    anchor_search_end = html_.end();
 
     operator++();
 
@@ -101,23 +102,29 @@ AnchorsFromHTML::anchor_itor::anchor_itor (EM::sv html)
 
 AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
 {
-    auto next_anchor = FindNextAnchor(anchor_begin_, anchor_end_);
+    auto next_anchor = FindNextAnchor(anchor_search_start, anchor_search_end);
 
     if (! next_anchor)
     {
-        anchor_begin_ = nullptr;
-        anchor_end_ = nullptr;
+        anchor_search_start = nullptr;
+        anchor_search_end = nullptr;
+        the_anchor_ = {};
         return *this;
     }
 
     the_anchor_ = *next_anchor;
-    anchor_begin_ = the_anchor_.anchor_content_.end();
+    anchor_search_start = the_anchor_.anchor_content_.end();
 
     return *this;
 }		/* -----  end of method AnchorsFromHTML::iterator::operator++  ----- */
 
 std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char* begin, const char* end)
 {
+    if (++using_saved_anchor < anchors_->found_anchors_.size())
+    {
+        the_anchor_ = anchors_->found_anchors_[using_saved_anchor];
+        return std::optional<AnchorData>{anchors_->found_anchors_[using_saved_anchor]};
+    }
     static const boost::regex re_anchor_begin{R"***((?:<a>|<a |<a\n)[^>]*?>)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -138,7 +145,12 @@ std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char*
 
         throw HTMLException("Missing anchor end.");
     }
-    auto anchor{ExtractDataFromAnchor(anchor_begin_match[0].first, anchor_end , html_)};
+
+    AnchorData anchor{ExtractDataFromAnchor(anchor_begin_match[0].first, anchor_end , html_)};
+ 
+    // cache our anchor in case there is a 'next' time.
+
+    anchors_->found_anchors_.push_back(anchor);
     return std::optional<AnchorData>{anchor};
 }		/* -----  end of method AnchorsFromHTML::iterator::FindNextAnchor  ----- */
 

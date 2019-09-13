@@ -96,11 +96,17 @@ protected:
     /* ====================  DATA MEMBERS  ======================================= */
 
 private:
+    
+    friend class anchor_itor;
+
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
     EM::sv html_;
+
+    mutable AnchorList found_anchors_;
+    const char* last_anchor_end_ = nullptr;
 
 }; /* -----  end of class AnchorsFromHTML  ----- */
 
@@ -123,7 +129,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
 
     anchor_itor() = default;
-    explicit anchor_itor(EM::sv html);
+    explicit anchor_itor(const AnchorsFromHTML* anchors);
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -137,7 +143,7 @@ public:
     // ====================  OPERATORS     ======================================= 
 
     bool operator==(const anchor_itor& rhs) const
-        { return anchor_begin_ == rhs.anchor_begin_ && anchor_end_ == rhs.anchor_end_; }
+        { return anchor_search_start == rhs.anchor_search_start && anchor_search_end == rhs.anchor_search_end; }
     bool operator!=(const anchor_itor& rhs) const { return !(*this == rhs); }
 
     reference operator*() const { return the_anchor_; }
@@ -157,10 +163,12 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
+    const AnchorsFromHTML* anchors_ = nullptr;
     EM::sv html_;
-    const char* anchor_begin_ = nullptr;
-    const char* anchor_end_ = nullptr;
+    const char* anchor_search_start = nullptr;
+    const char* anchor_search_end = nullptr;
     mutable AnchorData the_anchor_;
+    int using_saved_anchor = -1;
 
 }; // -----  end of class AnchorsFromHTML::anchor_itor  ----- 
 

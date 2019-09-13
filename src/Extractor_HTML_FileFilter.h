@@ -199,7 +199,7 @@ EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content);
 
 std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::sv file_content);
 
-AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, AnchorsFromHTML anchors);
+AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorsFromHTML& anchors);
 
 MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
