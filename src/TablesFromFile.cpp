@@ -47,6 +47,8 @@ using namespace std::string_literals;
 #include "spdlog/spdlog.h"
 
 constexpr int START_WITH = 5000;
+constexpr int FOR_TBL_ROW = 1000;
+constexpr int MIN_AMOUNT_HTML = 100;
 
 /*
  *--------------------------------------------------------------------------------------
@@ -91,39 +93,48 @@ TablesFromHTML::table_itor::table_itor(TablesFromHTML const * tables)
     {
         return;
     }
-    html_ = tables_->GetHTML();
+    html_ = tables_->html_;
+    if (html_.empty())
+    {
+        return;
+    }
 
     doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), tables_->regex_table_);
-    if (doc_ != end_)
+    auto next_table = FindNextTable();
+    if (next_table)
     {
-        try
-        {
-            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
-            if (TableHasMarkup(table_data_.current_table_html_))
-            {
-                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
-            }
-            else
-            {
-                spdlog::debug("Little or no HTML found in table...Skipping.");
-                operator++();
-            }
-        }
-        catch (AssertionException& e)
-        {
-            // let's ignore it and continue.
-
-            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-            operator++();
-        }
-        catch (HTMLException& e)
-        {
-            // let's ignore it and continue.
-
-            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-            operator++();
-        }
+        table_data_ = *next_table;
     }
+//    if (doc_ != end_)
+//    {
+//        try
+//        {
+//            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
+//            if (TableHasMarkup(table_data_.current_table_html_))
+//            {
+//                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
+//            }
+//            else
+//            {
+//                spdlog::debug("Little or no HTML found in table...Skipping.");
+//                operator++();
+//            }
+//        }
+//        catch (AssertionException& e)
+//        {
+//            // let's ignore it and continue.
+//
+//            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+//            operator++();
+//        }
+//        catch (HTMLException& e)
+//        {
+//            // let's ignore it and continue.
+//
+//            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+//            operator++();
+//        }
+//    }
 }  /* -----  end of method TablesFromHTML::table_itor::table_itor  (constructor)  ----- */
 
 TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
@@ -132,51 +143,110 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
     {
         return *this;
     }
-
-    bool done = false;
-    while (! done)
+    
+    ++doc_;
+    auto next_table = FindNextTable();
+    if (! next_table)
     {
-        if (++doc_ != end_)
-        {
-            try
-            {
-                table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
-                if (TableHasMarkup(table_data_.current_table_html_))
-                {
-                    table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
-                    done = true;
-                }
-                else
-                {
-                    spdlog::debug("Little or no HTML found in table...Skipping.");
-                    continue;
-                }
-            }
-            catch (AssertionException& e)
-            {
-                // let's ignore it and continue.
-
-                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-                continue;
-            }
-            catch (HTMLException& e)
-            {
-                // let's ignore it and continue.
-
-                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-                continue;
-            }
-        }
-        else
-        {
-            table_data_.current_table_html_ = {};
-            table_data_.current_table_parsed_.erase();
-            tables_ = nullptr;
-            done = true;
-        }
+        tables_ = nullptr;
+        table_data_ = {};
+        return *this;
     }
+    table_data_ = * next_table;
+
     return *this;
+//    bool done = false;
+//    while (! done)
+//    {
+//        if (++doc_ != end_)
+//        {
+//            try
+//            {
+//                table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
+//                if (TableHasMarkup(table_data_.current_table_html_))
+//                {
+//                    table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
+//                    done = true;
+//                }
+//                else
+//                {
+//                    spdlog::debug("Little or no HTML found in table...Skipping.");
+//                    continue;
+//                }
+//            }
+//            catch (AssertionException& e)
+//            {
+//                // let's ignore it and continue.
+//
+//                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+//                continue;
+//            }
+//            catch (HTMLException& e)
+//            {
+//                // let's ignore it and continue.
+//
+//                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+//                continue;
+//            }
+//        }
+//        else
+//        {
+//            table_data_.current_table_html_ = {};
+//            table_data_.current_table_parsed_.erase();
+//            tables_ = nullptr;
+//            done = true;
+//        }
+//    }
+//    return *this;
 }		/* -----  end of method TablesFromHTML::table_itor::operator++  ----- */
+
+std::optional<TableData> TablesFromHTML::table_itor::FindNextTable ()
+{
+    if (++using_saved_table_data_ < tables_->found_tables_.size())
+    {
+        return std::optional<TableData>{tables_->found_tables_[using_saved_table_data_]};
+    }
+    
+    if (tables_->found_all_tables_)
+    {
+        return std::nullopt;
+    }
+    TableData next_table;
+    while (doc_ != end_)
+    {
+        try
+        {
+            next_table.current_table_html_ = EM::sv(doc_->first, doc_->length());
+            if (TableHasMarkup(next_table.current_table_html_))
+            {
+                next_table.current_table_parsed_ = CollectTableContent(next_table.current_table_html_);
+                break;
+            }
+            spdlog::debug("Little or no HTML found in table...Skipping.");
+        }
+        catch (AssertionException& e)
+        {
+            // let's ignore it and continue.
+
+            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+        }
+        catch (HTMLException& e)
+        {
+            // let's ignore it and continue.
+
+            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
+        }
+        ++doc_;
+    }
+    if (doc_ != end_)
+    {
+        tables_->found_tables_.push_back(next_table);
+        return std::optional<TableData>{next_table};
+    }
+    tables_->found_all_tables_ = true;
+    return std::nullopt;
+}		// -----  end of method TablesFromHTML::table_itor::FindNextTable  ----- 
+
 
 bool TablesFromHTML::table_itor::TableHasMarkup (EM::sv table)
 {
@@ -246,7 +316,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
         CSelection a_table_row_cells = a_table_row.find("td");
 
         std::string new_row_data;
-        new_row_data.reserve(1000);
+        new_row_data.reserve(FOR_TBL_ROW);
         for (size_t indx = 0 ; indx < a_table_row_cells.nodeNum(); ++indx)
         {
             CNode a_table_row_cell = a_table_row_cells.nodeAt(indx);
@@ -293,7 +363,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable (CNode& a_table
             table_text += '\n';
         }
     }
-    if (table_text.size() < 100)
+    if (table_text.size() < MIN_AMOUNT_HTML)
     {
         throw HTMLException("table has little or no HTML.");
     }

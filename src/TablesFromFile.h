@@ -37,7 +37,9 @@
 #define  _TABLESFROMFILE_INC_
 
 #include <iterator>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <range/v3/all.hpp>
 
@@ -59,6 +61,8 @@ struct TableData
         return current_table_html_ == rhs.current_table_html_;
     }
 };
+
+using TableDataList = std::vector<TableData>;
 
 /*
  * =====================================================================================
@@ -103,11 +107,12 @@ private:
 
     /* ====================  METHODS       ======================================= */
 
-    [[nodiscard]] EM::sv GetHTML(void) const { return html_; }
-
     /* ====================  DATA MEMBERS  ======================================= */
 
     EM::sv html_;
+
+    mutable TableDataList found_tables_;
+    mutable bool found_all_tables_ = false;
 
     // these regexes are used to help parse the HTML.
 
@@ -182,6 +187,7 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
+    std::optional<TableData> FindNextTable();
     std::string CollectTableContent(EM::sv html);
 
     // a_table is non-const because the qumbo-query library doesn't do 'const'
@@ -198,6 +204,9 @@ private:
     EM::sv html_;
     
     mutable TableData table_data_;
+
+    int using_saved_table_data_ = -1;
+
 }; // -----  end of class TablesFromHTML::table_itor  ----- 
 
 
