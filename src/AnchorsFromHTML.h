@@ -58,8 +58,7 @@ using AnchorList = std::vector<AnchorData>;
 /*
  * =====================================================================================
  *        Class:  AnchorsFromHTML
- *  Description:  Range compatible class to extract anchors from a 
- *                  chunk of HTML
+ *  Description:  Range compatible class to extract anchors from a chunk of HTML
  * =====================================================================================
  */
 class AnchorsFromHTML
@@ -106,7 +105,6 @@ private:
     EM::sv html_;
 
     mutable AnchorList found_anchors_;
-    const char* last_anchor_end_ = nullptr;
 
 }; /* -----  end of class AnchorsFromHTML  ----- */
 

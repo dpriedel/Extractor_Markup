@@ -88,6 +88,10 @@ AnchorsFromHTML::const_iterator AnchorsFromHTML::end () const
 AnchorsFromHTML::anchor_itor::anchor_itor (const AnchorsFromHTML* anchors)
     : anchors_{anchors}
 {
+    if (anchors == nullptr)
+    {
+        return;
+    }
     html_ = anchors_->html_;
     if (html_.empty())
     {
@@ -122,7 +126,6 @@ std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char*
 {
     if (++using_saved_anchor < anchors_->found_anchors_.size())
     {
-        the_anchor_ = anchors_->found_anchors_[using_saved_anchor];
         return std::optional<AnchorData>{anchors_->found_anchors_[using_saved_anchor]};
     }
     static const boost::regex re_anchor_begin{R"***((?:<a>|<a |<a\n)[^>]*?>)***",
