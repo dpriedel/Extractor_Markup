@@ -145,7 +145,6 @@ struct FinancialStatements
     StatementOfOperations statement_of_operations_;
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
-    EM::Extractor_Values values_;
     EM::sv html_;
     const char* financial_statements_begin_ = nullptr;         // pointer to anchor/first part
     size_t financial_statements_len_ = 0;                       // offset of end of last part
@@ -162,7 +161,10 @@ struct FinancialStatements
     void FindAndStoreMultipliers();
     void FindSharesOutstanding(EM::sv file_content);
 
-    [[nodiscard]] const EM::Extractor_Values& ListValues(void) const { return values_; }
+    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
+            balance_sheet_.values_,
+            statement_of_operations_.values_,
+            cash_flows_.values_); }
 };
 
 EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, const std::string& multiplier);
