@@ -132,16 +132,9 @@ EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content)
     {R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    const auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
-
-    auto anchor_filter_matcher([&document_anchor_filter](const auto& anchor)
-        {
-            return document_anchor_filter(anchor);
-
-        });
-
     AnchorsFromHTML anchors(financial_content);
-    auto found_it = std::find_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
+    auto found_it = ranges::find_if(anchors, [](const auto& anchor)
+            { return AnchorFilterUsingRegex(regex_finance_statements, anchor); });
     if (found_it == anchors.end())
     {
         return {};
@@ -180,36 +173,27 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
     {R"***((?:<a>|<a |<a\n).*?(?:statement|statements)\s+?of.*?(?:cash\s+flow).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    const auto document_anchor_filter = MakeAnchorFilterForStatementType(regex_finance_statements);
-    const auto document_anchor_filter1 = MakeAnchorFilterForStatementType(regex_finance_statements_bal);
-    const auto document_anchor_filter2 = MakeAnchorFilterForStatementType(regex_finance_statements_ops);
-    const auto document_anchor_filter3 = MakeAnchorFilterForStatementType(regex_finance_statements_cash);
-    
-    std::vector<std::add_pointer<decltype(document_anchor_filter)>::type> document_anchor_filters
-        {&document_anchor_filter, &document_anchor_filter1, &document_anchor_filter2, &document_anchor_filter3};
+    std::vector<boost::regex const *> document_anchor_regexs
+        {&regex_finance_statements, &regex_finance_statements_cash, &regex_finance_statements_ops, &regex_finance_statements_bal};
 
-    auto anchor_filter_matcher([&document_anchor_filters](const auto& anchor)
+    auto anchor_filter_matcher([&document_anchor_regexs](const auto& anchor)
         {
-            return std::any_of(document_anchor_filters.begin(),
-                    document_anchor_filters.end(),
-                    [&anchor] (const auto& filter) { return (*filter)(anchor); }
-                );
-
+            return ranges::any_of(document_anchor_regexs, [&anchor](const boost::regex* regex)
+                {
+                    return AnchorFilterUsingRegex(*regex, anchor);
+                });
         });
 
     auto look_for_top_level([&anchor_filter_matcher] (auto html)
     {
         AnchorsFromHTML anchors(html.html_);
-        int how_many_matches = std::count_if(anchors.begin(), anchors.end(), anchor_filter_matcher);
+        int how_many_matches = ranges::count_if(anchors, anchor_filter_matcher);
         return how_many_matches >= 3;
     });
 
     HTML_FromFile htmls{file_content};
 
-    auto financial_content = std::find_if(htmls.begin(),
-            htmls.end(),
-            look_for_top_level
-            );
+    auto financial_content = ranges::find_if(htmls, look_for_top_level);
 
     if (financial_content != htmls.end())
     {

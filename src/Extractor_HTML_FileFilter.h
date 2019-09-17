@@ -232,19 +232,16 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_con
 
 // need to construct predicates on the fly.
 
-inline auto MakeAnchorFilterForStatementType(const boost::regex& stmt_anchor_regex)
+inline bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorData& an_anchor)
 {
-    return ([&stmt_anchor_regex](const AnchorData& an_anchor)
-        {
-            if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
-            {
-                return false;
-            }
+    if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
+    {
+        return false;
+    }
 
-            const auto& anchor = an_anchor.anchor_content_;
+    const auto& anchor = an_anchor.anchor_content_;
 
-            return boost::regex_search(anchor.cbegin(), anchor.cend(), stmt_anchor_regex);
-        });
+    return boost::regex_search(anchor.cbegin(), anchor.cend(), stmt_anchor_regex);
 }
 
 // function pointer for our main filter
@@ -255,34 +252,79 @@ using StmtTypeFilter = bool(*)(EM::sv);
 // using 'template normal programming' as from: https://www.youtube.com/watch?v=vwrXHznaYLA
 
 template<typename StatementType>
-StatementType FindStatementContent(EM::sv financial_content, AnchorsFromHTML anchors,
+StatementType FindStatementContent(EM::sv financial_content, const AnchorsFromHTML& anchors,
         const boost::regex& stmt_anchor_regex, StmtTypeFilter stmt_type_filter)
 {
     StatementType stmt_type;
 
-    auto stmt_href = std::find_if(anchors.begin(), anchors.end(), MakeAnchorFilterForStatementType(stmt_anchor_regex));
-    if (stmt_href != anchors.end())
-    {
-        auto stmt_dest = FindDestinationAnchor(*stmt_href, anchors);
-        if (stmt_dest != anchors.end())
-        {
-            stmt_type.the_anchor_ = *stmt_dest;
-            const char* anchor_begin = stmt_type.the_anchor_.anchor_content_.data();
+    auto find_anchor = ranges::views::filter([stmt_anchor_regex](const auto& anchor)
+            { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); });
+    auto find_data_start = ranges::views::transform([&anchors](const auto& anchor)
+            { return FindDestinationAnchor(anchor, anchors); });
 
-            TablesFromHTML tables{EM::sv{stmt_dest->anchor_content_.data(),
-                financial_content.size() - (stmt_dest->anchor_content_.data() - financial_content.data())}};
-            auto stmt = std::find_if(tables.begin(), tables.end(),
-                    [&stmt_type_filter](const auto& x) { return stmt_type_filter(x.current_table_parsed_); });
-            if (stmt != tables.end())
+    auto the_data = anchors | find_anchor | find_data_start;
+    stmt_type.the_anchor_ = *the_data.front();
+
+    const char* anchor_begin = stmt_type.the_anchor_.anchor_content_.data();
+
+    TablesFromHTML tables{EM::sv{stmt_type.the_anchor_.anchor_content_.data(),
+        financial_content.size() - (stmt_type.the_anchor_.anchor_content_.data() - financial_content.data())}};
+    auto stmt = ranges::find_if(
+            tables, [&stmt_type_filter](const auto& x)
             {
-                stmt_type.parsed_data_ = stmt->current_table_parsed_;
-                size_t total_len = stmt.to_sview().data() + stmt.to_sview().size() - anchor_begin;
-                stmt_type.raw_data_ = {anchor_begin, total_len};
-                return stmt_type;
-            }
-        }
+                return stmt_type_filter(x.current_table_parsed_);
+            });
+    if (stmt != tables.end())
+    {
+        stmt_type.parsed_data_ = stmt->current_table_parsed_;
+        size_t total_len = stmt.to_sview().data() + stmt.to_sview().size() - anchor_begin;
+        stmt_type.raw_data_ = {anchor_begin, total_len};
+        return stmt_type;
     }
     return stmt_type;
+//    
+//    //  let's try some ranges
+//    ...or not
+//
+//    auto find_anchor = ranges::views::filter(
+//            [&stmt_anchor_regex](const auto& anchor)
+//            {
+//                return MakeAnchorFilterForStatementType(stmt_anchor_regex);
+//            });
+//    auto find_data_start = ranges::views::filter (
+//            [&anchors](const auto& anchor)
+//            {
+//                return FindDestinationAnchor(anchor);
+//            });
+//    auto find_content = ranges::views::filter (
+//            [&stmt_type, &stmt_type_filter, financial_content](const auto& anchor)
+//            {
+//                stmt_type.the_anchor = anchor.the_anchor;
+//                TablesFromHTML tables{EM::sv{anchor.anchor_content_.data(),
+//                    financial_content.size() - (anchor.anchor_content_.data() - financial_content.data())}};
+//                return (tables | ranges::views::filter(
+//                            [&stmt_type_filter](const auto& tbl)
+//                            {
+//                                return stmt_type_filter(tbl.current_table_parsed_);                                
+//                            })
+//                        ); 
+//                });
+//
+//    // now, put it all together
+//
+//    auto find_data_using_anchors = find_anchor
+//        | find_data_start
+//        | find_content
+//        ;
+//
+//    auto found_data = anchors | find_data_using_anchors;
+//    if (! found_data.empty())
+//    {
+//        stmt_type.parsed_data_ = found_data.current_table_parsed_;
+//        size_t total_len = found_data.to_sview().data() + found_data.to_sview().size() - anchor_begin;
+//        stmt_type.raw_data_ = {anchor_begin, total_len};
+//    }
+//
 }
 
 MultDataList CreateMultiplierListWhenNoAnchors (EM::sv file_content);
