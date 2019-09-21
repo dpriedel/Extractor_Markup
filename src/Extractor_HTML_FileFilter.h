@@ -197,7 +197,7 @@ std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
 //bool FinancialDocumentFilter (const HtmlInfo& html_info);
 
-EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content);
+EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content, const AnchorData& anchors);
 
 std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::sv file_content);
 
@@ -227,26 +227,14 @@ FinancialStatements ExtractFinancialStatements(EM::sv financial_content);
 
 FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_content);
 
-// let's take advantage of the fact that we defined all of these structs to have the
-// same fields, field name, and methods...a little templating is good for us !
-
-// need to construct predicates on the fly.
-
-inline bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorData& an_anchor)
-{
-    if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
-    {
-        return false;
-    }
-
-    const auto& anchor = an_anchor.anchor_content_;
-
-    return boost::regex_search(anchor.cbegin(), anchor.cend(), stmt_anchor_regex);
-}
+bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorData& an_anchor);
 
 // function pointer for our main filter
 
 using StmtTypeFilter = bool(*)(EM::sv);
+
+// let's take advantage of the fact that we defined all of these structs to have the
+// same fields, field name, and methods...a little templating is good for us !
 
 // here's the guts of the routine.
 // using 'template normal programming' as from: https://www.youtube.com/watch?v=vwrXHznaYLA
@@ -257,18 +245,19 @@ StatementType FindStatementContent(EM::sv financial_content, const AnchorsFromHT
 {
     StatementType stmt_type;
 
-    auto find_anchor = ranges::views::filter([stmt_anchor_regex](const auto& anchor)
-            { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); });
-    auto find_data_start = ranges::views::transform([&anchors](const auto& anchor)
-            { return FindDestinationAnchor(anchor, anchors); });
+    auto the_data = anchors 
+        | ranges::views::filter([stmt_anchor_regex](const auto& anchor)
+            { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); })
+        | ranges::views::transform([&anchors](const auto& anchor)
+            { return FindDestinationAnchor(anchor, anchors); })
+        | ranges::views::take(1);
 
-    auto the_data = anchors | find_anchor | find_data_start;
-    stmt_type.the_anchor_ = *the_data.front();
+    AnchorData the_anchor = *the_data.front();
 
-    const char* anchor_begin = stmt_type.the_anchor_.anchor_content_.data();
+    const char* anchor_begin = the_anchor.anchor_content_.data();
 
-    TablesFromHTML tables{EM::sv{stmt_type.the_anchor_.anchor_content_.data(),
-        financial_content.size() - (stmt_type.the_anchor_.anchor_content_.data() - financial_content.data())}};
+    TablesFromHTML tables{EM::sv{the_anchor.anchor_content_.data(),
+        financial_content.size() - (the_anchor.anchor_content_.data() - financial_content.data())}};
     auto stmt = ranges::find_if(
             tables, [&stmt_type_filter](const auto& x)
             {
@@ -276,55 +265,12 @@ StatementType FindStatementContent(EM::sv financial_content, const AnchorsFromHT
             });
     if (stmt != tables.end())
     {
+        stmt_type.the_anchor_ = the_anchor;
         stmt_type.parsed_data_ = stmt->current_table_parsed_;
         size_t total_len = stmt.to_sview().data() + stmt.to_sview().size() - anchor_begin;
         stmt_type.raw_data_ = {anchor_begin, total_len};
-        return stmt_type;
     }
     return stmt_type;
-//    
-//    //  let's try some ranges
-//    ...or not
-//
-//    auto find_anchor = ranges::views::filter(
-//            [&stmt_anchor_regex](const auto& anchor)
-//            {
-//                return MakeAnchorFilterForStatementType(stmt_anchor_regex);
-//            });
-//    auto find_data_start = ranges::views::filter (
-//            [&anchors](const auto& anchor)
-//            {
-//                return FindDestinationAnchor(anchor);
-//            });
-//    auto find_content = ranges::views::filter (
-//            [&stmt_type, &stmt_type_filter, financial_content](const auto& anchor)
-//            {
-//                stmt_type.the_anchor = anchor.the_anchor;
-//                TablesFromHTML tables{EM::sv{anchor.anchor_content_.data(),
-//                    financial_content.size() - (anchor.anchor_content_.data() - financial_content.data())}};
-//                return (tables | ranges::views::filter(
-//                            [&stmt_type_filter](const auto& tbl)
-//                            {
-//                                return stmt_type_filter(tbl.current_table_parsed_);                                
-//                            })
-//                        ); 
-//                });
-//
-//    // now, put it all together
-//
-//    auto find_data_using_anchors = find_anchor
-//        | find_data_start
-//        | find_content
-//        ;
-//
-//    auto found_data = anchors | find_data_using_anchors;
-//    if (! found_data.empty())
-//    {
-//        stmt_type.parsed_data_ = found_data.current_table_parsed_;
-//        size_t total_len = found_data.to_sview().data() + found_data.to_sview().size() - anchor_begin;
-//        stmt_type.raw_data_ = {anchor_begin, total_len};
-//    }
-//
 }
 
 MultDataList CreateMultiplierListWhenNoAnchors (EM::sv file_content);

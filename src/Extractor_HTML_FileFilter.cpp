@@ -65,6 +65,9 @@ static const char* NONE = "none";
 
 const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
 const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
+    boost::regex_constants::normal | boost::regex_constants::icase};
+    
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -118,7 +121,7 @@ bool FinancialStatements::ValidateContent ()
  */
 bool FinancialDocumentFilter::operator() (const HtmlInfo& html_info)
 {
-    return std::find(forms_.begin(), forms_.end(), html_info.file_type_) != forms_.end();
+    return ranges::find(forms_, html_info.file_type_) != forms_.end();
 }		/* -----  end of function FinancialDocumentFilter  ----- */
 
 // ===  FUNCTION  ======================================================================
@@ -126,13 +129,12 @@ bool FinancialDocumentFilter::operator() (const HtmlInfo& html_info)
 //  Description:  if we have anchors, let's find the very beginning of our statements.
 // =====================================================================================
 
-EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content)
+EM::sv FindFinancialContentTopLevelAnchor (EM::sv financial_content, const AnchorsFromHTML& anchors)
 {
     static const boost::regex regex_finance_statements
     {R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    AnchorsFromHTML anchors(financial_content);
     auto found_it = ranges::find_if(anchors, [](const auto& anchor)
             { return AnchorFilterUsingRegex(regex_finance_statements, anchor); });
     if (found_it == anchors.end())
@@ -187,8 +189,21 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
     auto look_for_top_level([&anchor_filter_matcher] (auto html)
     {
         AnchorsFromHTML anchors(html.html_);
-        int how_many_matches = ranges::count_if(anchors, anchor_filter_matcher);
-        return how_many_matches >= 3;
+        int found_one{0};
+        for (const auto& anchor : anchors)
+        {
+            if (anchor_filter_matcher(anchor))
+            {
+                ++found_one;
+                if (found_one > 2)
+                {
+                    break;
+                }
+            }
+        }
+
+        return found_one > 2;
+
     });
 
     HTML_FromFile htmls{file_content};
@@ -199,7 +214,7 @@ std::optional<std::pair<EM::sv, EM::sv>> FindFinancialContentUsingAnchors (EM::s
     {
         return (std::optional(std::make_pair(financial_content->html_, financial_content->file_name_)));
     }
-    return {};
+    return std::nullopt;
 }		/* -----  end of function FindFinancialContentUsingAnchors  ----- */
 
 
@@ -225,9 +240,7 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
             return false;
         }
 
-        return std::equal(
-                looking_for.begin(), looking_for.end(),
-                anchor.name_.begin(), anchor.name_.end(),
+        return ranges::equal( looking_for, anchor.name_,
                 [](char a, char b) { return tolower(a) == tolower(b); }
                 );
     });
@@ -258,9 +271,6 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 
     MultDataList multipliers;
 
-    static const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    
     boost::cmatch matches;              // using string_view so it's cmatch instead of smatch
 
     for (const auto& a : financial_anchors)
@@ -285,7 +295,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
 {
     std::string mplier;
-    std::transform(multiplier.begin(), multiplier.end(), std::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
+    ranges::transform(multiplier, ranges::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
 
     if (mplier == "thousands")
     {
@@ -445,7 +455,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
-    auto lines = split_string(table, '\n');
+    auto lines = split_string_to_sv(table, '\n');
     auto regex = *regexs[1];
 
     for (auto line : lines)
@@ -649,7 +659,7 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_con
     // if we got here then we have found our tables.  Now let's collect a little extra data
     // to help our search for mulitpliers.
 
-    EM::sv top_level_anchor = FindFinancialContentTopLevelAnchor(financial_content);
+    EM::sv top_level_anchor = FindFinancialContentTopLevelAnchor(financial_content, anchors);
     if (! top_level_anchor.empty())
     {
         auto data_starts_at = std::min({top_level_anchor.data(),
@@ -668,6 +678,23 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::sv financial_con
 
     return the_tables;
 }		/* -----  end of function ExtractFinancialStatementsUsingAnchors  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  AnchorFilterUsingRegex
+//  Description:  
+// =====================================================================================
+
+bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorData& an_anchor)
+{
+    if (an_anchor.href_.empty() || an_anchor.href_[0] != '#')
+    {
+        return false;
+    }
+
+    const auto& anchor = an_anchor.anchor_content_;
+
+    return boost::regex_search(anchor.cbegin(), anchor.cend(), stmt_anchor_regex);
+}		// -----  end of function AnchorFilterUsingRegex  -----
 
 void FinancialStatements::FindAndStoreMultipliers()
 {
@@ -724,9 +751,6 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
 {
     // let's try looking in the parsed data first.
     // we may or may not find all of our values there so we need to keep track.
-
-    static const boost::regex regex_dollar_mults{R"***([(][^)]*?(thousands|millions|billions|dollars).*?[)])***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
 
     int how_many_matches{0};
     boost::smatch matches;
@@ -967,58 +991,45 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
-    
-    EM::Extractor_Values values;
+    //
+    // NOTE the use of 'cache1' below.  This is ** REQUIRED ** to get correct behavior.  without it,
+    // some items are dropped, some are duplicated.
 
-    // NOTE: position of '-' in regex is important
+    boost::cmatch match_values;
 
-//    static const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+    EM::Extractor_Values values = lines 
+        | ranges::views::filter([&match_values](const auto& a_line) { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value); })
+        | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
+        | ranges::views::cache1
+        | ranges::to<EM::Extractor_Values>();
 
-    std::for_each(
-            lines.begin(),
-            lines.end(),
-            [&values](auto& a_line)
-            {
-                boost::cmatch match_values;
-                if(bool found_it = boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value); found_it)
-                {
-                    values.emplace_back(std::pair(match_values[1].str(), match_values[2].str()));
-                }
-            }
-        );
-
-//    static const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
     // now, for all values except 'per share', apply the multiplier.
     // for now, keep parens to indicate negative numbers.
     // TODO: figure out if this should be replaced with negative sign.
 
-    std::for_each(values.begin(),
-            values.end(),
-            [&multiplier] (auto& x)
+    ranges::for_each(values
+            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
+            [&multiplier](auto& x)
             {
-                if(bool found_it = boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); ! found_it)
+                if (x.second.back() == ')')
                 {
-                    if (x.second.back() == ')')
-                    {
-                        x.second.resize(x.second.size() - 1);
-                    }
-                    x.second += multiplier;
-                    if (x.second[0] == '(')
-                    {
-                        x.second += ')';
-                    }
+                    x.second.resize(x.second.size() - 1);
+                }
+                x.second += multiplier;
+                if (x.second[0] == '(')
+                {
+                    x.second += ')';
                 }
             });
 
     // lastly, clean up the labels a little.
-
-    std::for_each(values.begin(), values.end(), [](auto& entry) { entry.first = CleanLabel(entry.first); } );
-
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
-    std::erase_if(values, [](auto& e) { return e.first.empty(); } );
+    values = std::move(values)
+        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first); return x; } )
+        | ranges::actions::remove_if([](auto& x) { return x.first.empty(); });
 
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
