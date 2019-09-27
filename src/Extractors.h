@@ -165,6 +165,17 @@ struct Shares_data
     std::string form_;
 };
 
+struct OutstandingShares_data
+{
+    explicit OutstandingShares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+
+    void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
+
+    std::string ConvertHTML2Text(EM::sv file_content);
+
+    std::string form_;
+};
+
 // this filter will export all document sections.
 
 struct ALL_data
@@ -176,7 +187,7 @@ struct ALL_data
 // BUT...I can achieve this effect nicely using a hetereogenous list containing one or more extractors.
 
 using FilterTypes = std::variant<XBRL_data, XBRL_Label_data, SS_data, Count_SS, DocumentCounter, HTM_data,
-      Form_data, FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, ALL_data>;
+      Form_data, FinancialStatements_data, BalanceSheet_data, Multiplier_data, Shares_data, OutstandingShares_data, ALL_data>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors (const po::variables_map& args);
