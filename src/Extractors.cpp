@@ -50,7 +50,6 @@
 
 #include <range/v3/all.hpp>
 
-#include <boost/regex.hpp>
 
 #include "spdlog/spdlog.h"
 
@@ -65,6 +64,10 @@
 #include "gq/Document.h"
 #include "gq/Node.h"
 #include "gq/Selection.h"
+
+// gumbo-parse
+
+#include "gumbo.h"
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
@@ -1132,17 +1135,23 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
 
 void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
-    std::string text = ConvertHTML2Text(file_content);
-    if (text.empty())
-    {
-        throw ExtractorException(catenate("Can't find any text in file: ", file_name.string()));
-    }
+    // this time, we look for blocks of text in the HTML and search for
+    // shares.  Then we run some additional filters.
 
-    const boost::regex regex_shares_only{R"***((\b[0-9,]+\b) \bshares\b)***",
+    const boost::regex regex_shares_only{R"***((?:\b[0-9,]+\b.*?\bshares\b)|(?:\bshares\b.*?\b[0-9,]+\b))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+
+    GumboOutput* output = gumbo_parse(file_content.data());
+    std::string the_text = CleanText(output->root, regex_shares_only);
+
+    gumbo_destroy_output(&kGumboDefaultOptions, output);
+//    std::cout << the_text << '\n';
 
 //    const boost::regex regex_shares{R"***((?:(\b[0-9,]+\b) \bshares\b \boutstanding\b)|(?:(\b[0-9,]+\b) \bshares\b \bissued\b \band\b)|(?:(\b[0-9,]+\b) \bshares\b \bof\b \bcommon\b)|(?:\bissued\b[^0-9]{1,3}(\b[0-9,]+\b) \bshares\b)|(?:(\b[0-9,]+\b) \bshares\b [^.]+\bcommon\b[^.]*\boutstanding))***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
+
+    const boost::regex regex_shares{R"***((?:\b([0-9,]+)\b \bshares\b)|(?:\bshares\b[[:w:]]{1,3}\b([0-9,]+)\b))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_outstand{R"***(\boutstanding\b)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -1150,45 +1159,46 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     const boost::regex regex_common{R"***(\bcommon\b)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    // lots of alternatives so let's spell them out individually
-    
-//    std::string a1{R"***((?:(\b[0-9,]+\b) \bshares\b \boutstanding\b))***"};
-//    std::string a1{R"***((?:(\b[0-9,]+\b)[^.]+\bshares\b[^.]+\boutstanding\b[^.]*?\.))***"};
-    std::string a1{R"***((\b[0-9,]+\b)[^.]+?(?:\bshares\b[^.]+?\boutstanding\b)|(?:\boutstanding\b[^.]+?\bshares\b))***"};
-    std::string a2{R"***((?:(\b[0-9,]+\b) \bshares\b \bissued\b \band\b))***"};
-    std::string a3{R"***((?:(\b[0-9,]+\b) \bshares\b \bof\b \bcommon\b))***"};
-    std::string a4{R"***((?:\bissued\b[^0-9]{1,3}(\b[0-9,]+\b) \bshares\b))***"};
-    std::string a5{R"***((?:issued and outstanding:? (\b[0-9,]+\b) \bshares\b))***"};
-
-    std::string xxx = catenate(a1, '|', a2, '|', a3, '|', a4, '|', a5);
-//    const boost::regex regex_shares{xxx,
-    const boost::regex regex_shares{a1,
-        boost::regex_constants::normal };
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    boost::smatch the_shares;
+//    // lots of alternatives so let's spell them out individually
+//    
+////    std::string a1{R"***((?:(\b[0-9,]+\b) \bshares\b \boutstanding\b))***"};
+////    std::string a1{R"***((?:(\b[0-9,]+\b)[^.]+\bshares\b[^.]+\boutstanding\b[^.]*?\.))***"};
+//    std::string a1{R"***((\b[0-9,]+\b)[^.]+?(?:\bshares\b[^.]+?\boutstanding\b)|(?:\boutstanding\b[^.]+?\bshares\b))***"};
+//    std::string a2{R"***((?:(\b[0-9,]+\b) \bshares\b \bissued\b \band\b))***"};
+//    std::string a3{R"***((?:(\b[0-9,]+\b) \bshares\b \bof\b \bcommon\b))***"};
+//    std::string a4{R"***((?:\bissued\b[^0-9]{1,3}(\b[0-9,]+\b) \bshares\b))***"};
+//    std::string a5{R"***((?:issued and outstanding:? (\b[0-9,]+\b) \bshares\b))***"};
+//
+//    std::string xxx = catenate(a1, '|', a2, '|', a3, '|', a4, '|', a5);
+////    const boost::regex regex_shares{xxx,
+//    const boost::regex regex_shares{a1,
+//        boost::regex_constants::normal };
+////        boost::regex_constants::normal | boost::regex_constants::icase};
+//
+    boost::cmatch the_shares;
     bool found_it = false;
+    auto lines = split_string_to_sv(EM::sv{the_text}, '\n');
 
-    boost::sregex_iterator iter(text.begin(), text.end(), regex_shares);
-    std::for_each(iter, boost::sregex_iterator{}, [] (const boost::smatch m)
-            {
-               std::cout << m.str() << '\n'; 
-            });
-
-//    for (const auto line : lines)
-//    {
-//        if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares))
-//        {
-//            if (boost::regex_search(std::begin(line), std::end(line), regex_outstand))
+//    boost::sregex_iterator iter(text.begin(), text.end(), regex_shares);
+//    std::for_each(iter, boost::sregex_iterator{}, [] (const boost::smatch m)
 //            {
-//                if (boost::regex_search(std::begin(line), std::end(line), regex_common))
-//                {
-//                    found_it = true;
-//                    std::cout << line << '\n' << "Found shares: " << the_shares[1].str() << '\n';
-//                }
-//            }
-//        }
-//    };
+//               std::cout << m.str() << '\n'; 
+//            });
+
+    for (const auto line : lines)
+    {
+        if (boost::regex_search(std::begin(line), std::end(line), regex_outstand))
+        {
+            if (boost::regex_search(std::begin(line), std::end(line), regex_common))
+            {
+                if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares))
+                {
+                    found_it = true;
+                    std::cout << line << '\n' << "Found shares: " << the_shares[1].str() << '\n';
+                }
+            }
+        }
+    };
 
 //    found_it = boost::regex_search(text, the_shares, regex_shares);
 //    if (found_it)
@@ -1204,108 +1214,73 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //             << '\n';
 //    }
 //
-//    if (! found_it)
-//    {
-//        std::cout << "** Shares not found ** for file: " << file_name << '\n';
-//
-//        auto lines = split_string_to_sv(EM::sv{text}, '\n');
-//
-//        boost::cmatch the_shares;
-//
-//        for (const auto line : lines)
-//        {
-//            if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares_only))
-//            {
-//                std::cout << line << '\n' << "Possible shares: " << the_shares[1].str() << '\n';
-//            }
-//        }
-//    }
-}		/* -----  end of method OutstandingShares_data::UseExtractor  ----- */
-
-std::string OutstandingShares_data::ConvertHTML2Text (EM::sv file_content)
-{
-    HTML_FromFile htmls{file_content};
-
-    FinancialDocumentFilter document_filter{{form_}};
-
-    std::string result;
-
-    for (auto html = htmls.begin(); html != htmls.end(); ++html)
+    if (! found_it)
     {
-        if (document_filter(*html))
+        std::cout << "** Shares not found ** for file: " << file_name << '\n';
+
+//        auto lines = split_string_to_sv(EM::sv{text}, '\n');
+
+        boost::cmatch the_shares;
+
+        for (const auto line : lines)
         {
-            // we write our html out to a temp file and then call html2text on it.
-            //
-            // creating a proper unique temp file is not straight-forward.
-            // this approach tries to create a unique directory first then write a file into it.
-            // directory creation is an atomic operation in Linux.  If it succeeds,
-            // the directory did not already exist so it can safely be used.
-
-            fs::path temp_file_name;
-            std::error_code ec;
-            std::array<char, L_tmpnam> buffer{'\0'};
-
-            // give it 5 tries...
-            
-            int n = 0;
-            while (true)
+            if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares_only))
             {
-                temp_file_name = fs::temp_directory_path();
-                if (std::tmpnam(buffer.data()) != nullptr)
-                {
-                    temp_file_name /= buffer.data();
-                    if(bool did_create = fs::create_directory(temp_file_name, ec); did_create)
-                    {
-                        break;
-                    }
-                    ++n;
-                    if (n >= 5)
-                    {
-                        throw std::runtime_error("Can't create temp directory.\n");
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("Can't create temp file name.\n");
-                }
+                std::cout << line << '\n' << "Possible shares: " << the_shares[1].str() << '\n';
             }
-
-            temp_file_name /= "form_data.html";
-
-            std::ofstream temp_file{temp_file_name};
-            temp_file.write(html->html_.data(), html->html_.size());
-            temp_file.close();
-
-	        redi::ipstream in("html2text -width 175 -ascii -nobs " + temp_file_name.string());
-            // redi::ipstream in("html2text -b 0 --ignore-emphasis --ignore-images --ignore-links " + temp_file_name.string());
-
-            // we use a buffer and the readsome function so that we will get any
-            // embedded return characters (which would be stripped off if we did
-            // readline.
-
-            std::array<char, 1024> buf{'\0'};
-            std::streamsize bytes_read;
-            while (! in.eof())
-            {
-                while ((bytes_read = in.out().readsome(buf.data(), buf.max_size())) > 0)
-                {
-                    result.append(buf.data(), bytes_read);
-                }
-            }
-
-            // let's be neat and not leave temp files laying around
-
-            fs::remove(temp_file_name);
-
-            // I know I could this in 1 call but...
-
-            fs::remove(temp_file_name.remove_filename());
-
-            break;
         }
     }
-    return result;
+//}		/* -----  end of method OutstandingShares_data::UseExtractor  ----- */
+
+//std::string OutstandingShares_data::ConvertHTML2Text (EM::sv file_content)
+//{
+//
 }		// -----  end of method OutstandingShares_data::ConvertHTML2Text  ----- 
+
+
+std::string OutstandingShares_data::CleanText(GumboNode* node, const boost::regex& filter)
+{
+//    std::cout << "Entering...\n";
+    if (node->type == GUMBO_NODE_TEXT)
+    {
+        if (boost::regex_search(node->v.text.text, filter))
+        {
+//            std::cout << "Exit NODE_TEXT with content\n";
+            return std::string(node->v.text.text);
+        }
+//        std::cout << "Exit NODE_TEXT no content\n";
+        return {};
+    }
+    else if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
+    {
+        std::string contents;
+        GumboVector* children = &node->v.element.children;
+
+        for (unsigned int i = 0; i < children->length; ++i)
+        {
+//            std::cout << "i: " << i + 1 << " out of: " << children->length << " children.\n";
+            const std::string text = CleanText((GumboNode*) children->data[i], filter);
+//                std::cout << "A--:" << text << ":--\n";
+            if (! text.empty())
+            {
+                if (boost::regex_search(text, filter))
+                {
+//                    std::cout << "B--:" << text << ":--\n";
+                    contents.append(text);
+                    if (! text.ends_with('\n'))
+                    {
+                        contents.append("\n");
+                    }
+                }
+            }
+        }
+//        std::cout << "Exit at end of loop\n";
+        return contents;
+    }
+
+//    std::cout << "Exit empty\n";
+    return {};
+}		// -----  end of method OutstandingShares_data::CleanText  ----- 
 
 void ALL_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 
