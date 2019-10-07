@@ -1138,19 +1138,36 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // this time, we look for blocks of text in the HTML and search for
     // shares.  Then we run some additional filters.
 
-    const boost::regex regex_shares_only{R"***((?:\b[0-9,]+\b.*?\bshares\b)|(?:\bshares\b.*?\b[0-9,]+\b))***",
+    HTML_FromFile htmls{file_content};
+
+    GumboOptions options = kGumboDefaultOptions;
+    GumboOutput* output = gumbo_parse_with_options(&options, htmls.begin()->html_.data(), htmls.begin()->html_.length());
+
+    const std::string a1 = R"***((?:(\b[0-9,]{5,}\b).{1,50}\bshares\b))***";
+    const std::string a2 = R"***((?:\bshares\b.{1,50}(\b[0-9,]{5,}\b)))***";
+    const std::string a3 = R"***((?:\boutstanding\b \b[0-9,]{5,}\b \bshares\b))***";
+    const std::string a4 = R"***((?:\boutstanding and issued\b \b[0-9,]{5,}\b \bshares\b))***";
+
+    const boost::regex regex_shares_only{catenate(a1, '|', a2),
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    GumboOutput* output = gumbo_parse(file_content.data());
     std::string the_text = CleanText(output->root, regex_shares_only);
 
     gumbo_destroy_output(&kGumboDefaultOptions, output);
-//    std::cout << the_text << '\n';
 
-//    const boost::regex regex_shares{R"***((?:(\b[0-9,]+\b) \bshares\b \boutstanding\b)|(?:(\b[0-9,]+\b) \bshares\b \bissued\b \band\b)|(?:(\b[0-9,]+\b) \bshares\b \bof\b \bcommon\b)|(?:\bissued\b[^0-9]{1,3}(\b[0-9,]+\b) \bshares\b)|(?:(\b[0-9,]+\b) \bshares\b [^.]+\bcommon\b[^.]*\boutstanding))***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
+    const std::string b1 = R"***((?:(\b[0-9,]{5,}\b).{1,50}\bshares\b))***";
+    const std::string b2 = R"***((?:\bshares\b.{1,50}(\b[0-9,]{5,}\b)))***";
+    const std::string b3 = R"***((?:\boutstanding\b (\b[0-9,]{5,}\b) \bshares\b))***";
+    const std::string b4 = R"***((?:\boutstanding and issued\b (\b[0-9,]{5,}\b) \bshares\b))***";
+//    const std::string b1a = R"***((?:(\b[0-9,]{5,}\b) (?:[:word:]+ ){1,100}\bshares\b))***";
+    const std::string b2a = R"***((?:\bshares\b.{1,50}\boutstanding\b[^0-9]{1,50}([0-9,]{5,})))***";
+    const std::string b3a = R"***((?:\boutstanding\b.{1,50}\bshares\b[^0-9]{1,50}([0-9,]{5,})))***";
+//    const std::string b1a = R"***((?:(\b[0-9,]{5,}\b) ))***";
+    const std::string b1a = R"***((?:([0-9,]{5,}).{1,50}\bshares\b.{1,50}\boutstanding\b))***";
+    const std::string b4a = R"***((?:([0-9,]{5,}).{1,50}\boutstanding\b.{1,50}\bshares\b))***";
 
-    const boost::regex regex_shares{R"***((?:\b([0-9,]+)\b \bshares\b)|(?:\bshares\b[[:w:]]{1,3}\b([0-9,]+)\b))***",
+//    const boost::regex regex_shares{catenate(b1, '|', b2),
+    const boost::regex regex_shares{catenate(b1a, '|', b2a, '|', b3a, '|', b4a),
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     const boost::regex regex_outstand{R"***(\boutstanding\b)***",
@@ -1159,46 +1176,59 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     const boost::regex regex_common{R"***(\bcommon\b)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-//    // lots of alternatives so let's spell them out individually
-//    
-////    std::string a1{R"***((?:(\b[0-9,]+\b) \bshares\b \boutstanding\b))***"};
-////    std::string a1{R"***((?:(\b[0-9,]+\b)[^.]+\bshares\b[^.]+\boutstanding\b[^.]*?\.))***"};
-//    std::string a1{R"***((\b[0-9,]+\b)[^.]+?(?:\bshares\b[^.]+?\boutstanding\b)|(?:\boutstanding\b[^.]+?\bshares\b))***"};
-//    std::string a2{R"***((?:(\b[0-9,]+\b) \bshares\b \bissued\b \band\b))***"};
-//    std::string a3{R"***((?:(\b[0-9,]+\b) \bshares\b \bof\b \bcommon\b))***"};
-//    std::string a4{R"***((?:\bissued\b[^0-9]{1,3}(\b[0-9,]+\b) \bshares\b))***"};
-//    std::string a5{R"***((?:issued and outstanding:? (\b[0-9,]+\b) \bshares\b))***"};
-//
-//    std::string xxx = catenate(a1, '|', a2, '|', a3, '|', a4, '|', a5);
-////    const boost::regex regex_shares{xxx,
-//    const boost::regex regex_shares{a1,
-//        boost::regex_constants::normal };
-////        boost::regex_constants::normal | boost::regex_constants::icase};
-//
+    const boost::regex regex_weighted{R"***(\bweighted average\b)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+
     boost::cmatch the_shares;
     bool found_it = false;
-    auto lines = split_string_to_sv(EM::sv{the_text}, '\n');
+    auto chunks = split_string_to_sv(EM::sv{the_text}, '\n');
 
-//    boost::sregex_iterator iter(text.begin(), text.end(), regex_shares);
-//    std::for_each(iter, boost::sregex_iterator{}, [] (const boost::smatch m)
-//            {
-//               std::cout << m.str() << '\n'; 
-//            });
-
-    for (const auto line : lines)
+    boost::sregex_iterator iter(the_text.begin(), the_text.end(), regex_shares);
+    std::for_each(iter, boost::sregex_iterator{}, [&found_it] (const boost::smatch& m)
     {
-        if (boost::regex_search(std::begin(line), std::end(line), regex_outstand))
+        found_it = true;        
+        std::cout << "Iter: " << m.str() << " : " 
+            << (m.length(1) > 0 ? m.str(1)
+                : m.length(2) > 0 ? m.str(2)
+                : m.length(3) > 0 ? m.str(3)
+                : m.str(4))
+            << '\n';
+    });
+
+    if (! found_it)
+    {
+        boost::sregex_iterator iter(the_text.begin(), the_text.end(), regex_shares_only);
+        std::for_each(iter, boost::sregex_iterator{}, [bgn = the_text.data()] (const boost::smatch& m)
         {
-            if (boost::regex_search(std::begin(line), std::end(line), regex_common))
-            {
-                if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares))
-                {
-                    found_it = true;
-                    std::cout << line << '\n' << "Found shares: " << the_shares[1].str() << '\n';
-                }
-            }
-        }
-    };
+            EM::sv xx(bgn + m.position() - 100, m.length() + 200);
+            std::cout << "Possible: " << xx << " : " 
+                << (m.length(1) > 0 ? m.str(1)
+                    : m.length(2) > 0 ? m.str(2)
+                    : m.length(3) > 0 ? m.str(3)
+                    : m.str(4))
+                << '\n';
+        });
+    }
+//    for (const auto chunk : chunks)
+//    {
+//        if ((boost::regex_search(std::begin(chunk), std::end(chunk), regex_outstand)
+//                && boost::regex_search(std::begin(chunk), std::end(chunk), regex_common))
+//            || boost::regex_search(std::begin(chunk), std::end(chunk), regex_weighted))
+//            {
+//                if (boost::regex_search(std::begin(chunk), std::end(chunk), the_shares, regex_shares))
+//                {
+//                    found_it = true;
+//                    std::cout << "Found shares: " << the_shares.str(0) << " : "
+//                        << (
+//                                the_shares.length(1) > 0 ? the_shares.str(1)
+//                                : the_shares.length(2) > 0 ? the_shares.str(2)
+//                                : the_shares.length(3) > 0 ? the_shares.str(3)
+//                                : the_shares.str(4)
+//                            )
+//                         << '\n';
+//                }
+//            }
+//    };
 
 //    found_it = boost::regex_search(text, the_shares, regex_shares);
 //    if (found_it)
@@ -1214,71 +1244,81 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //             << '\n';
 //    }
 //
-    if (! found_it)
-    {
-        std::cout << "** Shares not found ** for file: " << file_name << '\n';
-
-//        auto lines = split_string_to_sv(EM::sv{text}, '\n');
-
-        boost::cmatch the_shares;
-
-        for (const auto line : lines)
-        {
-            if (boost::regex_search(std::begin(line), std::end(line), the_shares, regex_shares_only))
-            {
-                std::cout << line << '\n' << "Possible shares: " << the_shares[1].str() << '\n';
-            }
-        }
-    }
-//}		/* -----  end of method OutstandingShares_data::UseExtractor  ----- */
-
-//std::string OutstandingShares_data::ConvertHTML2Text (EM::sv file_content)
-//{
+//    if (! found_it)
+//    {
+//        std::cout << "** Shares not found ** for file: " << file_name << '\n';
 //
-}		// -----  end of method OutstandingShares_data::ConvertHTML2Text  ----- 
+////        auto lines = split_string_to_sv(EM::sv{text}, '\n');
+//
+//        boost::cmatch the_shares;
+//
+//        for (const auto chunk : chunks)
+//        {
+//            if (boost::regex_search(std::begin(chunk), std::end(chunk), the_shares, regex_shares))
+//            {
+//                std::cout << chunk << '\n';
+//                std::cout << "Possible shares: " << the_shares.str(0) << " : "
+//                    << (
+//                            the_shares.length(1) > 0 ? the_shares.str(1)
+//                            : the_shares.length(2) > 0 ? the_shares.str(2)
+//                            : the_shares.length(3) > 0 ? the_shares.str(3)
+//                            : the_shares.str(4)
+//                        )
+//                     << '\n';
+//            }
+//        }
+//    }
+}		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 
 
 std::string OutstandingShares_data::CleanText(GumboNode* node, const boost::regex& filter)
 {
-//    std::cout << "Entering...\n";
+    //    this code is based on example code in Gumbo Parser project
+
+    const boost::regex regex_nbr{R"***(\b[0-9,]{5,}\b)***"};
+    const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    const boost::regex regex_nl{R"***(\n)***"};
+    const std::string one_space = " ";
+
     if (node->type == GUMBO_NODE_TEXT)
     {
-        if (boost::regex_search(node->v.text.text, filter))
-        {
-//            std::cout << "Exit NODE_TEXT with content\n";
-            return std::string(node->v.text.text);
-        }
-//        std::cout << "Exit NODE_TEXT no content\n";
-        return {};
+        std::string text(node->v.text.text);
+        return boost::regex_replace(text, regex_hi_ascii, one_space);
     }
-    else if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
+    if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
     {
         std::string contents;
         GumboVector* children = &node->v.element.children;
 
         for (unsigned int i = 0; i < children->length; ++i)
         {
-//            std::cout << "i: " << i + 1 << " out of: " << children->length << " children.\n";
             const std::string text = CleanText((GumboNode*) children->data[i], filter);
-//                std::cout << "A--:" << text << ":--\n";
             if (! text.empty())
             {
-                if (boost::regex_search(text, filter))
+                if (boost::regex_match(text, regex_nbr))
                 {
-//                    std::cout << "B--:" << text << ":--\n";
-                    contents.append(text);
-                    if (! text.ends_with('\n'))
-                    {
-                        contents.append("\n");
-                    }
+                    contents += ' ';
                 }
+                contents.append(text);
             }
         }
-//        std::cout << "Exit at end of loop\n";
-        return contents;
-    }
+        // some files have lots of little pieces of text so don't apply filter to everything.
 
-//    std::cout << "Exit empty\n";
+        std::string result = boost::regex_replace(contents, regex_hi_ascii, one_space);
+        result = boost::regex_replace(result, regex_multiple_spaces, one_space);
+        result = boost::regex_replace(result, regex_nl, one_space);
+//        if (result.length() > 60)
+//        {
+//            if (regex_search(result, filter))
+//            {
+//                return result;
+//            }
+//            return {};
+//        }
+        result.rep
+        return result;
+    }
     return {};
 }		// -----  end of method OutstandingShares_data::CleanText  ----- 
 
