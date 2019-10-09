@@ -173,7 +173,7 @@ struct OutstandingShares_data
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
 //    std::string ConvertHTML2Text(EM::sv file_content);
-    std::string CleanText(GumboNode* node, const boost::regex& filter);
+    std::string CleanText(GumboNode* node);
 
     std::string form_;
 };

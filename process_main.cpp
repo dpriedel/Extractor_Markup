@@ -156,8 +156,8 @@ int main(int argc, const char* argv[])
             }
         });
 
-//        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
-        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+//        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
 
         // let's see if we got a count...
 
