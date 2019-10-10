@@ -1157,15 +1157,19 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r07{R"***((?:issuer|registrant) had (?:outstanding )?(\b[0-9,]{5,}\b) shares of (?:its )?common stock(?:,.{0,30}?,)?(?: outstanding)?)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r09{R"***(common stock.{1,50}?outstanding as of.{1,30}? (\b[0-9,]{5,}\b))***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r10{R"***((\b[0-9,]{5,}\b) (?:shares issued and outstanding|issued and outstanding shares))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 //    const boost::regex r2{R"***((\b[0-9,]{5,}\b) shares of the issuer.s common stock were outstanding)***",
 //        boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r30{R"***((\b[0-9,]{5,}\b) .?number of shares of common stock(?:, .*?,)? outstanding)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r34{R"***(there were (\b[0-9,]{5,}\b) shares of common stock(?:.{0,30}?)? outstanding)***",
+    const boost::regex r34{R"***(there were (\b[0-9,]{5,}\b) shares of .{0,30}?common stock.{0,30}? outstanding)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r35{R"***(there were (\b[0-9,]{5,}\b) outstanding shares of the issuer s common stock.{0,30}? on)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r37{R"***((?:at|as of).{1,20}? there were (\b[0-9,]{5,}\b) shares outstanding of common stock)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r40{R"***((\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -1177,7 +1181,11 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r60{R"***((?:registrant.s|issuer.s) shares of common stock outstanding was (\b[0-9,]{5,}\b) as of)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r62{R"***(shares (?:issued and )?outstanding of the registrant s common stock as of .{1,20}? was.{0,20}? (\b[0-9,]{5,}\b) shares)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r70{R"***(common stock .{0,30}? \b[0-9,]{5,}\b shares authorized issued (\b[0-9,]{5,}\b) shares)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r72{R"***(common stock .authorized \b[0-9,]{5,}\b shares .{1,30}? issued (\b[0-9,]{5,}\b))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r80{R"***((\b[0-9,]{5,}\b) common stock(?:s)? issued and outstanding as of)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -1187,12 +1195,16 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex r86{R"***(as of .{1,20}? (\b[0-9,]{5,}\b) shares of our common stock were outstanding)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r88{R"***(\bauthorized\b. \b[0-9,]{5,}\b shares. issued. (\b[0-9,]{5,}\b) shares at)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex r89{R"***(\b[0-9,]{5,}\b shares authorized (\b[0-9,]{5,}\b) shares outstanding)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
 
     // if all of the above fail, look for weighted average.
 
     const boost::regex r90{R"***(weighted average shares (?:outstanding )?used to compute.{0,50}? (\b[0-9,]{5,}\b))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r91{R"***(weighted average (?:number of )?(?:common )?shares outstanding.{0,50}? (\b[0-9,]{5,}\b))***",
+    const boost::regex r91{R"***(weighted.average (?:number of )?(?:common )?shares .{0,50}? (\b[0-9,]{5,}\b))***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
 
@@ -1204,12 +1216,16 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         {"r40", &r40},
         {"r41", &r41},
         {"r60", &r60},
+        {"r62", &r62},
         {"r50", &r50},
         {"r70", &r70},
+        {"r72", &r72},
         {"r06", &r06},
         {"r05", &r05},
         {"r02", &r02},
+        {"r09", &r09},
         {"r34", &r34},
+        {"r37", &r37},
         {"r35", &r35},
         {"r30", &r30},
         {"r10", &r10},
@@ -1218,6 +1234,8 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         {"r84", &r84},
         {"r86", &r86},
         {"r03", &r03},
+        {"r88", &r88},
+        {"r89", &r89},
         {"r90", &r90},
         {"r91", &r91}
     };
