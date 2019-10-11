@@ -1133,6 +1133,79 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
     }
 }		/* -----  end of method Shares_data::UseExtractor  ----- */
 
+//--------------------------------------------------------------------------------------
+//       Class:  OutstandingShares_data
+//      Method:  OutstandingShares_data
+// Description:  constructor
+//--------------------------------------------------------------------------------------
+OutstandingShares_data::OutstandingShares_data (const po::variables_map& args)
+    : form_{args["form"].as<std::string>()}
+{
+    const std::string s02{R"***((\b[0-9,]{5,}\b) and \b[0-9,]{5,}\b shares issued and outstanding(?:,)? (?:at|as of))***"};
+    const std::string s03{R"***((\b[0-9,]{5,}\b) shares of common stock.{0,30}? (?:at|as of))***"};
+    const std::string s05{R"***(common stock .{0,50}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding, respectively)***"};
+    const std::string s06{R"***(common stock .{0,70}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding at.{1,30}?, respectively)***"};
+    const std::string s07{R"***((?:issuer|registrant) had (?:outstanding )?(\b[0-9,]{5,}\b) shares of (?:its )?common stock(?:,.{0,30}?,)?(?: outstanding)?)***"};
+    const std::string s09{R"***(common stock.{1,50}?outstanding as of.{1,30}? (\b[0-9,]{5,}\b))***"};
+    const std::string s10{R"***((\b[0-9,]{5,}\b) (?:shares issued and outstanding|issued and outstanding shares))***"};
+    const std::string s30{R"***((\b[0-9,]{5,}\b) .?number of shares of common stock(?:, .*?,)? outstanding)***"};
+    const std::string s34{R"***(there were (\b[0-9,]{5,}\b) shares of .{0,30}?common stock.{0,30}? outstanding)***"};
+    const std::string s35{R"***(there were (\b[0-9,]{5,}\b) outstanding shares of the issuer s common stock.{0,30}? on)***"};
+    const std::string s37{R"***((?:at|as of).{1,20}? there were (\b[0-9,]{5,}\b) shares outstanding of common stock)***"};
+    const std::string s40{R"***((\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***"};
+    const std::string s41{R"***((\b[0-9,]{5,}\b) shares of common stock of the (?:registrant|issuer) were outstanding as of)***"};
+    const std::string s42{R"***((?:as of .{0,30?})?(\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock issued and outstanding(?: as of)?)***"};
+    const std::string s50{R"***(authorized, .*? [0-9,]{5,} issued and (\b[0-9,]{5,}\b) outstanding)***"};
+    const std::string s60{R"***((?:registrant.s|issuer.s) shares of common stock outstanding was (\b[0-9,]{5,}\b) as of)***"};
+    const std::string s62{R"***(shares (?:issued and )?outstanding of the registrant s common stock as of .{1,20}? was.{0,20}? (\b[0-9,]{5,}\b) shares)***"};
+    const std::string s70{R"***(common stock .{0,30}? \b[0-9,]{5,}\b shares authorized issued (\b[0-9,]{5,}\b) shares)***"};
+    const std::string s72{R"***(common stock .authorized \b[0-9,]{5,}\b shares .{1,30}? issued (\b[0-9,]{5,}\b))***"};
+    const std::string s80{R"***((\b[0-9,]{5,}\b) common stock(?:s)? issued and outstanding as of)***"};
+    const std::string s81{R"***(common stock.{1,30}? (\b[0-9,]{5,}\b) shares as of)***"};
+    const std::string s84{R"***(number of common shares.{0,50}? issued and outstanding was (\b[0-9,]{5,}\b))***"};
+    const std::string s86{R"***(as of .{1,20}? (\b[0-9,]{5,}\b) shares of our common stock were outstanding)***"};
+    const std::string s88{R"***(\bauthorized\b. \b[0-9,]{5,}\b shares. issued. (\b[0-9,]{5,}\b) shares at)***"};
+    const std::string s89{R"***(\b[0-9,]{5,}\b shares authorized (\b[0-9,]{5,}\b) shares outstanding)***"};
+
+    // if all of the above fail, look for weighted average.
+
+    const std::string s90{R"***(weighted average shares (?:outstanding )?used to compute.{0,50}? (\b[0-9,]{5,}\b))***"};
+    const std::string s91{R"***(weighted.average (?:number of )?(?:common )?shares .{0,50}? (\b[0-9,]{5,}\b))***"};
+
+    // use each string to create a vector or regexs so we don't have to recreate
+    // them for each time we want to use them.
+
+    boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
+
+    shares_matchers_.emplace_back("r07", std::make_unique<boost::regex const>(s07, my_flags));
+    shares_matchers_.emplace_back("r42", std::make_unique<boost::regex const>(s42, my_flags));
+    shares_matchers_.emplace_back("r40", std::make_unique<boost::regex const>(s40, my_flags));
+    shares_matchers_.emplace_back("r41", std::make_unique<boost::regex const>(s41, my_flags));
+    shares_matchers_.emplace_back("r60", std::make_unique<boost::regex const>(s60, my_flags));
+    shares_matchers_.emplace_back("r62", std::make_unique<boost::regex const>(s62, my_flags));
+    shares_matchers_.emplace_back("r50", std::make_unique<boost::regex const>(s50, my_flags));
+    shares_matchers_.emplace_back("r70", std::make_unique<boost::regex const>(s70, my_flags));
+    shares_matchers_.emplace_back("r72", std::make_unique<boost::regex const>(s72, my_flags));
+    shares_matchers_.emplace_back("r06", std::make_unique<boost::regex const>(s06, my_flags));
+    shares_matchers_.emplace_back("r05", std::make_unique<boost::regex const>(s05, my_flags));
+    shares_matchers_.emplace_back("r02", std::make_unique<boost::regex const>(s02, my_flags));
+    shares_matchers_.emplace_back("r09", std::make_unique<boost::regex const>(s09, my_flags));
+    shares_matchers_.emplace_back("r34", std::make_unique<boost::regex const>(s34, my_flags));
+    shares_matchers_.emplace_back("r37", std::make_unique<boost::regex const>(s37, my_flags));
+    shares_matchers_.emplace_back("r35", std::make_unique<boost::regex const>(s35, my_flags));
+    shares_matchers_.emplace_back("r30", std::make_unique<boost::regex const>(s30, my_flags));
+    shares_matchers_.emplace_back("r10", std::make_unique<boost::regex const>(s10, my_flags));
+    shares_matchers_.emplace_back("r80", std::make_unique<boost::regex const>(s80, my_flags));
+    shares_matchers_.emplace_back("r81", std::make_unique<boost::regex const>(s81, my_flags));
+    shares_matchers_.emplace_back("r84", std::make_unique<boost::regex const>(s84, my_flags));
+    shares_matchers_.emplace_back("r86", std::make_unique<boost::regex const>(s86, my_flags));
+    shares_matchers_.emplace_back("r03", std::make_unique<boost::regex const>(s03, my_flags));
+    shares_matchers_.emplace_back("r88", std::make_unique<boost::regex const>(s88, my_flags));
+    shares_matchers_.emplace_back("r89", std::make_unique<boost::regex const>(s89, my_flags));
+    shares_matchers_.emplace_back("r90", std::make_unique<boost::regex const>(s90, my_flags));
+    shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
+}  // -----  end of method OutstandingShares_data::OutstandingShares_data  (constructor)  ----- 
+
 void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
     // this time, we look for blocks of text in the HTML and search for
@@ -1147,99 +1220,6 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     const boost::regex regex_shares_only{catenate(a1, '|', a2),
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    const boost::regex r02{R"***((\b[0-9,]{5,}\b) and \b[0-9,]{5,}\b shares issued and outstanding(?:,)? (?:at|as of))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r03{R"***((\b[0-9,]{5,}\b) shares of common stock.{0,30}? (?:at|as of))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r05{R"***(common stock .{0,50}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding, respectively)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r06{R"***(common stock .{0,70}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding at.{1,30}?, respectively)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r07{R"***((?:issuer|registrant) had (?:outstanding )?(\b[0-9,]{5,}\b) shares of (?:its )?common stock(?:,.{0,30}?,)?(?: outstanding)?)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r09{R"***(common stock.{1,50}?outstanding as of.{1,30}? (\b[0-9,]{5,}\b))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r10{R"***((\b[0-9,]{5,}\b) (?:shares issued and outstanding|issued and outstanding shares))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-//    const boost::regex r2{R"***((\b[0-9,]{5,}\b) shares of the issuer.s common stock were outstanding)***",
-//        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r30{R"***((\b[0-9,]{5,}\b) .?number of shares of common stock(?:, .*?,)? outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r34{R"***(there were (\b[0-9,]{5,}\b) shares of .{0,30}?common stock.{0,30}? outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r35{R"***(there were (\b[0-9,]{5,}\b) outstanding shares of the issuer s common stock.{0,30}? on)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r37{R"***((?:at|as of).{1,20}? there were (\b[0-9,]{5,}\b) shares outstanding of common stock)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r40{R"***((\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r41{R"***((\b[0-9,]{5,}\b) shares of common stock of the (?:registrant|issuer) were outstanding as of)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r42{R"***((?:as of .{0,30?})?(\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock issued and outstanding(?: as of)?)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r50{R"***(authorized, .*? [0-9,]{5,} issued and (\b[0-9,]{5,}\b) outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r60{R"***((?:registrant.s|issuer.s) shares of common stock outstanding was (\b[0-9,]{5,}\b) as of)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r62{R"***(shares (?:issued and )?outstanding of the registrant s common stock as of .{1,20}? was.{0,20}? (\b[0-9,]{5,}\b) shares)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r70{R"***(common stock .{0,30}? \b[0-9,]{5,}\b shares authorized issued (\b[0-9,]{5,}\b) shares)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r72{R"***(common stock .authorized \b[0-9,]{5,}\b shares .{1,30}? issued (\b[0-9,]{5,}\b))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r80{R"***((\b[0-9,]{5,}\b) common stock(?:s)? issued and outstanding as of)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r81{R"***(common stock.{1,30}? (\b[0-9,]{5,}\b) shares as of)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r84{R"***(number of common shares.{0,50}? issued and outstanding was (\b[0-9,]{5,}\b))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r86{R"***(as of .{1,20}? (\b[0-9,]{5,}\b) shares of our common stock were outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r88{R"***(\bauthorized\b. \b[0-9,]{5,}\b shares. issued. (\b[0-9,]{5,}\b) shares at)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r89{R"***(\b[0-9,]{5,}\b shares authorized (\b[0-9,]{5,}\b) shares outstanding)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    // if all of the above fail, look for weighted average.
-
-    const boost::regex r90{R"***(weighted average shares (?:outstanding )?used to compute.{0,50}? (\b[0-9,]{5,}\b))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex r91{R"***(weighted.average (?:number of )?(?:common )?shares .{0,50}? (\b[0-9,]{5,}\b))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-
-    using yyy = std::pair<std::string, boost::regex const *>;
-
-    std::vector<yyy> regexs{
-        {"r07", &r07},
-        {"r42", &r42},
-        {"r40", &r40},
-        {"r41", &r41},
-        {"r60", &r60},
-        {"r62", &r62},
-        {"r50", &r50},
-        {"r70", &r70},
-        {"r72", &r72},
-        {"r06", &r06},
-        {"r05", &r05},
-        {"r02", &r02},
-        {"r09", &r09},
-        {"r34", &r34},
-        {"r37", &r37},
-        {"r35", &r35},
-        {"r30", &r30},
-        {"r10", &r10},
-        {"r80", &r80},
-        {"r81", &r81},
-        {"r84", &r84},
-        {"r86", &r86},
-        {"r03", &r03},
-        {"r88", &r88},
-        {"r89", &r89},
-        {"r90", &r90},
-        {"r91", &r91}
-    };
-
     HTML_FromFile htmls{file_content};
 
     GumboOptions options = kGumboDefaultOptions;
@@ -1253,7 +1233,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     bool found_it = false;
     std::string found_name;
 
-    for (auto [name, regex] : regexs)
+    for (const auto& [name, regex] : shares_matchers_)
     {
         if (boost::regex_search(the_text, the_shares, *regex))
         {
