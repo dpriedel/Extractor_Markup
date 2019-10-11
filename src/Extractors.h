@@ -39,6 +39,7 @@
 #define _EXTRACTORS__
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -168,12 +169,16 @@ struct Shares_data
 
 struct OutstandingShares_data
 {
-    explicit OutstandingShares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+    explicit OutstandingShares_data(const po::variables_map& args);
 
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
 //    std::string ConvertHTML2Text(EM::sv file_content);
     std::string CleanText(GumboNode* node);
+
+    using re_info = std::pair<std::string, std::unique_ptr<boost::regex const>>;
+
+    std::vector<re_info> shares_matchers_;
 
     std::string form_;
 };

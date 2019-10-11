@@ -15,6 +15,28 @@
             "-I/extra/boost/boost-1.71_gcc-9",
             "-march=native",
             "-o",
+            "Debug/SharesOutstanding.o",
+            "src/SharesOutstanding.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
+        "file": "src/SharesOutstanding.cpp"
+    },
+    {
+        "arguments": [
+            "/extra/gcc/gcc-9/bin/g++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++2a",
+            "-D_DEBUG",
+            "-DBOOST_ENABLE_ASSERT_HANDLER",
+            "-fPIC",
+            "-I./src",
+            "-I/extra/boost/boost-1.71_gcc-9",
+            "-march=native",
+            "-o",
             "Debug/TablesFromFile.o",
             "src/TablesFromFile.cpp"
         ],
