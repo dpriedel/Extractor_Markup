@@ -477,7 +477,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, const std::vector<std::string>& forms)
+FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, EM::sv file_content, const std::vector<std::string>& forms)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -499,7 +499,7 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, cons
                 financial_statements.html_ = financial_content->html_;
                 financial_statements.FindAndStoreMultipliers();
                 financial_statements.PrepareTableContent();
-                financial_statements.FindSharesOutstanding(file_content);
+                financial_statements.FindSharesOutstanding(so, financial_content->html_);
                 return financial_statements;
             }
         }
@@ -518,7 +518,7 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, cons
             financial_statements.html_ = financial_content->html_;
             financial_statements.FindAndStoreMultipliers();
             financial_statements.PrepareTableContent();
-            financial_statements.FindSharesOutstanding(file_content);
+            financial_statements.FindSharesOutstanding(so, financial_content->html_);
             return financial_statements;
         }
     }
@@ -546,7 +546,7 @@ FinancialStatements FindAndExtractFinancialStatements (EM::sv file_content, cons
                         financial_statements.html_ = html_info.html_;
                         financial_statements.FindAndStoreMultipliers();
                         financial_statements.PrepareTableContent();
-                        financial_statements.FindSharesOutstanding(file_content);
+                        financial_statements.FindSharesOutstanding(so, html_info.html_);
                         return financial_statements;
                     }
                 }
@@ -827,137 +827,14 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements& financial_statemen
     }
 }		/* -----  end of function FindAndStoreMultipliersUsingContent  ----- */
 
-void FinancialStatements::FindSharesOutstanding(EM::sv file_content)
+void FinancialStatements::FindSharesOutstanding(const SharesOutstanding& so, EM::sv html)
 {
-    // let's try this first...
-
-    if (FileHasXBRL{}(EM::SEC_Header_fields{}, file_content))
-    {
-        auto documents = LocateDocumentSections(file_content);
-        auto instance_doc = LocateInstanceDocument(documents);
-        auto instance_xml = ParseXMLContent(instance_doc);
-        auto filing_data = ExtractFilingData(instance_xml);
-        auto shares = filing_data.shares_outstanding;
-        if (shares != "0")
-        {
-            outstanding_shares_ = std::stoll(shares);
-            return;
-        }
-    }
-    
-    const boost::regex regex_shares{R"***(average[^\t]+(?:common.+?shares)|(?:common.+?stock)|(?:number.+?shares)|(?:share.*?outstand))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    const boost::regex regex_shares_bal_auth
-        {R"***(^.*?common (?:stock|shares).*?(?:(?:authorized[^\t]*?[0-9,]{5,})| (?:[1-9][0-9,]{4,}[^\t]*?authorized))[^\t]*?([1-9][0-9,]{4,})[^\t]*?\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    const boost::regex regex_shares_bal_iss
-        {R"***(^[^\t]*?(?:common (?:stock|shares)[^\t]*?)(?:(?:issued[^\t]*?([1-9][0-9,]{3,}[0-9]))|(?:([1-9][0-9,]{3,}[0-9])[^\t]*?issued))[^\t]*?\t)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
-    const boost::regex regex_weighted_avg
-        {R"***((?:(?:weighted.average common shares)|(?:average shares outstand)|(?:weighted.average number.*?shares)|(?:income.*?divided by)).*?\t([1-9][0-9,]+))***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
-    std::string shares_outstanding;
-
-    bool use_multiplier{false};
-
-    boost::cmatch matches;
-
-    auto auth_match([&regex_shares_bal_auth, &matches](const auto& line)
-        {
-            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_auth);
-        });
-    auto iss_match([&regex_shares_bal_iss, &matches](const auto& line)
-        {
-            return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_iss);
-        });
-
-    bool found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), auth_match)
-        != balance_sheet_.lines_.end();
-    if (found_it)
-    {
-        shares_outstanding = matches.str(1);
-    }
-    else if (found_it = std::find_if(balance_sheet_.lines_.begin(), balance_sheet_.lines_.end(), iss_match)
-            != balance_sheet_.lines_.end(); found_it)
-    {
-            shares_outstanding = matches.str(1);
-    }
-    else
-    {
-
-        // let's try the statement of operations as.
-        // we'll just look thru its values for our key.
-
-        auto match_key([&regex_shares](const auto& item)
-            {
-                return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
-            });
-        auto found_it = std::find_if(statement_of_operations_.values_.begin(), statement_of_operations_.values_.end(),
-                match_key);
-        if (found_it != statement_of_operations_.values_.end())
-        {
-            shares_outstanding = found_it->second;
-            use_multiplier = true;
-        }
-        else
-        {
-            // brute force it....
-
-            const boost::regex regex_weighted_avg_text
-                {R"***((?:(?:weighted.average)|(?:shares outstanding))[^\t]*?\t([1-9][0-9,]{2,}(?:\.[0-9]+)?)\t)***",
-                    boost::regex_constants::normal | boost::regex_constants::icase};
-
-            boost::cmatch matches;
-            auto weighted_match([&regex_weighted_avg_text, &matches](auto line)
-                {
-                    return boost::regex_search(line.begin(), line.end(), matches, regex_weighted_avg_text);
-                });
-
-            TablesFromHTML tables{html_};
-            for (const auto& table : tables)
-            {
-                auto lines = split_string_to_sv(table.current_table_parsed_, '\n');
-                if(bool found_it = std::find_if(lines.begin(), lines.end(), weighted_match) != lines.end(); found_it)
-                {
-                    use_multiplier = true;
-                    shares_outstanding = matches.str(1);
-                    break;
-                }
-            }
-        }
-    }
-
-    if (! shares_outstanding.empty())
-    {
-        // need to replace any commas we might have.
-
-        const std::string delete_this{""};
-        const boost::regex regex_comma_parens{R"***([,)(])***"};
-        shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma_parens, delete_this);
-
-        if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(),
-                    outstanding_shares_); ec != std::errc())
-        {
-            spdlog::info(catenate("Problem converting shares outstanding: ",
-                        std::make_error_code(ec).message(), ". ", shares_outstanding));
-        }
-        else
-        {
-            if (use_multiplier && ! boost::ends_with(shares_outstanding, ",000"))
-            {
-                // apply multiplier if we got our value from a table value rather than a table label.
-                //
-                outstanding_shares_ *= statement_of_operations_.multiplier_;
-            }
-        }
-    }
-    else
+    outstanding_shares_ = so(html);
+    if (outstanding_shares_ == -1)
     {
         spdlog::info("Can't find shares outstanding.\n");
     }
+
 }		/* -----  end of method FinancialStatements::FindSharesOutstanding  ----- */
 
 /* 

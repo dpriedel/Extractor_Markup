@@ -60,6 +60,7 @@ namespace po = boost::program_options;
 
 #include "Extractor.h"
 #include "Extractor_Utils.h"
+#include "SharesOutstanding.h"
 
 class ExtractorApp
 {
@@ -140,6 +141,8 @@ private:
 	po::variables_map					mVariableMap;
 
     ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
+
+    const SharesOutstanding so_;
 
 	int mArgc = 0;
 	char** mArgv = nullptr;

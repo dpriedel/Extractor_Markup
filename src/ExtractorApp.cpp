@@ -621,7 +621,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
             return {0, 0, 1};
         }
 
-        auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
+        auto the_tables = FindAndExtractFinancialStatements(so_, file_content, form_list_);
         BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find required HTML financial tables: "
                     + input_file_name.string()).c_str());
 
@@ -883,7 +883,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_H
         return ExportHtmlFromSingleFile(file_content, file_name, sec_header);
     }
 
-    auto the_tables = FindAndExtractFinancialStatements(file_content, form_list_);
+    auto the_tables = FindAndExtractFinancialStatements(so_, file_content, form_list_);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());

@@ -53,6 +53,7 @@
 #include "Extractor_Utils.h"
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
+#include "SharesOutstanding.h"
 
 // HTML content related functions
 
@@ -159,7 +160,7 @@ struct FinancialStatements
     void PrepareTableContent();
     bool ValidateContent();
     void FindAndStoreMultipliers();
-    void FindSharesOutstanding(EM::sv file_content);
+    void FindSharesOutstanding(const SharesOutstanding& so, EM::sv html);
 
     [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
             balance_sheet_.values_,
@@ -221,7 +222,7 @@ bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, EM::sv
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(EM::sv file_content, const std::vector<std::string>& forms);
+FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding& so, EM::sv file_content, const std::vector<std::string>& forms);
 
 FinancialStatements ExtractFinancialStatements(EM::sv financial_content);
 
