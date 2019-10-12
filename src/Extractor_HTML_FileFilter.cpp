@@ -43,7 +43,6 @@
 #include <system_error>
 
 #include "Extractor_HTML_FileFilter.h"
-#include "Extractor_XBRL_FileFilter.h"
 #include "HTML_FromFile.h"
 #include "SEC_Header.h"
 #include "TablesFromFile.h"
