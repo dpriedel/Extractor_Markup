@@ -48,7 +48,7 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    int64_t operator()(EM::sv html);
+    int64_t operator()(EM::sv html) const;
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -58,7 +58,7 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
-    std::string CleanText(GumboNode* node);
+    std::string CleanText(GumboNode* node) const;
 
     // ====================  DATA MEMBERS  ======================================= 
 

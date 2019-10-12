@@ -97,12 +97,11 @@ SharesOutstanding::SharesOutstanding ()
     shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
-int64_t SharesOutstanding::operator() (EM::sv html)
+int64_t SharesOutstanding::operator() (EM::sv html) const
 {
     GumboOptions options = kGumboDefaultOptions;
     std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length()),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
-//    GumboOutput* output = gumbo_parse_with_options(&options, html.data(), html.length());
 
     std::string the_text = CleanText(output->root);
 
@@ -141,7 +140,7 @@ int64_t SharesOutstanding::operator() (EM::sv html)
     return result;
 }		// -----  end of method SharesOutstanding::operator()  ----- 
 
-std::string SharesOutstanding::CleanText(GumboNode* node)
+std::string SharesOutstanding::CleanText(GumboNode* node) const
 {
     //    this code is based on example code in Gumbo Parser project
 
