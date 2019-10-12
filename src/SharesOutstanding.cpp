@@ -17,6 +17,7 @@
 #include "SharesOutstanding.h"
 
 #include <charconv>
+#include <functional>
 
 #include "boost/regex.hpp"
 
@@ -99,11 +100,13 @@ SharesOutstanding::SharesOutstanding ()
 int64_t SharesOutstanding::operator() (EM::sv html)
 {
     GumboOptions options = kGumboDefaultOptions;
-    GumboOutput* output = gumbo_parse_with_options(&options, html.data(), html.length());
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length()),
+            [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
+//    GumboOutput* output = gumbo_parse_with_options(&options, html.data(), html.length());
 
     std::string the_text = CleanText(output->root);
 
-    gumbo_destroy_output(&options, output);
+    gumbo_destroy_output(&options, output.release());
 
     boost::smatch the_shares;
     bool found_it = false;
