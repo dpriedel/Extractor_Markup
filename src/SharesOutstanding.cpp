@@ -96,12 +96,10 @@ SharesOutstanding::SharesOutstanding ()
     shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
-int64_t SharesOutstanding::operator() (EM::sv file_content)
+int64_t SharesOutstanding::operator() (EM::sv html)
 {
-    HTML_FromFile htmls{file_content};
-
     GumboOptions options = kGumboDefaultOptions;
-    GumboOutput* output = gumbo_parse_with_options(&options, htmls.begin()->html_.data(), htmls.begin()->html_.length());
+    GumboOutput* output = gumbo_parse_with_options(&options, html.data(), html.length());
 
     std::string the_text = CleanText(output->root);
 
@@ -125,8 +123,13 @@ int64_t SharesOutstanding::operator() (EM::sv file_content)
 
     if (found_it)
     {
-        const char* match_begin = the_text.data() + the_shares.position(1);
-        if (auto [p, ec] = std::from_chars(match_begin, match_begin + the_shares.length(1), result); ec != std::errc())
+        const std::string delete_this{""};
+        const boost::regex regex_comma_parens{R"***([,)(])***"};
+
+        std::string shares_outstanding = the_shares.str(1);
+        shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma_parens, delete_this);
+
+        if (auto [p, ec] = std::from_chars(shares_outstanding.data(), shares_outstanding.data() + shares_outstanding.size(), result); ec != std::errc())
         {
             throw ExtractorException(catenate("Problem converting shares outstanding: ",
                         std::make_error_code(ec).message(), '\n'));

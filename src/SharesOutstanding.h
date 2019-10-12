@@ -48,7 +48,7 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    int64_t operator()(EM::sv file_content);
+    int64_t operator()(EM::sv html);
 
 protected:
     // ====================  METHODS       ======================================= 
