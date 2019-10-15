@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "boost/regex_fwd.hpp"
+#include "boost/regex.hpp"
 
 // gumbo-parse
 

@@ -38,6 +38,8 @@
 
 #include <boost/regex.hpp>
 
+#include "spdlog/spdlog.h"
+
 // gumbo-query
 
 #include "gq/Document.h"
@@ -159,6 +161,12 @@ std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor (const char*
 
 const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const char* end, int level)
 {
+    if (level >= 5)
+    {   
+        spdlog::info("Something wrong...anchors too deeply nested.");
+        return nullptr;
+    }
+
     // handle 'nested' anchors.
 
     static const boost::regex re_anchor_end_or_begin{R"***(</a>|(?:(?:<a>|<a |<a\n).*?>))***",

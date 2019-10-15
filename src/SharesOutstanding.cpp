@@ -19,8 +19,6 @@
 #include <charconv>
 #include <functional>
 
-#include "boost/regex.hpp"
-
 #include "spdlog/spdlog.h"
 
 #include "HTML_FromFile.h"

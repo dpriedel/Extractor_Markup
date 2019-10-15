@@ -47,7 +47,8 @@ SRCS2 := $(SDIR2)/ExtractorApp.cpp \
 		$(SDIR2)/SEC_Header.cpp \
 		$(SDIR2)/HTML_FromFile.cpp \
 		$(SDIR2)/AnchorsFromHTML.cpp \
-		$(SDIR2)/TablesFromFile.cpp
+		$(SDIR2)/TablesFromFile.cpp \
+		$(SDIR2)/SharesOutstanding.cpp
 
 SRCS := $(SRCS1) $(SRCS2)
 
@@ -98,7 +99,8 @@ OUTDIR=Release
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt-x64 -lboost_iostreams-mt-x64 -lboost_regex-mt-x64 \
+		-lboost_date_time-mt-x64 \
+		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib/spdlog \
 		-lspdlog \
