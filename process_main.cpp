@@ -100,6 +100,8 @@ struct line_only_whitespace : std::ctype<char>
 
 int main(int argc, const char* argv[])
 {
+    spdlog::set_level(spdlog::level::debug);
+
 // from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77704
 // libstdc++ concurrency problem.  helps some but still
 // a bunch of data races.

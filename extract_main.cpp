@@ -43,6 +43,9 @@
 #include <boost/program_options.hpp>
 #include <boost/regex.hpp>
 #include <filesystem>
+
+#include "spdlog/spdlog.h"
+
 // gumbo-query
 
 #include "gq/Document.h"
@@ -75,6 +78,8 @@ void CheckArgs();
 
 int main(int argc, const char* argv[])
 {
+    spdlog::set_level(spdlog::level::debug);
+
     auto result{0};
 
     try
