@@ -30,36 +30,37 @@
 //--------------------------------------------------------------------------------------
 SharesOutstanding::SharesOutstanding ()
 {
-    const std::string s02{R"***((\b[0-9,]{5,}\b) and \b[0-9,]{5,}\b shares issued and outstanding(?:,)? (?:at|as of))***"};
-    const std::string s03{R"***((\b[0-9,]{5,}\b) shares of common stock.{0,30}? (?:at|as of))***"};
-    const std::string s05{R"***(common stock .{0,50}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding, respectively)***"};
-    const std::string s06{R"***(common stock .{0,70}? \b[0-9,]{5,}\b and (\b[0-9,]{5,}\b) shares issued and outstanding at.{1,30}?, respectively)***"};
-    const std::string s07{R"***((?:issuer|registrant) had (?:outstanding )?(\b[0-9,]{5,}\b) shares of (?:its )?common stock(?:,.{0,30}?,)?(?: outstanding)?)***"};
-    const std::string s09{R"***(common stock.{1,50}?outstanding as of.{1,30}? (\b[0-9,]{5,}\b))***"};
-    const std::string s10{R"***((\b[0-9,]{5,}\b) (?:shares issued and outstanding|issued and outstanding shares))***"};
-    const std::string s30{R"***((\b[0-9,]{5,}\b) .?number of shares of common stock(?:, .*?,)? outstanding)***"};
-    const std::string s34{R"***(there were (\b[0-9,]{5,}\b) shares of .{0,30}?common stock.{0,30}? outstanding)***"};
-    const std::string s35{R"***(there were (\b[0-9,]{5,}\b) outstanding shares of the issuer s common stock.{0,30}? on)***"};
-    const std::string s37{R"***((?:at|as of).{1,20}? there were (\b[0-9,]{5,}\b) shares outstanding of common stock)***"};
-    const std::string s40{R"***((\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***"};
-    const std::string s41{R"***((\b[0-9,]{5,}\b) shares of common stock of the (?:registrant|issuer) were outstanding as of)***"};
-    const std::string s42{R"***((?:as of .{0,30?})?(\b[0-9,]{5,}\b) shares of the (?:registrant.s|issuer.s) common stock issued and outstanding(?: as of)?)***"};
-    const std::string s50{R"***(authorized, .*? [0-9,]{5,} issued and (\b[0-9,]{5,}\b) outstanding)***"};
-    const std::string s60{R"***((?:registrant.s|issuer.s) shares of common stock outstanding was (\b[0-9,]{5,}\b) as of)***"};
-    const std::string s62{R"***(shares (?:issued and )?outstanding of the registrant s common stock as of .{1,20}? was.{0,20}? (\b[0-9,]{5,}\b) shares)***"};
-    const std::string s70{R"***(common stock .{0,30}? \b[0-9,]{5,}\b shares authorized issued (\b[0-9,]{5,}\b) shares)***"};
-    const std::string s72{R"***(common stock .authorized \b[0-9,]{5,}\b shares .{1,30}? issued (\b[0-9,]{5,}\b))***"};
-    const std::string s80{R"***((\b[0-9,]{5,}\b) common stock(?:s)? issued and outstanding as of)***"};
-    const std::string s81{R"***(common stock.{1,30}? (\b[0-9,]{5,}\b) shares as of)***"};
-    const std::string s84{R"***(number of common shares.{0,50}? issued and outstanding was (\b[0-9,]{5,}\b))***"};
-    const std::string s86{R"***(as of .{1,20}? (\b[0-9,]{5,}\b) shares of our common stock were outstanding)***"};
-    const std::string s88{R"***(\bauthorized\b. \b[0-9,]{5,}\b shares. issued. (\b[0-9,]{5,}\b) shares at)***"};
-    const std::string s89{R"***(\b[0-9,]{5,}\b shares authorized (\b[0-9,]{5,}\b) shares outstanding)***"};
+    const std::string s02{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) and \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b shares issued and outstanding(?:,)? (?:at|as of))***"};
+    const std::string s03{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of common stock.{0,30}? (?:at|as of))***"};
+    const std::string s05{R"***(common stock .{0,50}? \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b and (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares issued and outstanding, respectively)***"};
+    const std::string s06{R"***(common stock .{0,70}? \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b and (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares issued and outstanding at.{1,30}?, respectively)***"};
+    const std::string s07{R"***((?:issuer|registrant) had (?:outstanding )?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of (?:its )?common stock(?:,.{0,30}?,)?(?: outstanding)?)***"};
+    const std::string s09{R"***(common stock.{1,50}?outstanding (?:as of|at).{1,30}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***"};
+    const std::string s10{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) (?:shares issued and outstanding|issued and outstanding shares))***"};
+    const std::string s30{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) .?number of shares of common stock(?:, .*?,)? outstanding)***"};
+    const std::string s34{R"***(there were (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of .{0,30}?common stock.{0,30}? outstanding)***"};
+    const std::string s35{R"***(there were (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) outstanding shares of the issuer s common stock.{0,30}? on)***"};
+    const std::string s37{R"***((?:at|as of).{1,20}? there were (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares outstanding of common stock)***"};
+//    const std::string s40{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***"};
+    const std::string s40{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of the (?:registrant.s|issuer.s) common stock(?:, .*?,)? (?:were )?outstanding)***"};
+    const std::string s41{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of common stock of the (?:registrant|issuer) were outstanding as of)***"};
+    const std::string s42{R"***((?:as of .{0,30?})?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of the (?:registrant.s|issuer.s) common stock issued and outstanding(?: as of)?)***"};
+    const std::string s50{R"***(authorized, .*? [0-9,]{5,} issued and (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) outstanding)***"};
+    const std::string s60{R"***((?:registrant.s|issuer.s) shares of common stock outstanding was (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) as of)***"};
+    const std::string s62{R"***(shares (?:issued and )?outstanding of the registrant s common stock as of .{1,20}? was.{0,20}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares)***"};
+    const std::string s70{R"***(common stock .{0,30}? \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b shares authorized issued (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares)***"};
+    const std::string s72{R"***(common stock .authorized \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b shares .{1,30}? issued (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***"};
+    const std::string s80{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) common stock(?:s)? issued and outstanding as of)***"};
+    const std::string s81{R"***(common stock.{1,30}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares as of)***"};
+    const std::string s84{R"***(number of common shares.{0,50}? issued and outstanding was (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***"};
+    const std::string s86{R"***(as of .{1,20}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of our common stock were outstanding)***"};
+    const std::string s88{R"***(\bauthorized\b. \b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b shares. issued. (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares at)***"};
+    const std::string s89{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b shares authorized (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares outstanding)***"};
 
     // if all of the above fail, look for weighted average.
 
-    const std::string s90{R"***(weighted average shares (?:outstanding )?used to compute.{0,50}? (\b[0-9,]{5,}\b))***"};
-    const std::string s91{R"***(weighted.average (?:number of )?(?:common )?shares .{0,50}? (\b[0-9,]{5,}\b))***"};
+    const std::string s90{R"***(weighted average shares (?:outstanding )?used to compute.{0,50}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***"};
+    const std::string s91{R"***(weighted.average (?:number of )?(?:common )?shares .{0,50}? (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***"};
 
     // use each string to create a vector or regexs so we don't have to recreate
     // them for each time we want to use them.
