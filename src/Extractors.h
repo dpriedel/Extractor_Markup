@@ -52,6 +52,7 @@ namespace po = boost::program_options;
 
 #include "Extractor.h"
 #include "Extractor_Utils.h"
+#include "SharesOutstanding.h"
 
 namespace fs = std::filesystem;
 
@@ -138,6 +139,7 @@ struct FinancialStatements_data
     void UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path&, const EM::SEC_Header_fields&);
 
     std::string form_;
+    SharesOutstanding so_;
 };
 
 struct BalanceSheet_data
@@ -169,18 +171,12 @@ struct Shares_data
 
 struct OutstandingShares_data
 {
-    explicit OutstandingShares_data(const po::variables_map& args);
+    explicit OutstandingShares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
 
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 
-//    std::string ConvertHTML2Text(EM::sv file_content);
-    std::string CleanText(GumboNode* node);
-
-    using re_info = std::pair<std::string, std::unique_ptr<boost::regex const>>;
-
-    std::vector<re_info> shares_matchers_;
-
     std::string form_;
+    SharesOutstanding so_;
 };
 
 // this filter will export all document sections.
