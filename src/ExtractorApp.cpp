@@ -629,7 +629,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
                     + input_file_name.string()).c_str());
 
 //        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
+        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts", input_file_name.string());
     }
     catch(const std::system_error& e)
     {
@@ -887,7 +887,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_H
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());
-    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
+    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts", std::string{file_name});
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::atomic<int>* forms_processed)

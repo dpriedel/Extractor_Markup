@@ -963,7 +963,7 @@ bool StockholdersEquity::ValidateContent ()
  * =====================================================================================
  */
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
-        const std::string& schema_name)
+        const std::string& schema_name, const std::string& file_name)
 {
     // start stuffing the database.
     // we only get here if we are going to add/replace data.
@@ -999,7 +999,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
-		trxn.esc(SEC_fields.at("file_name")),
+		trxn.esc(file_name),
         "",
 		trxn.esc(SEC_fields.at("sic")),
 		trxn.esc(SEC_fields.at("form_type")),
