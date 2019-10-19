@@ -123,6 +123,9 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 
     if (found_it)
     {
+        EM::sv xx(the_text.data() + the_shares.position() - 100, the_shares.length() + 200);
+        spdlog::debug(catenate("Found: ", found_name, '\t', xx, " : ", the_shares.str(1)));
+
         const std::string delete_this{""};
         const boost::regex regex_comma_parens{R"***([,)(])***"};
 
