@@ -50,6 +50,7 @@
 
 #include <range/v3/all.hpp>
 
+#include <pqxx/pqxx>
 
 #include "spdlog/spdlog.h"
 
@@ -392,7 +393,8 @@ FilterList SelectExtractors (const po::variables_map& args)
 //    filters.emplace_back(FinancialStatements_data{});
 //    filters.emplace_back(Multiplier_data{args});
 //    filters.emplace_back(Shares_data{args});
-    filters.emplace_back(OutstandingShares_data{args});
+//    filters.emplace_back(OutstandingShares_data{args});
+    filters.emplace_back(OutstandingSharesUpdater{args});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -1176,6 +1178,76 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         });
     }
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
+
+void OutstandingSharesUpdater::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
+{
+    // ******* We expect to be running against extracted HTML files so the only
+    // HTML block after the SEC header is the data we need.
+    // *******
+    //
+
+    HTML_FromFile htmls{file_content};
+
+    int64_t shares = so_(htmls.begin()->html_);
+
+    if (shares != -1)
+    {
+        pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
+        pqxx::work trxn{cnxn};
+
+        auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                trxn.esc(fields.at("cik")),
+                trxn.esc(fields.at("form_type")),
+                trxn.esc(fields.at("quarter_ending")),
+                "html_extracts")
+                ;
+        auto row = trxn.exec1(check_for_existing_content_cmd);
+        auto have_data = row[0].as<int>();
+
+        if (have_data)
+        {
+            auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
+                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                    trxn.esc(fields.at("cik")),
+                    trxn.esc(fields.at("form_type")),
+                    trxn.esc(fields.at("quarter_ending")),
+                    "html_extracts")
+                    ;
+            auto row1 = trxn.exec1(query_cmd);
+			int64_t DB_shares = row1[0].as<int64_t>();
+            std::cout << "found shares: " << DB_shares << "\n";
+
+            if (DB_shares != shares)
+            {
+                std::cout << "shares don't match. DB: " << DB_shares << " file: " << shares << '\n';
+                auto update_cmd = fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
+                    " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                        trxn.esc(fields.at("cik")),
+                        trxn.esc(fields.at("form_type")),
+                        trxn.esc(fields.at("quarter_ending")),
+                        "html_extracts",
+                        shares)
+                        ;
+                auto row2 = trxn.exec(update_cmd);
+//                trxn.commit();
+            }
+            else
+            {
+                std::cout << "shares match. no changes made.\n";
+            }
+        }
+        else
+        {
+            std::cout << "didn't find data\n";
+        }
+        cnxn.disconnect();
+    }
+    else
+    {
+        std::cout << "Can not find shares outstanding for file: " << file_name << '\n';
+    }
+}		// -----  end of method OutstandingSharesUpdater::UseExtractor  ----- 
 
 void ALL_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 
