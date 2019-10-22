@@ -189,6 +189,7 @@ private:
     bool filename_has_form_{false};
     bool export_SS_files_{false};
     bool export_HTML_forms_{false};
+    bool update_shares_outstanding_{false};
 
     static bool had_signal_;
 

@@ -255,6 +255,8 @@ void ExtractorApp::SetupProgramOptions ()
             "export Excel data if any. Default is 'false'")
 		("export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true),
             "export problem HTML data if any. Default is 'false'")
+		("UpdateSharesOutstanding", po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true),
+            "export problem HTML data if any. Default is 'false'")
 		("list-file", po::value<std::string>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
@@ -405,6 +407,11 @@ bool ExtractorApp::CheckArgs ()
         html_hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
     }
 
+    if (update_shares_outstanding_)
+    {
+        BOOST_ASSERT_MSG(mode_ == "HTML", "Must use HTML mode.");
+    }
+
     return true;
 }       // -----  end of method ExtractorApp::CheckArgs  -----
 
@@ -444,7 +451,7 @@ void ExtractorApp::BuildFilterList()
     if (mode_ == "HTML"s)
     {
         filters_.emplace_back(FileHasHTML{});
-        if (! export_HTML_forms_)
+        if (! (export_HTML_forms_ || update_shares_outstanding_))
         {
             filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
         }
@@ -612,6 +619,12 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
         bool use_file = this->ApplyFilters(SEC_fields, input_file_name.string(), file_content, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
+        if (update_shares_outstanding_)
+        {
+            UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts");
+            return {1, 0, 0};
+        }
+
         if (export_HTML_forms_)
         {
             if (ExportHtmlFromSingleFile(file_content, input_file_name, sec_header))
@@ -629,7 +642,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
                     + input_file_name.string()).c_str());
 
 //        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts", input_file_name.string());
+        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
     }
     catch(const std::system_error& e)
     {
@@ -878,6 +891,12 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_H
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields,
         EM::sv file_content, EM::sv sec_header)
 {
+    if (update_shares_outstanding_)
+    {
+        UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts");
+        return true;
+    }
+
     if (export_HTML_forms_)
     {
         return ExportHtmlFromSingleFile(file_content, file_name, sec_header);
@@ -887,7 +906,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_H
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name).c_str());
-    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts", std::string{file_name});
+    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::sv file_name, std::atomic<int>* forms_processed)

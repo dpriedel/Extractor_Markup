@@ -963,7 +963,7 @@ bool StockholdersEquity::ValidateContent ()
  * =====================================================================================
  */
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
-        const std::string& schema_name, const std::string& file_name)
+        const std::string& schema_name)
 {
     // start stuffing the database.
     // we only get here if we are going to add/replace data.
@@ -999,7 +999,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
-		trxn.esc(file_name),
+		trxn.esc(SEC_fields.at("file_name")),
         "",
 		trxn.esc(SEC_fields.at("sic")),
 		trxn.esc(SEC_fields.at("form_type")),
@@ -1069,3 +1069,88 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  UpdateOutstandingShares
+//  Description: updates the values of shares outstanding in the DB if not same as in file. 
+// =====================================================================================
+
+int UpdateOutstandingShares (const SharesOutstanding& so, EM::sv file_content, const EM::SEC_Header_fields& fields,
+        const std::vector<std::string>& forms, const std::string& schema_name)
+{
+    int entries_updated{0};
+
+    FinancialDocumentFilter document_filter{forms};
+    HTML_FromFile htmls{file_content};
+
+    auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
+    if (financial_content != htmls.end())
+    {
+        int64_t file_shares = so(financial_content->html_);
+
+        if (file_shares != -1)
+        {
+            pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
+            pqxx::work trxn{cnxn};
+
+            auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                    trxn.esc(fields.at("cik")),
+                    trxn.esc(fields.at("form_type")),
+                    trxn.esc(fields.at("quarter_ending")),
+                    trxn.esc(schema_name))
+                    ;
+            auto row = trxn.exec1(check_for_existing_content_cmd);
+            auto have_data = row[0].as<int>();
+
+            if (have_data)
+            {
+                auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
+                    " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                        trxn.esc(fields.at("cik")),
+                        trxn.esc(fields.at("form_type")),
+                        trxn.esc(fields.at("quarter_ending")),
+                        trxn.esc(schema_name))
+                        ;
+                auto row1 = trxn.exec1(query_cmd);
+                int64_t DB_shares = row1[0].as<int64_t>();
+
+                if (DB_shares != file_shares)
+                {
+                    std::cout << "shares don't match. DB: " << DB_shares << " file: " << file_shares << '\n';
+                    auto update_cmd = fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
+                        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                            trxn.esc(fields.at("cik")),
+                            trxn.esc(fields.at("form_type")),
+                            trxn.esc(fields.at("quarter_ending")),
+                            trxn.esc(schema_name),
+                            file_shares)
+                            ;
+                    auto row2 = trxn.exec(update_cmd);
+                    trxn.commit();
+                    spdlog::info(catenate("Updated DB for file: ", fields.at("file_name"),
+                                ". Changed shares outstanding from: ", DB_shares, " to: ", file_shares));
+                    ++entries_updated;
+                }
+                else
+                {
+                    spdlog::debug("shares match. no changes made.");
+                }
+            }
+            else
+            {
+                spdlog::debug(catenate("Can't find data in DB for file: ", fields.at("file_name"), ". skipping..."));
+            }
+            cnxn.disconnect();
+        }
+        else
+        {
+            spdlog::debug(catenate("Can't find shares outstanding for file: ", fields.at("file_name")));
+        }
+    }
+    else
+    {
+        spdlog::debug(catenate("Can't find financial content for file: ", fields.at("file_name")));
+    }
+    return entries_updated;
+}		// -----  end of function UpdateOutstandingShares  -----
