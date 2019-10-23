@@ -280,6 +280,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
         const std::string& schema_name);
 
 int UpdateOutstandingShares(const SharesOutstanding& so, EM::sv file_content, const EM::SEC_Header_fields& fields,
-        const std::vector<std::string>& forms, const std::string& schema_name);
+        const std::vector<std::string>& forms, const std::string& schema_name, std::string file_name);
 
 #endif

@@ -621,7 +621,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const fs::path& 
 
         if (update_shares_outstanding_)
         {
-            UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts");
+            UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts",
+                    input_file_name.string());
             return {1, 0, 0};
         }
 
@@ -893,7 +894,8 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_H
 {
     if (update_shares_outstanding_)
     {
-        UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts");
+        UpdateOutstandingShares(so_, file_content, SEC_fields, form_list_, schema_prefix_ + "html_extracts",
+                std::string{file_name});
         return true;
     }
 
