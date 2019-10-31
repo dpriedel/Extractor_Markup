@@ -393,8 +393,8 @@ FilterList SelectExtractors (const po::variables_map& args)
 //    filters.emplace_back(FinancialStatements_data{});
 //    filters.emplace_back(Multiplier_data{args});
 //    filters.emplace_back(Shares_data{args});
-//    filters.emplace_back(OutstandingShares_data{args});
-    filters.emplace_back(OutstandingSharesUpdater{args});
+    filters.emplace_back(OutstandingShares_data{args});
+//    filters.emplace_back(OutstandingSharesUpdater{args});
     return filters;
 }		/* -----  end of function SelectExtractors  ----- */
 
@@ -1142,8 +1142,8 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // *******
     //
 
-    const std::string a1 = R"***((?:(\b[0-9,]{5,}\b).{1,50}\bshares\b))***";
-    const std::string a2 = R"***((?:\bshares\b.{1,50}(\b[0-9,]{5,}\b)))***";
+    const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}\bshares\b))***";
+    const std::string a2 = R"***((?:\bshares\b.{1,50}(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
     const boost::regex regex_shares_only{catenate(a1, '|', a2),
         boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -1156,7 +1156,8 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         GumboOptions options = kGumboDefaultOptions;
         GumboOutput* output = gumbo_parse_with_options(&options, htmls.begin()->html_.data(), htmls.begin()->html_.length());
 
-        std::string the_text = so_.CleanText(output->root);
+        std::string the_text_whole = so_.CleanText(output->root);
+        std::string the_text = the_text_whole.substr(0, 100000);
         
         gumbo_destroy_output(&options, output);
 
@@ -1166,9 +1167,12 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 
         std::cout << "Not found\n";
         boost::sregex_iterator iter(the_text.begin(), the_text.end(), regex_shares_only);
-        std::for_each(iter, boost::sregex_iterator{}, [bgn = the_text.data()] (const boost::smatch& m)
+        std::for_each(iter, boost::sregex_iterator{}, [the_text] (const boost::smatch& m)
         {
-            EM::sv xx(bgn + m.position() - 100, m.length() + 200);
+//            auto x1 = m.position() < 100 ? 0 : m.position() - 100;
+//            auto x2 = x1 + m.length() + 200 > the_text.size() ? the_text.size() - x1 : m.length() + 200;
+            EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+//            EM::sv xx(the_text.data() + x1, x2);
             std::cout << "Possible: " << xx << " : " 
                 << (m.length(1) > 0 ? m.str(1)
                     : m.length(2) > 0 ? m.str(2)
