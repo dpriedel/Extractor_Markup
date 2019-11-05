@@ -171,7 +171,7 @@ struct Shares_data
 
 struct OutstandingShares_data
 {
-    explicit OutstandingShares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}  { }
+    explicit OutstandingShares_data(const po::variables_map& args) : form_{args["form"].as<std::string>()}, so_{100000} { }
 
     void UseExtractor(const fs::path& file_name, EM::sv, const fs::path&, const EM::SEC_Header_fields&);
 

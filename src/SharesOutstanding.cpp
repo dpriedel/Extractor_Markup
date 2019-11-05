@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <charconv>
 #include <functional>
+#include <memory>
 
 #include "spdlog/spdlog.h"
 
@@ -29,7 +30,8 @@
 //      Method:  SharesOutstanding
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-SharesOutstanding::SharesOutstanding ()
+SharesOutstanding::SharesOutstanding (size_t max_length)
+    : max_length_to_parse_{max_length}
 {
     const std::string s02{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) and (\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares issued and outstanding(?:,)? (?:at|as of))***"};
     const std::string s03{R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b) shares of common stock.{0,30}? (?:at|as of))***"};
@@ -99,18 +101,39 @@ SharesOutstanding::SharesOutstanding ()
     shares_matchers_.emplace_back("r09", std::make_unique<boost::regex const>(s09, my_flags));
     shares_matchers_.emplace_back("r90", std::make_unique<boost::regex const>(s90, my_flags));
     shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
+
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
 int64_t SharesOutstanding::operator() (EM::sv html) const
 {
+    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    static const boost::regex regex_nl{R"***(\n{1,})***"};
+    static const std::string one_space = " ";
+
+    static const std::string delete_this{""};
+    static const boost::regex regex_comma_parens{R"***([,)(])***"};
+
     GumboOptions options = kGumboDefaultOptions;
     std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length()),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
 
-    std::string the_text_whole = CleanText(output->root);
-    std::string the_text = the_text_whole.substr(0, 100000);
-
+    std::string parsed_text;
+    try
+    {
+        parsed_text = CleanText(output->root);
+    }
+    catch (std::length_error& e)
+    {
+        parsed_text = e.what();
+    }
     gumbo_destroy_output(&options, output.release());
+
+    // do a little cleanup to make searching easier
+
+    std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
+    the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
+    the_text = boost::regex_replace(the_text, regex_nl, one_space);
 
     boost::smatch the_shares;
     bool found_it = false;
@@ -133,9 +156,6 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
         EM::sv xx(the_text.data() + the_shares.position() - 100, the_shares.length() + 200);
         spdlog::debug(catenate("Found: ", found_name, '\t', xx, " : ", the_shares.str(1)));
 
-        const std::string delete_this{""};
-        const boost::regex regex_comma_parens{R"***([,)(])***"};
-
         std::string shares_outstanding = the_shares.str(1);
         shares_outstanding = boost::regex_replace(shares_outstanding, regex_comma_parens, delete_this);
 
@@ -151,17 +171,15 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 std::string SharesOutstanding::CleanText(GumboNode* node) const
 {
     //    this code is based on example code in Gumbo Parser project
+    //    I've added the ability to break out of the recursive
+    //    loop if a maximum length to parse is given.
+    //    I use a Pythonic approach...throw an exception (think 'stop iteration').
 
-    const boost::regex regex_nbr{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
-    const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-    const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-    const boost::regex regex_nl{R"***(\n{1,})***"};
-    const std::string one_space = " ";
+    static const boost::regex regex_nbr{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
 
     if (node->type == GUMBO_NODE_TEXT)
     {
-        std::string text(node->v.text.text);
-        return boost::regex_replace(text, regex_hi_ascii, one_space);
+        return node->v.text.text;
     }
     if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
     {
@@ -178,14 +196,14 @@ std::string SharesOutstanding::CleanText(GumboNode* node) const
                     contents += ' ';
                 }
                 contents.append(text);
+                if (max_length_to_parse_ > 0 && contents.size() >= max_length_to_parse_)
+                {
+                    throw std::length_error(contents);
+                }
             }
         }
         contents += ' ';
-
-        std::string result = boost::regex_replace(contents, regex_hi_ascii, one_space);
-        result = boost::regex_replace(result, regex_multiple_spaces, one_space);
-        result = boost::regex_replace(result, regex_nl, one_space);
-        return result;
+        return contents;
     }
     return {};
 }		// -----  end of method SharesOutstanding::CleanText  ----- 

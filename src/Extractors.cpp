@@ -1156,10 +1156,27 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         GumboOptions options = kGumboDefaultOptions;
         GumboOutput* output = gumbo_parse_with_options(&options, htmls.begin()->html_.data(), htmls.begin()->html_.length());
 
-        std::string the_text_whole = so_.CleanText(output->root);
-        std::string the_text = the_text_whole.substr(0, 100000);
+        std::string parsed_text;
+        try
+        {
+            parsed_text = so_.CleanText(output->root);
+        }
+        catch (std::length_error& e)
+        {
+            parsed_text = e.what();
+        }
+        std::cout << "length: " << parsed_text.size() << '\n';
         
         gumbo_destroy_output(&options, output);
+
+        const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+        const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+        const boost::regex regex_nl{R"***(\n{1,})***"};
+        const std::string one_space = " ";
+
+        std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
+        the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
+        the_text = boost::regex_replace(the_text, regex_nl, one_space);
 
         boost::smatch the_shares;
         bool found_it = false;

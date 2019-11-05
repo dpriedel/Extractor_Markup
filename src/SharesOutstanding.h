@@ -40,9 +40,11 @@ class SharesOutstanding
 {
 public:
     // ====================  LIFECYCLE     ======================================= 
-    SharesOutstanding ();                             // constructor 
+    SharesOutstanding (size_t max_length = 0);                   // constructor 
 
     // ====================  ACCESSORS     ======================================= 
+
+    // NOTE: this method can throw length_error if max_length_to_parse_ != 0
 
     std::string CleanText(GumboNode* node) const;
 
@@ -66,6 +68,7 @@ private:
 
     std::vector<re_info> shares_matchers_;
 
+    size_t max_length_to_parse_;
 }; // -----  end of class SharesOutstanding  ----- 
 
 #endif   // ----- #ifndef _SHARESOUTSTANDING_INC_  ----- 
