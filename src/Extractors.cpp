@@ -1142,62 +1142,13 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // *******
     //
 
-    const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}\bshares\b))***";
-    const std::string a2 = R"***((?:\bshares\b.{1,50}(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
-    const boost::regex regex_shares_only{catenate(a1, '|', a2),
-        boost::regex_constants::normal | boost::regex_constants::icase};
-
     HTML_FromFile htmls{file_content};
 
-    int64_t shares = so_(htmls.begin()->html_);
+    std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
+    std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
 
-    if (shares == -1)
-    {
-        GumboOptions options = kGumboDefaultOptions;
-        GumboOutput* output = gumbo_parse_with_options(&options, htmls.begin()->html_.data(), htmls.begin()->html_.length());
+    ranges::for_each(possibilites, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
-        std::string parsed_text;
-        try
-        {
-            parsed_text = so_.CleanText(output->root);
-        }
-        catch (std::length_error& e)
-        {
-            parsed_text = e.what();
-        }
-        std::cout << "length: " << parsed_text.size() << '\n';
-        
-        gumbo_destroy_output(&options, output);
-
-        const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-        const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-        const boost::regex regex_nl{R"***(\n{1,})***"};
-        const std::string one_space = " ";
-
-        std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
-        the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
-        the_text = boost::regex_replace(the_text, regex_nl, one_space);
-
-        boost::smatch the_shares;
-        bool found_it = false;
-        std::string found_name;
-
-        std::cout << "Not found\n";
-        boost::sregex_iterator iter(the_text.begin(), the_text.end(), regex_shares_only);
-        std::for_each(iter, boost::sregex_iterator{}, [the_text] (const boost::smatch& m)
-        {
-//            auto x1 = m.position() < 100 ? 0 : m.position() - 100;
-//            auto x2 = x1 + m.length() + 200 > the_text.size() ? the_text.size() - x1 : m.length() + 200;
-            EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
-//            EM::sv xx(the_text.data() + x1, x2);
-            std::cout << "Possible: " << xx << " : " 
-                << (m.length(1) > 0 ? m.str(1)
-                    : m.length(2) > 0 ? m.str(2)
-                    : m.length(3) > 0 ? m.str(3)
-                    : m.str(4))
-                << '\n';
-        });
-    }
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 
 void OutstandingSharesUpdater::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)

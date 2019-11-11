@@ -89,6 +89,7 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
     shares_matchers_.emplace_back("r34", std::make_unique<boost::regex const>(s34, my_flags));
     shares_matchers_.emplace_back("r37", std::make_unique<boost::regex const>(s37, my_flags));
     shares_matchers_.emplace_back("r35", std::make_unique<boost::regex const>(s35, my_flags));
+    shares_matchers_.emplace_back("r09", std::make_unique<boost::regex const>(s09, my_flags));
     shares_matchers_.emplace_back("r30", std::make_unique<boost::regex const>(s30, my_flags));
     shares_matchers_.emplace_back("r10", std::make_unique<boost::regex const>(s10, my_flags));
     shares_matchers_.emplace_back("r80", std::make_unique<boost::regex const>(s80, my_flags));
@@ -98,7 +99,6 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
     shares_matchers_.emplace_back("r03", std::make_unique<boost::regex const>(s03, my_flags));
     shares_matchers_.emplace_back("r88", std::make_unique<boost::regex const>(s88, my_flags));
     shares_matchers_.emplace_back("r89", std::make_unique<boost::regex const>(s89, my_flags));
-    shares_matchers_.emplace_back("r09", std::make_unique<boost::regex const>(s09, my_flags));
     shares_matchers_.emplace_back("r90", std::make_unique<boost::regex const>(s90, my_flags));
     shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
 
@@ -106,11 +106,6 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
 
 int64_t SharesOutstanding::operator() (EM::sv html) const
 {
-    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-    static const boost::regex regex_nl{R"***(\n{1,})***"};
-    static const std::string one_space = " ";
-
     static const std::string delete_this{""};
     static const boost::regex regex_comma_parens{R"***([,)(])***"};
 
@@ -118,22 +113,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length()),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
 
-    std::string parsed_text;
-    try
-    {
-        parsed_text = CleanText(output->root);
-    }
-    catch (std::length_error& e)
-    {
-        parsed_text = e.what();
-    }
-    gumbo_destroy_output(&options, output.release());
-
-    // do a little cleanup to make searching easier
-
-    std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
-    the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
-    the_text = boost::regex_replace(the_text, regex_nl, one_space);
+    const std::string the_text = ParseHTML(html);
 
     boost::smatch the_shares;
     bool found_it = false;
@@ -168,7 +148,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     return result;
 }		// -----  end of method SharesOutstanding::operator()  ----- 
 
-std::string SharesOutstanding::CleanText(GumboNode* node) const
+std::string SharesOutstanding::CleanText(GumboNode* node, size_t max_length_to_clean) const
 {
     //    this code is based on example code in Gumbo Parser project
     //    I've added the ability to break out of the recursive
@@ -188,7 +168,7 @@ std::string SharesOutstanding::CleanText(GumboNode* node) const
 
         for (unsigned int i = 0; i < children->length; ++i)
         {
-            const std::string text = CleanText((GumboNode*) children->data[i]);
+            const std::string text = CleanText((GumboNode*) children->data[i], max_length_to_clean);
             if (! text.empty())
             {
                 if (boost::regex_match(text, regex_nbr))
@@ -196,7 +176,7 @@ std::string SharesOutstanding::CleanText(GumboNode* node) const
                     contents += ' ';
                 }
                 contents.append(text);
-                if (max_length_to_parse_ > 0 && contents.size() >= max_length_to_parse_)
+                if (max_length_to_clean > 0 && contents.size() >= max_length_to_clean)
                 {
                     throw std::length_error(contents);
                 }
@@ -207,4 +187,64 @@ std::string SharesOutstanding::CleanText(GumboNode* node) const
     }
     return {};
 }		// -----  end of method SharesOutstanding::CleanText  ----- 
+
+std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_text)
+{
+    static const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?\bshares\b))***";
+    static const std::string a2 = R"***((?:\bshares\b.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
+    static const boost::regex regex_shares_only1{a1, boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex regex_shares_only2{a2, boost::regex_constants::normal | boost::regex_constants::icase};
+
+    std::vector<EM::sv> results;
+
+    boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only1);
+    std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
+    {
+        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+        results.push_back(xx);
+    });
+
+    boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
+    std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
+    {
+        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+        results.push_back(xx);
+    });
+
+    return results;
+}		// -----  end of method SharesOutstanding::FindCandidates  ----- 
+
+const std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean) const
+{
+    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    static const boost::regex regex_nl{R"***(\n{1,})***"};
+    static const std::string one_space = " ";
+
+    GumboOptions options = kGumboDefaultOptions;
+
+    size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.length() : std::min(html.length(), max_length_to_parse);
+
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), length_HTML_to_parse),
+            [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
+
+    std::string parsed_text;
+    try
+    {
+        parsed_text = CleanText(output->root, max_length_to_clean);
+    }
+    catch (std::length_error& e)
+    {
+        parsed_text = e.what();
+    }
+    gumbo_destroy_output(&options, output.release());
+    //
+    // do a little cleanup to make searching easier
+
+    std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
+    the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
+    the_text = boost::regex_replace(the_text, regex_nl, one_space);
+
+    return the_text;
+}		// -----  end of method SharesOutstanding::ParseHTML  ----- 
 
