@@ -52,6 +52,7 @@
 
 #include <pqxx/pqxx>
 
+#include "fmt/format.h"
 #include "spdlog/spdlog.h"
 
 #include "Extractor_HTML_FileFilter.h"
@@ -1052,13 +1053,12 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
             return boost::regex_search(line.begin(), line.end(), matches, regex_shares_bal_iss);
         });
 
-    bool found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), auth_match)
-        != financial_statements.balance_sheet_.lines_.end();
-    if (found_it)
+    if (bool found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), auth_match)
+        != financial_statements.balance_sheet_.lines_.end(); found_it)
     {
         shares_outstanding = matches.str(1);
     }
-    else if (found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), iss_match)
+    else if (bool found_it = std::find_if(financial_statements.balance_sheet_.lines_.begin(), financial_statements.balance_sheet_.lines_.end(), iss_match)
             != financial_statements.balance_sheet_.lines_.end(); found_it)
     {
         shares_outstanding = matches.str(1);
@@ -1073,9 +1073,8 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
             {
                 return boost::regex_search(item.first.begin(), item.first.end(), regex_shares);
             });
-        auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(), financial_statements.statement_of_operations_.values_.end(),
-                match_key);
-        if (found_it != financial_statements.statement_of_operations_.values_.end())
+        if (auto found_it = std::find_if(financial_statements.statement_of_operations_.values_.begin(), financial_statements.statement_of_operations_.values_.end(),
+                match_key); found_it != financial_statements.statement_of_operations_.values_.end())
         {
             shares_outstanding = found_it->second;
             use_multiplier = true;
@@ -1148,6 +1147,12 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
 
     ranges::for_each(possibilites, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
+
+    std::vector<std::string> xx = so_.PrepareForVectorization(possibilites);
+
+    std::cout << "\n-----------------------------\n";
+
+    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 

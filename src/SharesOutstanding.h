@@ -40,7 +40,8 @@ class SharesOutstanding
 {
 public:
     // ====================  LIFECYCLE     ======================================= 
-    SharesOutstanding (size_t max_length = 0);                   // constructor 
+
+    explicit SharesOutstanding (size_t max_length = 0);                   // constructor 
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -50,9 +51,11 @@ public:
 
     // try a new approach
 
-    const std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0) const;
+    [[nodiscard]] std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0) const;
 
-    std::vector<EM::sv> FindCandidates(const std::string& parsed_text);
+    std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
+
+    std::vector<std::string> PrepareForVectorization(const std::vector<EM::sv>& candidates);
 
     // ====================  MUTATORS      ======================================= 
 

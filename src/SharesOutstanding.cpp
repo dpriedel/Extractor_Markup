@@ -21,6 +21,8 @@
 #include <functional>
 #include <memory>
 
+#include <range/v3/all.hpp>
+
 #include "spdlog/spdlog.h"
 
 #include "HTML_FromFile.h"
@@ -188,7 +190,7 @@ std::string SharesOutstanding::CleanText(GumboNode* node, size_t max_length_to_c
     return {};
 }		// -----  end of method SharesOutstanding::CleanText  ----- 
 
-std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_text)
+std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_text) const
 {
     static const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?\bshares\b))***";
     static const std::string a2 = R"***((?:\bshares\b.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
@@ -214,7 +216,7 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     return results;
 }		// -----  end of method SharesOutstanding::FindCandidates  ----- 
 
-const std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean) const
+std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean) const
 {
     static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
     static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
@@ -247,4 +249,22 @@ const std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_t
 
     return the_text;
 }		// -----  end of method SharesOutstanding::ParseHTML  ----- 
+
+std::vector<std::string> SharesOutstanding::PrepareForVectorization (const std::vector<EM::sv>& candidates)
+{
+    // first, make sure each candidate starts and ends with a space (no partial words)
+    
+    auto trim_text_and_convert([](auto candidate) 
+    {
+        return ranges::views::trim(candidate, [](char c) { return c != ' '; })
+            | ranges::to<std::string>();
+    }); 
+
+    std::vector<std::string> results = candidates
+        | ranges::views::transform(trim_text_and_convert)
+        | ranges::to<std::vector>();
+
+
+    return results;
+}		// -----  end of method SharesOutstanding::PrepareCandidatesForVectorization  ----- 
 
