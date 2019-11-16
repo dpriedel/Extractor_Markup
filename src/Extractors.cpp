@@ -1152,7 +1152,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 
     std::cout << "\n-----------------------------\n";
 
-    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
+//    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 

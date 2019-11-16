@@ -264,7 +264,23 @@ std::vector<std::string> SharesOutstanding::PrepareForVectorization (const std::
         | ranges::views::transform(trim_text_and_convert)
         | ranges::to<std::vector>();
 
+    // next, we would split into words, remove stop words, maybe lematize...
+    // But, since our 'documents' are short, we'll just go with splitting into words.
+    
+    std::vector<std::string> words;
 
-    return results;
+    for(const auto& result : results)
+    {
+        auto word_rngs = result | ranges::views::split(' ');
+        for (const auto& word_rng : word_rngs)
+        {
+            std::string a(&*ranges::begin(word_rng), ranges::distance(word_rng));
+            words.push_back(a);
+        }
+    }
+
+    std::cout << (ranges::views::all(words)) << '\n';
+
+    return words;
 }		// -----  end of method SharesOutstanding::PrepareCandidatesForVectorization  ----- 
 
