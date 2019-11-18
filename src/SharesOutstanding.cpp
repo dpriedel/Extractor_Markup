@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <fstream>
 #include <functional>
 #include <memory>
 
@@ -104,6 +105,12 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
     shares_matchers_.emplace_back("r90", std::make_unique<boost::regex const>(s90, my_flags));
     shares_matchers_.emplace_back("r91", std::make_unique<boost::regex const>(s91, my_flags));
 
+
+    // now, our stop words
+
+    std::ifstream stop_words_file{"/usr/share/nltk_data/corpora/stopwords/english"};
+    std::copy(std::istream_iterator<std::string>(stop_words_file), std::istream_iterator<std::string>(), std::back_inserter(stop_words_));
+    stop_words_file.close();
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
 int64_t SharesOutstanding::operator() (EM::sv html) const
@@ -250,11 +257,11 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
     return the_text;
 }		// -----  end of method SharesOutstanding::ParseHTML  ----- 
 
-std::vector<std::string> SharesOutstanding::PrepareForVectorization (const std::vector<EM::sv>& candidates)
+std::vector<std::string> SharesOutstanding::CreateRawWordList (const std::vector<EM::sv>& candidates)
 {
     // first, make sure each candidate starts and ends with a space (no partial words)
     
-    auto trim_text_and_convert([](auto candidate) 
+    auto trim_text_and_convert([](const auto& candidate) 
     {
         return ranges::views::trim(candidate, [](char c) { return c != ' '; })
             | ranges::to<std::string>();
@@ -265,18 +272,30 @@ std::vector<std::string> SharesOutstanding::PrepareForVectorization (const std::
         | ranges::to<std::vector>();
 
     // next, we would split into words, remove stop words, maybe lematize...
-    // But, since our 'documents' are short, we'll just go with splitting into words.
+    // But, since our 'documents' are short, we'll just go with splitting into words
+    // AND removing stop words.
     
+    auto non_stop_words =
+        ranges::views::transform([](const auto&word_rng)
+            {
+                std::string word(&*ranges::begin(word_rng), ranges::distance(word_rng));
+                for (char& c : word)
+                {
+                    c = tolower(c);
+                }
+                return word;
+            })
+        | ranges::views::filter([this](const auto& word)
+            {
+                return ranges::find(stop_words_, word) == ranges::end(stop_words_);
+            });
+
     std::vector<std::string> words;
 
     for(const auto& result : results)
     {
         auto word_rngs = result | ranges::views::split(' ');
-        for (const auto& word_rng : word_rngs)
-        {
-            std::string a(&*ranges::begin(word_rng), ranges::distance(word_rng));
-            words.push_back(a);
-        }
+        ranges::copy(word_rngs | non_stop_words, ranges::back_inserter(words));
     }
 
     std::cout << (ranges::views::all(words)) << '\n';

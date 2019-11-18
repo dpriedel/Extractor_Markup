@@ -33,7 +33,8 @@
 
 // =====================================================================================
 //        Class:  SharesOutstanding
-//  Description: 
+//  Description:  Approach used is based upon code from book "Essential Natural Language
+//  Processing" by Ekaterina Kockmar from Manning Publications.
 //
 // =====================================================================================
 class SharesOutstanding
@@ -55,7 +56,10 @@ public:
 
     std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
 
-    std::vector<std::string> PrepareForVectorization(const std::vector<EM::sv>& candidates);
+    std::vector<std::string> CreateRawWordList(const std::vector<EM::sv>& candidates);
+
+    // return void for now because I don't yet know what the return type is
+    void Vectorize(const std::vector<std::string>& words);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -76,6 +80,7 @@ private:
     using re_info = std::pair<std::string, std::unique_ptr<boost::regex const>>;
 
     std::vector<re_info> shares_matchers_;
+    std::vector<std::string> stop_words_;
 
     size_t max_length_to_parse_;
 }; // -----  end of class SharesOutstanding  ----- 

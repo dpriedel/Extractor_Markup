@@ -1148,7 +1148,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 
     ranges::for_each(possibilites, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    std::vector<std::string> xx = so_.PrepareForVectorization(possibilites);
+    std::vector<std::string> xx = so_.CreateRawWordList(possibilites);
 
     std::cout << "\n-----------------------------\n";
 
