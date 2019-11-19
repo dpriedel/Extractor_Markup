@@ -1146,9 +1146,9 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
 
-    ranges::for_each(possibilites, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
+    ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    std::vector<std::string> xx = so_.CreateRawWordList(possibilites);
+    auto xx = so_.CreateTermsList(possibilites);
 
     std::cout << "\n-----------------------------\n";
 

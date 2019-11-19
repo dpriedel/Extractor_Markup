@@ -17,6 +17,7 @@
 #ifndef  _SHARESOUTSTANDING_INC_
 #define  _SHARESOUTSTANDING_INC_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -40,6 +41,17 @@
 class SharesOutstanding
 {
 public:
+
+    // using terms from above book
+
+    using vocabulary = std::vector<std::string>;    //  words
+    using terms = std::map<std::string, int>;       //  words and counts
+    using document_list = std::vector<std::pair<int, EM::sv>>;      //  doc/query ID, content
+
+    using term_counts_list = std::map<int, std::vector<int>>;       // doc/query ID, vectorized doc/query
+
+    using document_terms = std::map<int, terms>;    //  collection of doc/query ID, query terms
+
     // ====================  LIFECYCLE     ======================================= 
 
     explicit SharesOutstanding (size_t max_length = 0);                   // constructor 
@@ -56,7 +68,7 @@ public:
 
     std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
 
-    std::vector<std::string> CreateRawWordList(const std::vector<EM::sv>& candidates);
+    document_terms CreateTermsList(const std::vector<EM::sv>& candidates);
 
     // return void for now because I don't yet know what the return type is
     void Vectorize(const std::vector<std::string>& words);

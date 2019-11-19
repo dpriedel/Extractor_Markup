@@ -17,6 +17,7 @@
 #include "SharesOutstanding.h"
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <fstream>
 #include <functional>
@@ -111,6 +112,12 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
     std::ifstream stop_words_file{"/usr/share/nltk_data/corpora/stopwords/english"};
     std::copy(std::istream_iterator<std::string>(stop_words_file), std::istream_iterator<std::string>(), std::back_inserter(stop_words_));
     stop_words_file.close();
+
+    // a little customization...
+
+    std::vector<std::string> months{"january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december"};
+    ranges::copy(months, ranges::back_inserter(stop_words_));
+
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
 int64_t SharesOutstanding::operator() (EM::sv html) const
@@ -199,8 +206,8 @@ std::string SharesOutstanding::CleanText(GumboNode* node, size_t max_length_to_c
 
 std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_text) const
 {
-    static const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?\bshares\b))***";
-    static const std::string a2 = R"***((?:\bshares\b.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
+    static const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,75}?\bshares\b))***";
+    static const std::string a2 = R"***((?:\bshares\b.{1,75}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
     static const boost::regex regex_shares_only1{a1, boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_shares_only2{a2, boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -209,14 +216,14 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only1);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+        EM::sv xx(the_text.data() + m.position() - 150, m.length() + 300);
         results.push_back(xx);
     });
 
     boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
     std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+        EM::sv xx(the_text.data() + m.position() - 150, m.length() + 300);
         results.push_back(xx);
     });
 
@@ -257,13 +264,16 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
     return the_text;
 }		// -----  end of method SharesOutstanding::ParseHTML  ----- 
 
-std::vector<std::string> SharesOutstanding::CreateRawWordList (const std::vector<EM::sv>& candidates)
+SharesOutstanding::document_terms SharesOutstanding::CreateTermsList (const std::vector<EM::sv>& candidates)
 {
+    // TODO: me: include queries too
+
     // first, make sure each candidate starts and ends with a space (no partial words)
     
     auto trim_text_and_convert([](const auto& candidate) 
     {
         return ranges::views::trim(candidate, [](char c) { return c != ' '; })
+            | ranges::views::transform([](char c) { return tolower(c); })
             | ranges::to<std::string>();
     }); 
 
@@ -273,33 +283,38 @@ std::vector<std::string> SharesOutstanding::CreateRawWordList (const std::vector
 
     // next, we would split into words, remove stop words, maybe lematize...
     // But, since our 'documents' are short, we'll just go with splitting into words
-    // AND removing stop words.
+    // AND removing stop words and numbers and punction (for now)
     
-    auto non_stop_words =
+    auto not_stop_words =
         ranges::views::transform([](const auto&word_rng)
             {
                 std::string word(&*ranges::begin(word_rng), ranges::distance(word_rng));
-                for (char& c : word)
-                {
-                    c = tolower(c);
-                }
+                word |= ranges::actions::remove_if([](char c) { return ispunct(c); });
                 return word;
             })
         | ranges::views::filter([this](const auto& word)
             {
-                return ranges::find(stop_words_, word) == ranges::end(stop_words_);
+                return (ranges::find_if(word, [](int c) { return isdigit(c); }) == ranges::end(word))
+                && (ranges::find(stop_words_, word) == ranges::end(stop_words_));
             });
 
-    std::vector<std::string> words;
+    document_terms words_and_counts;
+
+    int ID = 0;
 
     for(const auto& result : results)
     {
+        terms doc_terms;
         auto word_rngs = result | ranges::views::split(' ');
-        ranges::copy(word_rngs | non_stop_words, ranges::back_inserter(words));
+        ranges::for_each(word_rngs | not_stop_words, [&doc_terms](const auto& word)
+        {
+            doc_terms.contains(word) ? doc_terms[word] += 1 : doc_terms[word] = 1;
+        });
+        words_and_counts.emplace(++ID, doc_terms);
     }
 
-    std::cout << (ranges::views::all(words)) << '\n';
+    ranges::for_each(words_and_counts, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
 
-    return words;
+    return words_and_counts;
 }		// -----  end of method SharesOutstanding::PrepareCandidatesForVectorization  ----- 
 
