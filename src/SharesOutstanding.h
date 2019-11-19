@@ -44,13 +44,12 @@ public:
 
     // using terms from above book
 
-    using vocabulary = std::vector<std::string>;    //  words
-    using terms = std::map<std::string, int>;       //  words and counts
-    using document_list = std::vector<std::pair<int, EM::sv>>;      //  doc/query ID, content
+    using vocabulary = std::vector<std::string>;                    //  words
+    using document_features = std::map<std::string, int>;           //  words and counts for single doc/query
 
-    using term_counts_list = std::map<int, std::vector<int>>;       // doc/query ID, vectorized doc/query
-
-    using document_terms = std::map<int, terms>;    //  collection of doc/query ID, query terms
+    using features_list = std::map<int, document_features>;         //  collection of doc/query ID, query features
+    
+    using features_vector = std::map<int, std::vector<int>>;
 
     // ====================  LIFECYCLE     ======================================= 
 
@@ -68,10 +67,12 @@ public:
 
     std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
 
-    document_terms CreateTermsList(const std::vector<EM::sv>& candidates);
+    features_list CreateFeaturesList(const std::vector<EM::sv>& candidates) const;
+
+    vocabulary CollectVocabulary(const features_list& features) const;
 
     // return void for now because I don't yet know what the return type is
-    void Vectorize(const std::vector<std::string>& words);
+    features_vector Vectorize(const vocabulary& vocab, const features_list& features) const;
 
     // ====================  MUTATORS      ======================================= 
 

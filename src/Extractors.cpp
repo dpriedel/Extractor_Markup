@@ -1148,11 +1148,21 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 
     ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    auto xx = so_.CreateTermsList(possibilites);
+    auto xx = so_.CreateFeaturesList(possibilites);
+
+    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
 
     std::cout << "\n-----------------------------\n";
 
+    auto vocab = so_.CollectVocabulary(xx);
+
+    ranges::for_each(vocab, [](const auto& x) { std::cout << x << "\n"; });
+
 //    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
+
+    auto yy = so_.Vectorize(vocab, xx);
+
+    ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 

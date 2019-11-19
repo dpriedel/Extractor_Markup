@@ -264,9 +264,10 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
     return the_text;
 }		// -----  end of method SharesOutstanding::ParseHTML  ----- 
 
-SharesOutstanding::document_terms SharesOutstanding::CreateTermsList (const std::vector<EM::sv>& candidates)
+SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const std::vector<EM::sv>& candidates) const
 {
     // TODO: me: include queries too
+    // TODO: me: add place holders for desired numbers
 
     // first, make sure each candidate starts and ends with a space (no partial words)
     
@@ -298,23 +299,59 @@ SharesOutstanding::document_terms SharesOutstanding::CreateTermsList (const std:
                 && (ranges::find(stop_words_, word) == ranges::end(stop_words_));
             });
 
-    document_terms words_and_counts;
+    features_list words_and_counts;
 
     int ID = 0;
 
     for(const auto& result : results)
     {
-        terms doc_terms;
+        document_features features;
         auto word_rngs = result | ranges::views::split(' ');
-        ranges::for_each(word_rngs | not_stop_words, [&doc_terms](const auto& word)
+        ranges::for_each(word_rngs | not_stop_words, [&features](const auto& word)
         {
-            doc_terms.contains(word) ? doc_terms[word] += 1 : doc_terms[word] = 1;
+            features.contains(word) ? features[word] += 1 : features[word] = 1;
         });
-        words_and_counts.emplace(++ID, doc_terms);
+        words_and_counts.emplace(++ID, features);
     }
 
-    ranges::for_each(words_and_counts, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
-
     return words_and_counts;
-}		// -----  end of method SharesOutstanding::PrepareCandidatesForVectorization  ----- 
+}		// -----  end of method SharesOutstanding::CreateFeaturesList  ----- 
+
+SharesOutstanding::vocabulary SharesOutstanding::CollectVocabulary (const features_list& features) const
+{
+    vocabulary results;
+
+    ranges::for_each(features | ranges::views::values, [&results](const auto& x)
+    {
+        ranges::copy(x | ranges::views::keys, ranges::back_inserter(results));
+    });
+
+    results |= ranges::actions::sort | ranges::actions::unique;
+
+    return results;
+}		// -----  end of method SharesOutstanding::CollectVocabulary  ----- 
+
+SharesOutstanding::features_vector SharesOutstanding::Vectorize (const vocabulary& vocab, const features_list& features) const
+{
+    features_vector results;
+
+    for (const auto& [ID, doc_features] : features)
+    {
+        std::vector<int> counts;
+
+        for (const auto& word : vocab)
+        {
+            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            {
+                counts.push_back(found_it->second);
+            }
+            else
+            {
+                counts.push_back(0);
+            }
+        }
+        results.emplace(ID, std::move(counts));
+    }
+    return results;
+}		// -----  end of method SharesOutstanding::Vectorize  ----- 
 
