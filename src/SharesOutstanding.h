@@ -46,10 +46,12 @@ public:
 
     using vocabulary = std::vector<std::string>;                    //  words
     using document_features = std::map<std::string, int>;           //  words and counts for single doc/query
+    using document_idf = std::map<std::string, float>;              //  vocab word, inverse document frequency
 
     using features_list = std::map<int, document_features>;         //  collection of doc/query ID, query features
     
     using features_vector = std::map<int, std::vector<int>>;
+    using idfs_vector = std::map<int, std::vector<float>>;  //  weights = count * idf
 
     // ====================  LIFECYCLE     ======================================= 
 
@@ -71,8 +73,11 @@ public:
 
     vocabulary CollectVocabulary(const features_list& features) const;
 
-    // return void for now because I don't yet know what the return type is
     features_vector Vectorize(const vocabulary& vocab, const features_list& features) const;
+
+    document_idf CalculateIDFs(const vocabulary& vocab, const features_list& features) const;
+
+    idfs_vector VectorizeIDFs(const vocabulary& vocab, const features_list& features, const document_idf& idfs) const;
 
     // ====================  MUTATORS      ======================================= 
 

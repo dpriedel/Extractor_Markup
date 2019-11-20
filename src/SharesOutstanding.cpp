@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -355,3 +356,64 @@ SharesOutstanding::features_vector SharesOutstanding::Vectorize (const vocabular
     return results;
 }		// -----  end of method SharesOutstanding::Vectorize  ----- 
 
+SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabulary& vocab, const features_list& features) const
+{
+    document_idf results;
+
+    for (const auto& word : vocab)
+    {
+        int doc_count = 0;
+
+        for (const auto& [ID, doc_features] : features)
+        {
+            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            {
+                doc_count += 1;
+            }
+        }
+        float idf = log10(float(features.size()) / float(1 + doc_count));
+        results.emplace(word, idf);
+    }
+    return results;
+}		// -----  end of method SharesOutstanding::CalculateIDF  ----- 
+
+SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabulary& vocab, const features_list& features, const document_idf& idfs) const
+{
+    idfs_vector results;
+
+    for (const auto& [ID, doc_features] : features)
+    {
+        std::vector<float> weights;
+
+        for (const auto& word : vocab)
+        {
+            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            {
+                weights.push_back(idfs.at(word) * float(doc_features.at(word)));
+            }
+            else
+            {
+                weights.push_back(0.0);
+            }
+        }
+        results.emplace(ID, std::move(weights));
+    }
+    return results;
+}		// -----  end of method SharesOutstanding::VectorizeIDFs  ----- 
+
+//def length(vector):
+//    sq_length = 0
+//    for index in range(0, len(vector)):
+//        sq_length += math.pow(vector[index], 2)
+//    return math.sqrt(sq_length)
+//    
+//def dot_product(vector1, vector2):
+//    if len(vector1)==len(vector2):
+//        dot_prod = 0
+//        for index in range(0, len(vector1)):
+//            dot_prod += vector1[index]*vector2[index]
+//        return dot_prod
+//    else:
+//        return "Unmatching dimensionality"
+//
+//cosine =  dot_product(query, document) / (length(query) * length(document))     

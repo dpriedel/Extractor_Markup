@@ -1164,6 +1164,16 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 
     ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
+    auto zz = so_.CalculateIDFs(vocab, xx);
+
+    ranges::for_each(zz, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
+
+    auto ww = so_.VectorizeIDFs(vocab, xx, zz);
+
+    std::cout << "\n-----------------------------\n";
+
+    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 
 void OutstandingSharesUpdater::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
