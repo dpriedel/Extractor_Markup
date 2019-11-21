@@ -45,6 +45,7 @@
 #include <iostream>
 #include <string>
 #include <system_error>
+#include <tuple>
 #include <variant>
 #include <vector>
 
@@ -1141,7 +1142,8 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // *******
     //
 
-    std::vector<EM::sv> queries = {EM::sv{"As of October 9, 2013, 14,509,119 shares of common stock of Stanley Furniture Company, Inc., par value $.02 per share, were outstanding."}};
+    std::vector<EM::sv> queries = {EM::sv{"As of ddd 9, 2013, nnn shares of common stock of, par value $.02 per share, were outstanding."},
+        EM::sv{"Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn"}};
     HTML_FromFile htmls{file_content};
 
     std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
@@ -1155,7 +1157,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     auto xx_q = so_.CreateFeaturesList(queries);
 
 //    std::cout << "\nfeatures-----------------------------\n";
-
+//
 //    std::cout << "document features list\n";
 //    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
 //    std::cout << "\nquery features list\n";
@@ -1193,10 +1195,23 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 //    ranges::for_each(ww_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
-    for (const auto& [id, vec] : ww)
+    // now, we apply each query to each document and look for the best match(s)
+
+    std::vector<std::tuple<int, int, float>> match_results;
+
+    for (const auto& [query_id, query_vec] : ww_q)
     {
-        float cos = so_.MatchQueryToContent(ww_q[1], vec);
-        std::cout << "Match value: " << cos << '\n';
+        for (const auto& [doc_id, doc_vec] : ww)
+        {
+            float cos = so_.MatchQueryToContent(query_vec, doc_vec);
+            match_results.emplace_back(std::make_tuple(query_id, doc_id, cos));
+        }
+    }
+    ranges::sort(match_results, [](const auto& a, const auto&b) { return std::get<2>(b) < std::get<2>(a); });
+
+    for (const auto& result : match_results)
+    {
+        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
     }
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 

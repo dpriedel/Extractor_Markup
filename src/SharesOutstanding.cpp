@@ -23,6 +23,7 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <set>
 
 #include <range/v3/all.hpp>
 
@@ -113,11 +114,6 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
     std::ifstream stop_words_file{"/usr/share/nltk_data/corpora/stopwords/english"};
     std::copy(std::istream_iterator<std::string>(stop_words_file), std::istream_iterator<std::string>(), std::back_inserter(stop_words_));
     stop_words_file.close();
-
-    // a little customization...
-
-    std::vector<std::string> months{"january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december"};
-    ranges::copy(months, ranges::back_inserter(stop_words_));
 
 }  // -----  end of method SharesOutstanding::SharesOutstanding  (constructor)  ----- 
 
@@ -242,7 +238,7 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
 
     size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.length() : std::min(html.length(), max_length_to_parse);
 
-    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), length_HTML_to_parse),
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length() / 2),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
 
     std::string parsed_text;
@@ -286,11 +282,24 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
     // next, we would split into words, remove stop words, maybe lematize...
     // But, since our 'documents' are short, we'll just go with splitting into words
     // AND removing stop words and numbers and punction (for now)
+    // AND, we replace month names and numbers that look like they could be
+    // numbers of shares with some generic placeholders.
+
+    static std::set<std::string> months{{"january"}, {"february"}, {"march"}, {"april"}, {"may"}, {"june"}, {"july"}, {"august"}, {"september"}, {"october"}, {"november"}, {"december"}};
+    static const boost::regex regex_shares_number{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
     
     auto not_stop_words =
         ranges::views::transform([](const auto&word_rng)
             {
                 std::string word(&*ranges::begin(word_rng), ranges::distance(word_rng));
+                if (months.contains(word))
+                {
+                    word = std::string{"ddd"};
+                }
+                else
+                {
+                    word = boost::regex_replace(word, regex_shares_number, "nnn");
+                }
                 word |= ranges::actions::remove_if([](char c) { return ispunct(c); });
                 return word;
             })
