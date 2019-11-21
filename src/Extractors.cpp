@@ -1141,39 +1141,63 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // *******
     //
 
+    std::vector<EM::sv> queries = {EM::sv{"As of October 9, 2013, 14,509,119 shares of common stock of Stanley Furniture Company, Inc., par value $.02 per share, were outstanding."}};
     HTML_FromFile htmls{file_content};
 
     std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
 
+    std::cout << "\npossibilities-----------------------------\n";
+
     ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
 
     auto xx = so_.CreateFeaturesList(possibilites);
+    auto xx_q = so_.CreateFeaturesList(queries);
 
-    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
+//    std::cout << "\nfeatures-----------------------------\n";
 
-    std::cout << "\n-----------------------------\n";
+//    std::cout << "document features list\n";
+//    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
+//    std::cout << "\nquery features list\n";
+//    ranges::for_each(xx_q, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
 
-    auto vocab = so_.CollectVocabulary(xx);
+    auto vocab = so_.CollectVocabulary(xx, xx_q);
 
-    ranges::for_each(vocab, [](const auto& x) { std::cout << x << "\n"; });
+//    std::cout << "\nvocabulary-----------------------------\n";
+
+//    ranges::for_each(vocab, [](const auto& x) { std::cout << x << "\n"; });
 
 //    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
     auto yy = so_.Vectorize(vocab, xx);
+    auto yy_q = so_.Vectorize(vocab, xx_q);
 
-    ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    std::cout << "\nvectorize-----------------------------\n";
+
+//    ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(yy_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
     auto zz = so_.CalculateIDFs(vocab, xx);
+    auto zz_q = so_.CalculateIDFs(vocab, xx_q);
 
-    ranges::for_each(zz, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
+//    std::cout << "\nIDFs-----------------------------\n";
+
+//    ranges::for_each(zz, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
+//    ranges::for_each(zz_q, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
 
     auto ww = so_.VectorizeIDFs(vocab, xx, zz);
+    auto ww_q = so_.VectorizeIDFs(vocab, xx_q, zz_q);
 
-    std::cout << "\n-----------------------------\n";
+//    std::cout << "\nIDF vectors-----------------------------\n";
 
-    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(ww_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
+    for (const auto& [id, vec] : ww)
+    {
+        float cos = so_.MatchQueryToContent(ww_q[1], vec);
+        std::cout << "Match value: " << cos << '\n';
+    }
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 
 void OutstandingSharesUpdater::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)

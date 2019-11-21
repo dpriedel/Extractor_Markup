@@ -318,11 +318,15 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
     return words_and_counts;
 }		// -----  end of method SharesOutstanding::CreateFeaturesList  ----- 
 
-SharesOutstanding::vocabulary SharesOutstanding::CollectVocabulary (const features_list& features) const
+SharesOutstanding::vocabulary SharesOutstanding::CollectVocabulary (const features_list& doc_features, const features_list& query_features) const
 {
     vocabulary results;
 
-    ranges::for_each(features | ranges::views::values, [&results](const auto& x)
+    ranges::for_each(doc_features | ranges::views::values, [&results](const auto& x)
+    {
+        ranges::copy(x | ranges::views::keys, ranges::back_inserter(results));
+    });
+    ranges::for_each(query_features | ranges::views::values, [&results](const auto& x)
     {
         ranges::copy(x | ranges::views::keys, ranges::back_inserter(results));
     });
@@ -342,9 +346,9 @@ SharesOutstanding::features_vector SharesOutstanding::Vectorize (const vocabular
 
         for (const auto& word : vocab)
         {
-            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            if (bool found_it = doc_features.contains(word); found_it)
             {
-                counts.push_back(found_it->second);
+                counts.push_back(doc_features.at(word));
             }
             else
             {
@@ -366,12 +370,13 @@ SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabula
 
         for (const auto& [ID, doc_features] : features)
         {
-            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            if (bool found_it = doc_features.contains(word); found_it)
             {
                 doc_count += 1;
             }
         }
         float idf = log10(float(features.size()) / float(1 + doc_count));
+//        std::cout << "word: " << word << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
         results.emplace(word, idf);
     }
     return results;
@@ -387,7 +392,7 @@ SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabular
 
         for (const auto& word : vocab)
         {
-            if (auto found_it = ranges::find_if(doc_features, [&word](const auto& x) { return x.first == word; }); found_it != ranges::end(doc_features))
+            if (bool found_it = doc_features.contains(word); found_it)
             {
                 weights.push_back(idfs.at(word) * float(doc_features.at(word)));
             }
@@ -401,19 +406,42 @@ SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabular
     return results;
 }		// -----  end of method SharesOutstanding::VectorizeIDFs  ----- 
 
-//def length(vector):
-//    sq_length = 0
-//    for index in range(0, len(vector)):
-//        sq_length += math.pow(vector[index], 2)
-//    return math.sqrt(sq_length)
-//    
-//def dot_product(vector1, vector2):
-//    if len(vector1)==len(vector2):
-//        dot_prod = 0
-//        for index in range(0, len(vector1)):
-//            dot_prod += vector1[index]*vector2[index]
-//        return dot_prod
-//    else:
-//        return "Unmatching dimensionality"
-//
-//cosine =  dot_product(query, document) / (length(query) * length(document))     
+float SharesOutstanding::MatchQueryToContent (const std::vector<float>& query, const std::vector<float>& document) const
+{
+    auto vec_length = [](const auto& vec)
+    {
+        float length_squared = 0.0;
+        for (auto e : vec)
+        {
+            length_squared += pow(e, 2);
+//            std::cout << "e: " << e << "sqr: " << length_squared << '\n';;
+        }
+//        std::cout << "\nlength squared: " << length_squared << '\n';
+        return sqrt(length_squared);
+    };
+    
+    auto dot_product = [](const auto& vec_a, const auto& vec_b)
+    {
+        if (vec_a.size() != vec_b.size())
+        {
+//            std::cout << "a size: " << vec_a.size() << " b size: " << vec_b.size() << '\n';
+            throw std::runtime_error("vector size mismatch.");
+        }
+        float dot_prod = 0.0;
+//        std::cout << "start dot prod\n";
+        for (int indx = 0; indx < vec_a.size(); ++indx)
+        {
+            if (vec_a[indx] != 0.0 && vec_b[indx] != 0.0)
+            {
+//                std::cout << "vec_a: " << vec_a[indx] << " vec b: " << vec_b[indx] << '\n';
+                dot_prod += vec_a[indx] * vec_b[indx];
+            }
+        }
+//        std::cout << "dot product: " << dot_prod << '\n';
+        return dot_prod;
+    };
+
+    float cosine = dot_product(query, document) / (vec_length(query) * vec_length(document));
+    return cosine;
+}		// -----  end of method SharesOutstanding::MatchQueryToContent  ----- 
+

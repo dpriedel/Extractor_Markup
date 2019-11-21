@@ -71,13 +71,15 @@ public:
 
     features_list CreateFeaturesList(const std::vector<EM::sv>& candidates) const;
 
-    vocabulary CollectVocabulary(const features_list& features) const;
+    vocabulary CollectVocabulary(const features_list& doc_features, const features_list& query_features) const;
 
     features_vector Vectorize(const vocabulary& vocab, const features_list& features) const;
 
     document_idf CalculateIDFs(const vocabulary& vocab, const features_list& features) const;
 
     idfs_vector VectorizeIDFs(const vocabulary& vocab, const features_list& features, const document_idf& idfs) const;
+
+    float MatchQueryToContent(const std::vector<float>& query, const std::vector<float>& document) const;
 
     // ====================  MUTATORS      ======================================= 
 
