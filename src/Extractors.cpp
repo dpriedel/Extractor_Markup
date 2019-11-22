@@ -1142,9 +1142,30 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     // *******
     //
 
-    std::vector<EM::sv> queries = {EM::sv{"As of ddd 9, 2013, nnn shares of common stock of, par value $.02 per share, were outstanding."},
-        EM::sv{"Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn"}};
+    std::vector<EM::sv> queries =
+    {
+        EM::sv{"x As of ddd 9, 2013, nnn shares of common stock of, par value $.02 per share, were outstanding. x"},
+        EM::sv{"x Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn x"},
+        EM::sv{"x As of ddd 25, 2015, nnn shares of the registrant s common stock were outstanding x"},
+        EM::sv{"x nnn (Number of shares of common stock, $0.01 par value, outstanding as of ddd 7, 2013 x"}
+    };
+
+
     HTML_FromFile htmls{file_content};
+
+    using re_info = std::map<int, std::unique_ptr<boost::regex const>>;
+    
+    re_info shares_extractors;
+    boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
+
+    const std::string q1 = R"***(As of.{1,30}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).shares.{1,50}?outstanding)***";
+    const std::string q2 = R"***(shares of common.{1,30}?outstanding at.{1,30}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q4 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,10}?Number of shares of common stock.{1,25}?outstanding as of)***";
+
+    shares_extractors.emplace(1, std::make_unique<boost::regex const>(q1, my_flags));
+    shares_extractors.emplace(2, std::make_unique<boost::regex const>(q2, my_flags));
+    shares_extractors.emplace(3, std::make_unique<boost::regex const>(q1, my_flags));
+    shares_extractors.emplace(4, std::make_unique<boost::regex const>(q4, my_flags));
 
     std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
@@ -1156,7 +1177,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     auto xx = so_.CreateFeaturesList(possibilites);
     auto xx_q = so_.CreateFeaturesList(queries);
 
-//    std::cout << "\nfeatures-----------------------------\n";
+    std::cout << "\nfeatures-----------------------------\n";
 //
 //    std::cout << "document features list\n";
 //    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
@@ -1207,12 +1228,49 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
             match_results.emplace_back(std::make_tuple(query_id, doc_id, cos));
         }
     }
-    ranges::sort(match_results, [](const auto& a, const auto&b) { return std::get<2>(b) < std::get<2>(a); });
 
-    for (const auto& result : match_results)
+    // descending sort
+    ranges::sort(match_results, [](const auto& a, const auto& b) { return std::get<2>(b) < std::get<2>(a); });
+
+//    for (const auto& result : match_results)
+//    {
+//        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
+//    }
+
+    if ( match_results.empty())
     {
-        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
+        std::cout << "*** something wrong...no match results. ***\n";
+        return;
     }
+    
+    std::string shares = "-1";
+
+    for (auto [qry, doc, cos] : match_results)
+    {
+        std::cout << "query_id: " << qry << " doc id: " << doc << " match goodness: " << cos << '\n';
+    
+        if (cos >= 0.4)   // arbitrary number for now
+        {
+            boost::cmatch the_shares;
+
+            std::cout << "using this query: " << queries[qry - 1] << "\n\n";
+            std::cout << "on this candidate: " << possibilites[doc - 1] << "\n\n";
+
+            if (bool found_it = boost::regex_search(std::begin(possibilites[doc - 1]), std::end(possibilites[doc - 1]), the_shares, *shares_extractors[qry]))
+            {
+               shares = the_shares.str(1); 
+               std::cout << "\nGot it!\n";
+               break;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    std::cout << "Found shares: " << shares << '\n';
+
 }		// -----  end of method OutstandingShares_data::UseExtractor  ----- 
 
 void OutstandingSharesUpdater::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)

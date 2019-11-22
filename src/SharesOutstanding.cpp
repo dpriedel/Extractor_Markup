@@ -220,7 +220,7 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
     std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 150, m.length() + 300);
+        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
         results.push_back(xx);
     });
 
@@ -238,7 +238,7 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
 
     size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.length() : std::min(html.length(), max_length_to_parse);
 
-    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), html.length() / 2),
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), length_HTML_to_parse),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
 
     std::string parsed_text;
@@ -305,8 +305,8 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
             })
         | ranges::views::filter([this](const auto& word)
             {
-                return (ranges::find_if(word, [](int c) { return isdigit(c); }) == ranges::end(word))
-                && (ranges::find(stop_words_, word) == ranges::end(stop_words_));
+                return (ranges::find_if(word, [](int c) { return isdigit(c); }) == ranges::end(word));
+//                && (ranges::find(stop_words_, word) == ranges::end(stop_words_));
             });
 
     features_list words_and_counts;
@@ -384,7 +384,8 @@ SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabula
                 doc_count += 1;
             }
         }
-        float idf = log10(float(features.size()) / float(1 + doc_count));
+//        float idf = log10(float(features.size()) / float(1 + doc_count));
+        float idf = doc_count;          // skip inverse for now
 //        std::cout << "word: " << word << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
         results.emplace(word, idf);
     }
