@@ -1147,9 +1147,11 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
         EM::sv{"x As of ddd 9, 2013, nnn shares of common stock of, par value $.02 per share, were outstanding. x"},
         EM::sv{"x Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn x"},
         EM::sv{"x As of ddd 25, 2015, nnn shares of the registrant s common stock were outstanding x"},
-        EM::sv{"x nnn (Number of shares of common stock, $0.01 par value, outstanding as of ddd 7, 2013 x"}
+        EM::sv{"x nnn Number of shares of common stock, $0.01 par value, outstanding as of ddd 7, 2013 x"},
+        EM::sv{"x Common stock, $0.01 par value; authorized: 100,000 shares; issued: 61,372 shares at 9/03/13 x"},
+        EM::sv{"x Common stock, $0.01 par value; nnn authorized shares issued nnn shares x"},
+        EM::sv{"x Common stock, no par value: nnn shares authorized, FY 2014: nnn issued and ddd outstanding x"}
     };
-
 
     HTML_FromFile htmls{file_content};
 
@@ -1161,11 +1163,17 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     const std::string q1 = R"***(As of.{1,30}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).shares.{1,50}?outstanding)***";
     const std::string q2 = R"***(shares of common.{1,30}?outstanding at.{1,30}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const std::string q4 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,10}?Number of shares of common stock.{1,25}?outstanding as of)***";
+    const std::string q5 = R"***(common.stock{1,30}?authorized.{1,10}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?issued.{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?issued.{1,20}?) at ddd)***";
+    const std::string q6 = R"***(common.stock.{1,40}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?authorized.{1,20}?issued.{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?shares))***";
+    const std::string q7 = R"***(common.stock.{1,40}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?authorized.{1,20}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.issued.{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,20}?outstanding))***";
 
     shares_extractors.emplace(1, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(2, std::make_unique<boost::regex const>(q2, my_flags));
     shares_extractors.emplace(3, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(4, std::make_unique<boost::regex const>(q4, my_flags));
+    shares_extractors.emplace(5, std::make_unique<boost::regex const>(q5, my_flags));
+    shares_extractors.emplace(6, std::make_unique<boost::regex const>(q6, my_flags));
+    shares_extractors.emplace(7, std::make_unique<boost::regex const>(q7, my_flags));
 
     std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);

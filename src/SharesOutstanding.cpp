@@ -220,7 +220,7 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
     std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 100, m.length() + 200);
+        EM::sv xx(the_text.data() + m.position() - 50, m.length() + 100);
         results.push_back(xx);
     });
 
@@ -287,6 +287,7 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
 
     static std::set<std::string> months{{"january"}, {"february"}, {"march"}, {"april"}, {"may"}, {"june"}, {"july"}, {"august"}, {"september"}, {"october"}, {"november"}, {"december"}};
     static const boost::regex regex_shares_number{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
+    static const boost::regex regex_shares_date{R"***(\b[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}\b)***"};
     
     auto not_stop_words =
         ranges::views::transform([](const auto&word_rng)
@@ -299,6 +300,7 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
                 else
                 {
                     word = boost::regex_replace(word, regex_shares_number, "nnn");
+                    word = boost::regex_replace(word, regex_shares_date, "ddd");
                 }
                 word |= ranges::actions::remove_if([](char c) { return ispunct(c); });
                 return word;
@@ -385,7 +387,7 @@ SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabula
             }
         }
 //        float idf = log10(float(features.size()) / float(1 + doc_count));
-        float idf = doc_count;          // skip inverse for now
+        float idf = log10(doc_count);          // skip inverse for now
 //        std::cout << "word: " << word << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
         results.emplace(word, idf);
     }
