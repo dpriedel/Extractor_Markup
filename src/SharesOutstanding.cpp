@@ -25,7 +25,19 @@
 #include <memory>
 #include <set>
 
-#include <range/v3/all.hpp>
+#include <range/v3/action/remove_if.hpp>
+#include <range/v3/action/sort.hpp>
+#include <range/v3/action/transform.hpp>
+#include <range/v3/action/unique.hpp>
+#include <range/v3/algorithm/copy.hpp>
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/iterator/insert_iterators.hpp>
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/map.hpp>
+#include <range/v3/view/split.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/trim.hpp>
+
 
 #include "spdlog/spdlog.h"
 
@@ -177,6 +189,12 @@ std::string SharesOutstanding::CleanText(GumboNode* node, size_t max_length_to_c
     if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
     {
         std::string contents;
+//        std::string tagname = gumbo_normalized_tagname(node->v.element.tag);
+////        std::cout << tagname << "   ";
+//        if (tagname == "tr")
+//        {
+//            contents += "zzz ";
+//        }
         GumboVector* children = &node->v.element.children;
 
         for (unsigned int i = 0; i < children->length; ++i)
@@ -203,8 +221,8 @@ std::string SharesOutstanding::CleanText(GumboNode* node, size_t max_length_to_c
 
 std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_text) const
 {
-    static const std::string a1 = R"***((?:(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,75}?\bshares\b))***";
-    static const std::string a2 = R"***((?:\bshares\b.{1,75}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)))***";
+    static const std::string a1 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b.{1,75}?\bcommon stock\b))***";
+    static const std::string a2 = R"***((\bcommon stock\b.{1,75}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     static const boost::regex regex_shares_only1{a1, boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_shares_only2{a2, boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -213,14 +231,14 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only1);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 150, m.length() + 300);
+        EM::sv xx(the_text.data() + m.position() - 30, m.length() + 120);
         results.push_back(xx);
     });
 
     boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
     std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 50, m.length() + 100);
+        EM::sv xx(the_text.data() + m.position(), m.length() + 50);
         results.push_back(xx);
     });
 
@@ -387,7 +405,7 @@ SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabula
             }
         }
 //        float idf = log10(float(features.size()) / float(1 + doc_count));
-        float idf = log10(doc_count);          // skip inverse for now
+        float idf = log10(doc_count + 1);          // skip inverse for now
 //        std::cout << "word: " << word << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
         results.emplace(word, idf);
     }

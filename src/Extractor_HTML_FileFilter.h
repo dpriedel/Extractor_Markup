@@ -48,6 +48,13 @@
 
 #include <boost/regex.hpp>
 
+#include <range/v3/algorithm/find_if.hpp>
+
+#include <range/v3/view/concat.hpp>
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/take.hpp>
+
 #include "Extractor.h"
 #include "AnchorsFromHTML.h"
 #include "Extractor_Utils.h"

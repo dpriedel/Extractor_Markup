@@ -193,6 +193,7 @@
             "-fPIC",
             "-I./src",
             "-I/extra/boost/boost-1.71_gcc-9",
+            "-I/usr/local/include",
             "-march=native",
             "-o",
             "Debug/Extractor_HTML_FileFilter.o",

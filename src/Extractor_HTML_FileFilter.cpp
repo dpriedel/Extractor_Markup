@@ -50,6 +50,18 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
+#include <range/v3/action/remove_if.hpp>
+#include <range/v3/action/transform.hpp>
+#include <range/v3/algorithm/any_of.hpp>
+#include <range/v3/algorithm/equal.hpp>
+#include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/algorithm/transform.hpp>
+
+#include <range/v3/iterator/insert_iterators.hpp>
+
+#include <range/v3/view/cache1.hpp>
+
 #include "fmt/core.h"
 #include "spdlog/spdlog.h"
 
