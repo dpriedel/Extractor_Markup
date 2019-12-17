@@ -32,6 +32,7 @@
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/iterator/insert_iterators.hpp>
+#include <range/v3/view/cache1.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
 #include <range/v3/view/split.hpp>
@@ -231,14 +232,15 @@ std::vector<EM::sv> SharesOutstanding::FindCandidates(const std::string& the_tex
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only1);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position() - 30, m.length() + 120);
+        // we need to prefix our leading number with some characters so later trim logic will not drop it.
+        EM::sv xx(the_text.data() + m.position() - 10, m.length() + 150);
         results.push_back(xx);
     });
 
     boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only2);
     std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position(), m.length() + 50);
+        EM::sv xx(the_text.data() + m.position(), m.length() + 150);
         results.push_back(xx);
     });
 
@@ -305,7 +307,7 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
 
     static std::set<std::string> months{{"january"}, {"february"}, {"march"}, {"april"}, {"may"}, {"june"}, {"july"}, {"august"}, {"september"}, {"october"}, {"november"}, {"december"}};
     static const boost::regex regex_shares_number{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
-    static const boost::regex regex_shares_date{R"***(\b[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}\b)***"};
+    static const boost::regex regex_shares_date{R"***(\b[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}\b)***"};
     
     auto not_stop_words =
         ranges::views::transform([](const auto&word_rng)
@@ -438,40 +440,34 @@ SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabular
 
 float SharesOutstanding::MatchQueryToContent (const std::vector<float>& query, const std::vector<float>& document) const
 {
-    auto vec_length = [](const auto& vec)
-    {
-        float length_squared = 0.0;
-        for (auto e : vec)
-        {
-            length_squared += pow(e, 2);
-//            std::cout << "e: " << e << "sqr: " << length_squared << '\n';;
-        }
-//        std::cout << "\nlength squared: " << length_squared << '\n';
-        return sqrt(length_squared);
-    };
-    
-    auto dot_product = [](const auto& vec_a, const auto& vec_b)
-    {
-        if (vec_a.size() != vec_b.size())
-        {
-//            std::cout << "a size: " << vec_a.size() << " b size: " << vec_b.size() << '\n';
-            throw std::runtime_error("vector size mismatch.");
-        }
-        float dot_prod = 0.0;
-//        std::cout << "start dot prod\n";
-        for (int indx = 0; indx < vec_a.size(); ++indx)
-        {
-            if (vec_a[indx] != 0.0 && vec_b[indx] != 0.0)
-            {
-//                std::cout << "vec_a: " << vec_a[indx] << " vec b: " << vec_b[indx] << '\n';
-                dot_prod += vec_a[indx] * vec_b[indx];
-            }
-        }
-//        std::cout << "dot product: " << dot_prod << '\n';
-        return dot_prod;
-    };
-
-    float cosine = dot_product(query, document) / (vec_length(query) * vec_length(document));
+    float cosine = VectorDotProduct(query, document) / (VectorLength(query) * VectorLength(document));
     return cosine;
 }		// -----  end of method SharesOutstanding::MatchQueryToContent  ----- 
+
+float SharesOutstanding::VectorLength (const std::vector<float>& vec) const
+{
+    float length_squared = 0.0;
+    for (auto e : vec)
+    {
+        length_squared += pow(e, 2);
+    }
+    return sqrt(length_squared);
+}		// -----  end of method SharesOutstanding::ComputeVectorLength  ----- 
+
+float SharesOutstanding::VectorDotProduct(const std::vector<float>& vec_a, const std::vector<float>& vec_b) const
+{
+    if (vec_a.size() != vec_b.size())
+    {
+        throw std::runtime_error("vector size mismatch.");
+    }
+    float dot_prod = 0.0;
+    for (int indx = 0; indx < vec_a.size(); ++indx)
+    {
+        if (vec_a[indx] != 0.0 && vec_b[indx] != 0.0)
+        {
+            dot_prod += vec_a[indx] * vec_b[indx];
+        }
+    }
+    return dot_prod;
+}		// -----  end of method SharesOutstanding::VectorDotProduct  ----- 
 

@@ -1138,25 +1138,19 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
 
 void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
-    // ******* We expect to be running against extracted HTML files so the only
-    // HTML block after the SEC header is the data we need.
-    // *******
-    //
-
     std::vector<EM::sv> queries =
     {
-        EM::sv{"x As of ddd 9, 2013, nnn shares of common stock of, par value $.02 per share, were outstanding. x"},
-        EM::sv{"x Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn x"},
-        EM::sv{"x As of ddd 25, 2015, nnn shares of the registrant s common stock were outstanding x"},
+        EM::sv{"x nnn shares of common stock of, par value $.02 per share, were outstanding. x"},
+        EM::sv{"x Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn x"},
+        EM::sv{"x nnn shares of the registrant s common stock were outstanding x"},
         EM::sv{"x nnn Number of shares of common stock, $0.01 par value, outstanding at ddd 7, 2013 x"},
         EM::sv{"x Common stock, $0.01 par value; authorized: nnn shares; issued: nnn shares at ddd x"},
         EM::sv{"x Common stock, $0.01 par value; nnn authorized shares issued nnn shares x"},
         EM::sv{"x Common stock, no par value: nnn shares authorized, FY 2014: nnn issued and nnn outstanding x"},
-        EM::sv{"x nnn Number of shares of Common Stock, $0.001 par value, outstanding at ddd 31, 2016. nnn x"},
-        EM::sv{"x Common stock, $0.001 par value, nnn shares authorized; nnn shares issued and outstanding x"}
+        EM::sv{"x nnn Number of shares of common stock, $0.01 par value, outstanding at ddd 7, 2013 nnn x"},
+        EM::sv{"x Common stock, $0.001 par value, nnn shares authorized; nnn shares issued and outstanding x"},
+        EM::sv{"x Common stock - $.001 par value: nnn shares authorized, nnn and nnn shares issued and outstanding at ddd 31, 2014 and 2013, respectively x"}
     };
-
-    HTML_FromFile htmls{file_content};
 
     using re_info = std::map<int, std::unique_ptr<boost::regex const>>;
     
@@ -1179,8 +1173,9 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //    shares_extractors.emplace(7, std::make_unique<boost::regex const>(q7, my_flags));
 
     const std::string q1 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    const std::string q2 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    const std::string q3 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q2 = R"***(authorized.{1,20}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q5 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q3 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const std::string q4 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
 
     shares_extractors.emplace(1, std::make_unique<boost::regex const>(q1, my_flags));
@@ -1188,13 +1183,20 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     shares_extractors.emplace(3, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(4, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(5, std::make_unique<boost::regex const>(q2, my_flags));
-    shares_extractors.emplace(6, std::make_unique<boost::regex const>(q2, my_flags));
+    shares_extractors.emplace(6, std::make_unique<boost::regex const>(q5, my_flags));
     shares_extractors.emplace(7, std::make_unique<boost::regex const>(q3, my_flags));
     shares_extractors.emplace(8, std::make_unique<boost::regex const>(q4, my_flags));
-    shares_extractors.emplace(9, std::make_unique<boost::regex const>(q2, my_flags));
+    shares_extractors.emplace(9, std::make_unique<boost::regex const>(q5, my_flags));
+    shares_extractors.emplace(10, std::make_unique<boost::regex const>(q5, my_flags));
+
+    // ******* We expect to be running against extracted HTML files so the only
+    // HTML block after the SEC header is the data we need.
+    // *******
 
 
-    std::string the_text = so_.ParseHTML(htmls.begin()->html_, 2'000'000, 100'000);
+    HTML_FromFile htmls{file_content};
+
+    std::string the_text = so_.ParseHTML(htmls.begin()->html_, 4'000'000, 200'000);
     std::vector<EM::sv> possibilites = so_.FindCandidates(the_text);
 
     std::cout << "\npossibilities-----------------------------\n";
@@ -1207,14 +1209,14 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //    std::cout << "\nfeatures-----------------------------\n";
 //
 //    std::cout << "document features list\n";
-//    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
+//    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 //    std::cout << "\nquery features list\n";
-//    ranges::for_each(xx_q, [](const auto& e) { const auto& [id, list] = e; ranges::for_each(list, [](const auto& y) { std::cout << y.first << " : " << y.second << '\n'; }); });
+//    ranges::for_each(xx_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 
     auto vocab = so_.CollectVocabulary(xx, xx_q);
 
 //    std::cout << "\nvocabulary-----------------------------\n";
-
+//
 //    ranges::for_each(vocab, [](const auto& x) { std::cout << x << "\n"; });
 
 //    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
@@ -1223,7 +1225,7 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     auto yy_q = so_.Vectorize(vocab, xx_q);
 
 //    std::cout << "\nvectorize-----------------------------\n";
-
+//
 //    ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 //    ranges::for_each(yy_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
@@ -1231,15 +1233,15 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
     auto zz_q = so_.CalculateIDFs(vocab, xx_q);
 
 //    std::cout << "\nIDFs-----------------------------\n";
-
+//
 //    ranges::for_each(zz, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
 //    ranges::for_each(zz_q, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
-
+//
     auto ww = so_.VectorizeIDFs(vocab, xx, zz);
     auto ww_q = so_.VectorizeIDFs(vocab, xx_q, zz_q);
 
 //    std::cout << "\nIDF vectors-----------------------------\n";
-
+//
 //    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 //    ranges::for_each(ww_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 

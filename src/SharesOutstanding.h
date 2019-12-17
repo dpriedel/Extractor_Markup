@@ -95,6 +95,9 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
+    float VectorLength(const std::vector<float>& vec) const;
+    float VectorDotProduct(const std::vector<float>& vec_a, const std::vector<float>& vec_b) const;
+
     // ====================  DATA MEMBERS  ======================================= 
 
     using re_info = std::pair<std::string, std::unique_ptr<boost::regex const>>;
