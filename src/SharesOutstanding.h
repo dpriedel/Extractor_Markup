@@ -100,10 +100,18 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    using re_info = std::pair<std::string, std::unique_ptr<boost::regex const>>;
+    std::vector<EM::sv> queries_;
 
-    std::vector<re_info> shares_matchers_;
+    std::map<int, std::unique_ptr<boost::regex const>> shares_extractors_;
+
     std::vector<std::string> stop_words_;
+
+    std::string q1_ = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,30}?common)***";
+    std::string q2_ = R"***(authorized.{1,20}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    std::string q3_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    std::string q4_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    std::string q5_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    std::string q6_ = R"***(common.{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
 
     size_t max_length_to_parse_;
 }; // -----  end of class SharesOutstanding  ----- 
