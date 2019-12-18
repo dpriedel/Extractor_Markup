@@ -1172,14 +1172,15 @@ void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file
 //    shares_extractors.emplace(6, std::make_unique<boost::regex const>(q6, my_flags));
 //    shares_extractors.emplace(7, std::make_unique<boost::regex const>(q7, my_flags));
 
-    const std::string q1 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q1 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,30}?common)***";
     const std::string q2 = R"***(authorized.{1,20}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    const std::string q5 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const std::string q3 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const std::string q4 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q5 = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
+    const std::string q6 = R"***(common.{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
 
     shares_extractors.emplace(1, std::make_unique<boost::regex const>(q1, my_flags));
-    shares_extractors.emplace(2, std::make_unique<boost::regex const>(q1, my_flags));
+    shares_extractors.emplace(2, std::make_unique<boost::regex const>(q6, my_flags));
     shares_extractors.emplace(3, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(4, std::make_unique<boost::regex const>(q1, my_flags));
     shares_extractors.emplace(5, std::make_unique<boost::regex const>(q2, my_flags));
