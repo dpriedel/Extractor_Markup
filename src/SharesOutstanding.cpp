@@ -63,21 +63,23 @@ SharesOutstanding::SharesOutstanding (size_t max_length)
         EM::sv{"x Common stock, no par value: nnn shares authorized, FY 2014: nnn issued and nnn outstanding x"},
         EM::sv{"x nnn Number of shares of common stock, $0.01 par value, outstanding at ddd 7, 2013 nnn x"},
         EM::sv{"x Common stock, $0.001 par value, nnn shares authorized; nnn shares issued and outstanding x"},
-        EM::sv{"x Common stock - $.001 par value: nnn shares authorized, nnn and nnn shares issued and outstanding at ddd 31, 2014 and 2013, respectively x"}
+        EM::sv{"x Common stock - $.001 par value: nnn shares authorized, nnn and nnn shares issued and outstanding at ddd 31, 2014 and 2013, respectively x"},
+        EM::sv{"x Common stock, $0.001 par value, nnn shares authorized; nnn and nnn shares issued and outstanding respectively x"},
     };
 
     boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
 
-    shares_extractors_.emplace(1, std::make_unique<boost::regex const>(q1_, my_flags));
-    shares_extractors_.emplace(2, std::make_unique<boost::regex const>(q6_, my_flags));
-    shares_extractors_.emplace(3, std::make_unique<boost::regex const>(q1_, my_flags));
-    shares_extractors_.emplace(4, std::make_unique<boost::regex const>(q1_, my_flags));
-    shares_extractors_.emplace(5, std::make_unique<boost::regex const>(q2_, my_flags));
-    shares_extractors_.emplace(6, std::make_unique<boost::regex const>(q5_, my_flags));
-    shares_extractors_.emplace(7, std::make_unique<boost::regex const>(q3_, my_flags));
-    shares_extractors_.emplace(8, std::make_unique<boost::regex const>(q4_, my_flags));
-    shares_extractors_.emplace(9, std::make_unique<boost::regex const>(q5_, my_flags));
-    shares_extractors_.emplace(10, std::make_unique<boost::regex const>(q5_, my_flags));
+    shares_extractors_.emplace(1, std::make_unique<boost::regex const>(se1_, my_flags));
+    shares_extractors_.emplace(2, std::make_unique<boost::regex const>(se6_, my_flags));
+    shares_extractors_.emplace(3, std::make_unique<boost::regex const>(se1_, my_flags));
+    shares_extractors_.emplace(4, std::make_unique<boost::regex const>(se1_, my_flags));
+    shares_extractors_.emplace(5, std::make_unique<boost::regex const>(se2_, my_flags));
+    shares_extractors_.emplace(6, std::make_unique<boost::regex const>(se5_, my_flags));
+    shares_extractors_.emplace(7, std::make_unique<boost::regex const>(se3_, my_flags));
+    shares_extractors_.emplace(8, std::make_unique<boost::regex const>(se4_, my_flags));
+    shares_extractors_.emplace(9, std::make_unique<boost::regex const>(se5_, my_flags));
+    shares_extractors_.emplace(10, std::make_unique<boost::regex const>(se5_, my_flags));
+    shares_extractors_.emplace(11, std::make_unique<boost::regex const>(se3_, my_flags));
 
     // now, our stop words
 
@@ -96,55 +98,55 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 //
 //    ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    auto xx = CreateFeaturesList(possibilites);
-    auto xx_q = CreateFeaturesList(queries_);
+    auto features_list_docs = CreateFeaturesList(possibilites);
+    auto features_list_qrys = CreateFeaturesList(queries_);
 
 //    std::cout << "\nfeatures-----------------------------\n";
 //
 //    std::cout << "document features list\n";
-//    ranges::for_each(xx, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+//    ranges::for_each(features_list_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 //    std::cout << "\nquery features list\n";
-//    ranges::for_each(xx_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+//    ranges::for_each(features_list_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 
-    auto vocab = CollectVocabulary(xx, xx_q);
+    auto vocab = CollectVocabulary(features_list_docs, features_list_qrys);
 
 //    std::cout << "\nvocabulary-----------------------------\n";
 //
 //    ranges::for_each(vocab, [](const auto& x) { std::cout << x << "\n"; });
 
-//    ranges::for_each(xx, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
+//    ranges::for_each(features_list_docs, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    auto yy = Vectorize(vocab, xx);
-    auto yy_q = Vectorize(vocab, xx_q);
+    auto vectors_docs = Vectorize(vocab, features_list_docs);
+    auto vectors_qrys = Vectorize(vocab, features_list_qrys);
 
 //    std::cout << "\nvectorize-----------------------------\n";
 //
-//    ranges::for_each(yy, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
-//    ranges::for_each(yy_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(vectors_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(vectors_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
-    auto zz = CalculateIDFs(vocab, xx);
-    auto zz_q = CalculateIDFs(vocab, xx_q);
+    auto IDFs_docs = CalculateIDFs(vocab, features_list_docs);
+    auto IDFs_qrys = CalculateIDFs(vocab, features_list_qrys);
 
 //    std::cout << "\nIDFs-----------------------------\n";
 //
-//    ranges::for_each(zz, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
-//    ranges::for_each(zz_q, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
+//    ranges::for_each(IDFs_docs, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
+//    ranges::for_each(IDFs_qrys, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
 //
-    auto ww = VectorizeIDFs(vocab, xx, zz);
-    auto ww_q = VectorizeIDFs(vocab, xx_q, zz_q);
+    auto IDF_vectors_docs = VectorizeIDFs(vocab, features_list_docs, IDFs_docs);
+    auto IDF_vectors_qrys = VectorizeIDFs(vocab, features_list_qrys, IDFs_qrys);
 
 //    std::cout << "\nIDF vectors-----------------------------\n";
 //
-//    ranges::for_each(ww, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
-//    ranges::for_each(ww_q, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(IDF_vectors_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
+//    ranges::for_each(IDF_vectors_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
     // now, we apply each query to each document and look for the best match(s)
 
     std::vector<std::tuple<int, int, float>> match_results;
 
-    for (const auto& [query_id, query_vec] : ww_q)
+    for (const auto& [query_id, query_vec] : IDF_vectors_qrys)
     {
-        for (const auto& [doc_id, doc_vec] : ww)
+        for (const auto& [doc_id, doc_vec] : IDF_vectors_docs)
         {
             float cos = MatchQueryToContent(query_vec, doc_vec);
             match_results.emplace_back(std::make_tuple(query_id, doc_id, cos));
@@ -154,36 +156,35 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     // descending sort
     ranges::sort(match_results, [](const auto& a, const auto& b) { return std::get<2>(b) < std::get<2>(a); });
 
-//    for (const auto& result : match_results)
-//    {
-//        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
-//    }
-
-    std::cout << "\nMatching results-----------------------------\n";
+    for (const auto& result : match_results)
+    {
+        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
+    }
 
     if ( match_results.empty())
     {
-        std::cout << "*** something wrong...no match results. ***\n";
+        spdlog::info("*** something wrong...no match results. ***\n");
         return -1;
     }
     
+    spdlog::debug("\nMatching results-----------------------------\n");
+
     std::string shares = "-1";
 
     for (auto [qry, doc, cos] : match_results)
     {
-        std::cout << "query_id: " << qry << " doc id: " << doc << " match goodness: " << cos << '\n';
+        spdlog::debug(catenate("query_id: ", qry, " doc id: ", doc, " match goodness: ", cos));
     
         if (cos >= 0.7)   // closer to 1 than to zero
         {
             boost::cmatch the_shares;
 
-            std::cout << "using this query: " << queries_[qry - 1] << "\n\n";
-            std::cout << "on this candidate: " << possibilites[doc - 1] << "\n\n";
+            spdlog::debug(catenate("using this query: ", queries_.at(qry - 1), "\n"));
+            spdlog::debug(catenate("on this candidate: ", possibilites.at(doc - 1), "\n"));
 
             if (bool found_it = boost::regex_search(std::begin(possibilites[doc - 1]), std::end(possibilites[doc - 1]), the_shares, *shares_extractors_.at(qry)))
             {
                shares = the_shares.str(1); 
-               std::cout << "\nGot it!\n";
                break;
             }
         }
@@ -215,7 +216,8 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     {
         shares_outstanding = -1;
     }
-
+    
+    spdlog::debug(catenate("Shares outstanding: ", shares_outstanding));
     return shares_outstanding;
 }		// -----  end of method SharesOutstanding::operator()  ----- 
 
