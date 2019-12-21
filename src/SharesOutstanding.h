@@ -50,7 +50,7 @@ public:
 
     using features_list = std::map<int, document_features>;         //  collection of doc/query ID, query features
     
-    using features_vector = std::map<int, std::vector<int>>;
+    using features_vectors = std::map<int, std::vector<float>>;
     using idfs_vector = std::map<int, std::vector<float>>;  //  weights = count * idf
 
     // ====================  LIFECYCLE     ======================================= 
@@ -67,19 +67,19 @@ public:
 
     [[nodiscard]] std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0) const;
 
-    std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
+    [[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string& parsed_text) const;
 
-    features_list CreateFeaturesList(const std::vector<EM::sv>& candidates) const;
+    [[nodiscard]] features_list CreateFeaturesList(const std::vector<EM::sv>& candidates) const;
 
-    vocabulary CollectVocabulary(const features_list& doc_features, const features_list& query_features) const;
+    [[nodiscard]] vocabulary CollectVocabulary(const features_list& doc_features, const features_list& query_features) const;
 
-    features_vector Vectorize(const vocabulary& vocab, const features_list& features) const;
+    [[nodiscard]] features_vectors Vectorize(const vocabulary& vocab, const features_list& features) const;
 
-    document_idf CalculateIDFs(const vocabulary& vocab, const features_list& features) const;
+    [[nodiscard]] document_idf CalculateIDFs(const vocabulary& vocab, const features_list& features) const;
 
-    idfs_vector VectorizeIDFs(const vocabulary& vocab, const features_list& features, const document_idf& idfs) const;
+    [[nodiscard]] idfs_vector VectorizeIDFs(const vocabulary& vocab, const features_list& features, const document_idf& idfs) const;
 
-    float MatchQueryToContent(const std::vector<float>& query, const std::vector<float>& document) const;
+    [[nodiscard]] float MatchQueryToContent(const std::vector<float>& query, const std::vector<float>& document) const;
 
     // ====================  MUTATORS      ======================================= 
 
@@ -95,8 +95,8 @@ protected:
 private:
     // ====================  METHODS       ======================================= 
 
-    float VectorLength(const std::vector<float>& vec) const;
-    float VectorDotProduct(const std::vector<float>& vec_a, const std::vector<float>& vec_b) const;
+    [[nodiscard]] float VectorLength(const std::vector<float>& vec) const;
+    [[nodiscard]] float VectorDotProduct(const std::vector<float>& vec_a, const std::vector<float>& vec_b) const;
 
     // ====================  DATA MEMBERS  ======================================= 
 

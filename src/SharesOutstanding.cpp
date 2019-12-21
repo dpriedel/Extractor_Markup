@@ -101,12 +101,12 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     auto features_list_docs = CreateFeaturesList(possibilites);
     auto features_list_qrys = CreateFeaturesList(queries_);
 
-//    std::cout << "\nfeatures-----------------------------\n";
-//
-//    std::cout << "document features list\n";
-//    ranges::for_each(features_list_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
-//    std::cout << "\nquery features list\n";
-//    ranges::for_each(features_list_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+    std::cout << "\nfeatures-----------------------------\n";
+
+    std::cout << "document features list\n";
+    ranges::for_each(features_list_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+    std::cout << "\nquery features list\n";
+    ranges::for_each(features_list_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 
     auto vocab = CollectVocabulary(features_list_docs, features_list_qrys);
 
@@ -125,7 +125,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 //    ranges::for_each(vectors_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "key: " << id << " values: " << ranges::views::all(list) << '\n'; });
 
     auto IDFs_docs = CalculateIDFs(vocab, features_list_docs);
-    auto IDFs_qrys = CalculateIDFs(vocab, features_list_qrys);
+//    auto IDFs_qrys = CalculateIDFs(vocab, features_list_qrys);
 
 //    std::cout << "\nIDFs-----------------------------\n";
 //
@@ -133,7 +133,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 //    ranges::for_each(IDFs_qrys, [](const auto& e) { const auto& [word, idf] = e; std::cout << "word: " << word << " idf: " << idf << '\n'; });
 //
     auto IDF_vectors_docs = VectorizeIDFs(vocab, features_list_docs, IDFs_docs);
-    auto IDF_vectors_qrys = VectorizeIDFs(vocab, features_list_qrys, IDFs_qrys);
+//    auto IDF_vectors_qrys = VectorizeIDFs(vocab, features_list_qrys, IDFs_qrys);
 
 //    std::cout << "\nIDF vectors-----------------------------\n";
 //
@@ -144,7 +144,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 
     std::vector<std::tuple<int, int, float>> match_results;
 
-    for (const auto& [query_id, query_vec] : IDF_vectors_qrys)
+    for (const auto& [query_id, query_vec] : vectors_qrys)
     {
         for (const auto& [doc_id, doc_vec] : IDF_vectors_docs)
         {
@@ -330,9 +330,10 @@ std::string SharesOutstanding::ParseHTML (EM::sv html, size_t max_length_to_pars
 
 SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const std::vector<EM::sv>& candidates) const
 {
-    // TODO: me: include queries too
-    // TODO: me: add place holders for desired numbers
-
+    static std::set<std::string> months{{"january"}, {"february"}, {"march"}, {"april"}, {"may"}, {"june"}, {"july"}, {"august"}, {"september"}, {"october"}, {"november"}, {"december"}};
+    static const boost::regex regex_shares_number{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
+    static const boost::regex regex_shares_date{R"***(\b[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}\b)***"};
+    
     // first, make sure each candidate starts and ends with a space (no partial words)
     
     auto trim_text_and_convert([](const auto& candidate) 
@@ -342,58 +343,62 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
             | ranges::to<std::string>();
     }); 
 
-    std::vector<std::string> results = candidates
-        | ranges::views::transform(trim_text_and_convert)
-        | ranges::to<std::vector>();
-
-    // next, we would split into words, remove stop words, maybe lematize...
+    // we would split into words, remove stop words, maybe lematize...
     // But, since our 'documents' are short, we'll just go with splitting into words
     // AND removing stop words and numbers and punction (for now)
     // AND, we replace month names and numbers that look like they could be
     // numbers of shares with some generic placeholders.
 
-    static std::set<std::string> months{{"january"}, {"february"}, {"march"}, {"april"}, {"may"}, {"june"}, {"july"}, {"august"}, {"september"}, {"october"}, {"november"}, {"december"}};
-    static const boost::regex regex_shares_number{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
-    static const boost::regex regex_shares_date{R"***(\b[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}\b)***"};
-    
-    auto not_stop_words =
+    auto tokenize =
         ranges::views::transform([](const auto&word_rng)
             {
                 std::string word(&*ranges::begin(word_rng), ranges::distance(word_rng));
+                return word;
+            });
+
+    auto words_to_tokens = ranges::views::transform([](const std::string& word)
+            {
+                std::string token;
                 if (months.contains(word))
                 {
-                    word = std::string{"ddd"};
+                    token = std::string{"ddd"};
                 }
                 else
                 {
-                    word = boost::regex_replace(word, regex_shares_number, "nnn");
-                    word = boost::regex_replace(word, regex_shares_date, "ddd");
+                    token = boost::regex_replace(word, regex_shares_number, "nnn");
+                    token = boost::regex_replace(token, regex_shares_date, "ddd");
                 }
-                word |= ranges::actions::remove_if([](char c) { return ispunct(c); });
-                return word;
-            })
-        | ranges::views::filter([this](const auto& word)
+                token |= ranges::actions::remove_if([](char c) { return ispunct(c); });
+                return token;
+            });
+    
+    auto filter_stop_words =
+        ranges::views::filter([](const auto& token)
             {
-                return (ranges::find_if(word, [](int c) { return isdigit(c); }) == ranges::end(word));
-//                && (ranges::find(stop_words_, word) == ranges::end(stop_words_));
+                // OK, we not removing stop words, just those which contain numbers
+                return ! token.empty()
+                    && (ranges::find_if(token, [](int c) { return isdigit(c); }) == ranges::end(token));
+//                && (ranges::find(stop_words_, token) == ranges::end(stop_words_));
             });
 
-    features_list words_and_counts;
+    std::vector<std::string> results = candidates
+        | ranges::views::transform(trim_text_and_convert)
+        | ranges::to<std::vector>();
 
-    int ID = 0;
+    features_list terms_and_counts;
 
-    for(const auto& result : results)
+    for(int ID = 0; const auto& result : results)
     {
         document_features features;
         auto word_rngs = result | ranges::views::split(' ');
-        ranges::for_each(word_rngs | not_stop_words, [&features](const auto& word)
+        ranges::for_each(word_rngs | tokenize | words_to_tokens | filter_stop_words, [&features](const auto& token)
         {
-            features.contains(word) ? features[word] += 1 : features[word] = 1;
+            features.contains(token) ? features[token] += 1 : features[token] = 1;
         });
-        words_and_counts.emplace(++ID, features);
+        terms_and_counts.emplace(++ID, features);
     }
 
-    return words_and_counts;
+    return terms_and_counts;
 }		// -----  end of method SharesOutstanding::CreateFeaturesList  ----- 
 
 SharesOutstanding::vocabulary SharesOutstanding::CollectVocabulary (const features_list& doc_features, const features_list& query_features) const
@@ -414,13 +419,13 @@ SharesOutstanding::vocabulary SharesOutstanding::CollectVocabulary (const featur
     return results;
 }		// -----  end of method SharesOutstanding::CollectVocabulary  ----- 
 
-SharesOutstanding::features_vector SharesOutstanding::Vectorize (const vocabulary& vocab, const features_list& features) const
+SharesOutstanding::features_vectors SharesOutstanding::Vectorize (const vocabulary& vocab, const features_list& features) const
 {
-    features_vector results;
+    features_vectors results;
 
     for (const auto& [ID, doc_features] : features)
     {
-        std::vector<int> counts;
+        std::vector<float> counts;
 
         for (const auto& word : vocab)
         {
@@ -430,7 +435,7 @@ SharesOutstanding::features_vector SharesOutstanding::Vectorize (const vocabular
             }
             else
             {
-                counts.push_back(0);
+                counts.push_back(0.0);
             }
         }
         results.emplace(ID, std::move(counts));
@@ -442,21 +447,21 @@ SharesOutstanding::document_idf SharesOutstanding::CalculateIDFs (const vocabula
 {
     document_idf results;
 
-    for (const auto& word : vocab)
+    for (const auto& term : vocab)
     {
         int doc_count = 0;
 
         for (const auto& [ID, doc_features] : features)
         {
-            if (bool found_it = doc_features.contains(word); found_it)
+            if (bool found_it = doc_features.contains(term); found_it)
             {
                 doc_count += 1;
             }
         }
 //        float idf = log10(float(features.size()) / float(1 + doc_count));
         float idf = log10(doc_count + 1);          // skip inverse for now
-//        std::cout << "word: " << word << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
-        results.emplace(word, idf);
+//        std::cout << "term: " << term << " how many docs: " << features.size() << "docs using: " << doc_count << " idf: " << idf << '\n';
+        results.emplace(term, idf);
     }
     return results;
 }		// -----  end of method SharesOutstanding::CalculateIDF  ----- 
@@ -469,11 +474,11 @@ SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabular
     {
         std::vector<float> weights;
 
-        for (const auto& word : vocab)
+        for (const auto& term : vocab)
         {
-            if (bool found_it = doc_features.contains(word); found_it)
+            if (bool found_it = doc_features.contains(term); found_it)
             {
-                weights.push_back(idfs.at(word) * float(doc_features.at(word)));
+                weights.push_back(idfs.at(term) * float(doc_features.at(term)));
             }
             else
             {
