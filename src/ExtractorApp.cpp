@@ -256,7 +256,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true),
             "export problem HTML data if any. Default is 'false'")
 		("UpdateSharesOutstanding", po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true),
-            "export problem HTML data if any. Default is 'false'")
+            "Update Shares outstanding value in DB.")
 		("list-file", po::value<std::string>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
