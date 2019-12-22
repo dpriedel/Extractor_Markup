@@ -94,19 +94,19 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     std::string the_text = ParseHTML(html, 4'000'000, 200'000);
     std::vector<EM::sv> possibilites = FindCandidates(the_text);
 
-//    std::cout << "\npossibilities-----------------------------\n";
-//
-//    ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
+    std::cout << "\npossibilities-----------------------------\n";
+
+    ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
 
     auto features_list_docs = CreateFeaturesList(possibilites);
     auto features_list_qrys = CreateFeaturesList(queries_);
 
-    std::cout << "\nfeatures-----------------------------\n";
-
-    std::cout << "document features list\n";
-    ranges::for_each(features_list_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
-    std::cout << "\nquery features list\n";
-    ranges::for_each(features_list_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+//    std::cout << "\nfeatures-----------------------------\n";
+//
+//    std::cout << "document features list\n";
+//    ranges::for_each(features_list_docs, [](const auto& e) { const auto& [id, list] = e; std::cout << "\ndoc ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
+//    std::cout << "\nquery features list\n";
+//    ranges::for_each(features_list_qrys, [](const auto& e) { const auto& [id, list] = e; std::cout << "\nqry ID: " << id << '\n'; ranges::for_each(list, [](const auto& y) { std::cout << '\t' << y.first << " : " << y.second << '\n'; }); });
 
     auto vocab = CollectVocabulary(features_list_docs, features_list_qrys);
 
@@ -116,7 +116,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 
 //    ranges::for_each(features_list_docs, [](const auto x) { std::cout << "Possible: " << x << "\n\n"; });
 
-    auto vectors_docs = Vectorize(vocab, features_list_docs);
+//    auto vectors_docs = Vectorize(vocab, features_list_docs);
     auto vectors_qrys = Vectorize(vocab, features_list_qrys);
 
 //    std::cout << "\nvectorize-----------------------------\n";
@@ -156,10 +156,10 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     // descending sort
     ranges::sort(match_results, [](const auto& a, const auto& b) { return std::get<2>(b) < std::get<2>(a); });
 
-    for (const auto& result : match_results)
-    {
-        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
-    }
+//    for (const auto& result : match_results)
+//    {
+//        std::cout << "query_id: " << std::get<0>(result) << " doc id: " << std::get<1>(result) << " match goodness: " << std::get<2>(result) << '\n';
+//    }
 
     if ( match_results.empty())
     {
@@ -356,7 +356,7 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
                 return word;
             });
 
-    auto words_to_tokens = ranges::views::transform([](const std::string& word)
+    auto cleanup_tokens = ranges::views::transform([](const std::string& word)
             {
                 std::string token;
                 if (months.contains(word))
@@ -391,9 +391,10 @@ SharesOutstanding::features_list SharesOutstanding::CreateFeaturesList (const st
     {
         document_features features;
         auto word_rngs = result | ranges::views::split(' ');
-        ranges::for_each(word_rngs | tokenize | words_to_tokens | filter_stop_words, [&features](const auto& token)
+        ranges::for_each(word_rngs | tokenize | cleanup_tokens | filter_stop_words, [&features](const auto& token)
         {
-            features.contains(token) ? features[token] += 1 : features[token] = 1;
+            features.try_emplace(token, 0);
+            features[token] += 1;
         });
         terms_and_counts.emplace(++ID, features);
     }
@@ -476,9 +477,9 @@ SharesOutstanding::idfs_vector SharesOutstanding::VectorizeIDFs (const vocabular
 
         for (const auto& term : vocab)
         {
-            if (bool found_it = doc_features.contains(term); found_it)
+            if (auto found_it = doc_features.find(term); found_it != doc_features.end())
             {
-                weights.push_back(idfs.at(term) * float(doc_features.at(term)));
+                weights.push_back(idfs.at(term) * found_it->second);
             }
             else
             {
