@@ -56,7 +56,7 @@ public:
 
     // ====================  LIFECYCLE     ======================================= 
 
-    explicit SharesOutstanding (size_t max_length = 0);                   // constructor 
+    SharesOutstanding ();                   // constructor 
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -76,22 +76,6 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    std::vector<EM::sv> queries_;
-
-    std::map<int, std::unique_ptr<boost::regex const>> shares_extractors_;
-
-    std::vector<std::string> stop_words_;
-
-    std::string se1_ = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?common)***";
-    std::string se2_ = R"***(authorized.{1,20}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se3_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se4_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se5_ = R"***((?:\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b).{1,20}?authorized.{1,50}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se6_ = R"***(common.{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se7_ = R"***(weighted.{1,100}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    std::string se8_ = R"***(\byes\b.{1,10}?no.{1,300}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-
-    size_t max_length_to_parse_;
 }; // -----  end of class SharesOutstanding  ----- 
 
     // try a new approach
