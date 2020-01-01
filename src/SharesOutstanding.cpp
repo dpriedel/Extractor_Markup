@@ -164,6 +164,12 @@ std::string CleanText(GumboNode* node, size_t max_length_to_clean)
 
 std::vector<EM::sv> FindCandidates(const std::string& the_text)
 {
+    // the beginning of the HTML content is actually a 'form' which almost always contains
+    // the information we are looking for.
+
+    // this regex looks for an identifiable part of the form followed by something which
+    // looks like the number of outstanding shares.
+
     static const std::string a7 = R"***(\byes\b.{1,10}?no.{1,700}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***";
 
     static const boost::regex regex_shares_only7{a7, boost::regex_constants::normal | boost::regex_constants::icase};
@@ -173,8 +179,7 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only7);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        // we need to prefix our leading number with some characters so later trim logic will not drop it.
-        EM::sv xx(the_text.data() + m.position(), m.length());
+        EM::sv xx(the_text.data() + m.position(), m.length() + 10);
         results.push_back(xx);
     });
 
