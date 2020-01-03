@@ -34,8 +34,7 @@
 
 // =====================================================================================
 //        Class:  SharesOutstanding
-//  Description:  Approach used is based upon code from book "Essential Natural Language
-//  Processing" by Ekaterina Kockmar from Manning Publications.
+//  Description:  Extract the number of outstanding shares from forms
 //
 // =====================================================================================
 
@@ -56,7 +55,7 @@ public:
 
     // ====================  LIFECYCLE     ======================================= 
 
-    SharesOutstanding ();                   // constructor 
+    SharesOutstanding () = default;                   // constructor 
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -82,26 +81,10 @@ private:
 
 // NOTE: this method can throw length_error if max_length_to_parse_ != 0
 
-std::string CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text);
+void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text);
 
 [[nodiscard]] std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0);
 
 [[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string& parsed_text);
-
-[[nodiscard]] features_list CreateFeaturesList(const std::vector<EM::sv>& candidates);
-
-[[nodiscard]] vocabulary CollectVocabulary(const features_list& doc_features, const features_list& query_features);
-
-[[nodiscard]] features_vectors Vectorize(const vocabulary& vocab, const features_list& features);
-
-[[nodiscard]] document_idf CalculateIDFs(const vocabulary& vocab, const features_list& features);
-
-[[nodiscard]] idfs_vector VectorizeIDFs(const vocabulary& vocab, const features_list& features, const document_idf& idfs);
-
-[[nodiscard]] float MatchQueryToContent(const std::vector<float>& query, const std::vector<float>& document);
-
-[[nodiscard]] float VectorLength(const std::vector<float>& vec);
-
-[[nodiscard]] float VectorDotProduct(const std::vector<float>& vec_a, const std::vector<float>& vec_b);
 
 #endif   // ----- #ifndef _SHARESOUTSTANDING_INC_  ----- 

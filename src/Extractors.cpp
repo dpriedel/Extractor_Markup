@@ -1138,7 +1138,9 @@ void Shares_data::FindSharesOutstanding (EM::sv file_content, FinancialStatement
 
 void OutstandingShares_data::UseExtractor(const fs::path& file_name, EM::sv file_content, const fs::path& output_directory, const EM::SEC_Header_fields& fields)
 {
-    auto shares = so_(file_content);
+    HTML_FromFile htmls{file_content};
+
+    auto shares = so_(htmls.begin()->html_);
     if (shares > -1)
     {
         std::cout << "Found it: " << shares << '\n';
