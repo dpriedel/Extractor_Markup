@@ -64,14 +64,19 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
 
     shares_extractors_.emplace(1, std::make_unique<boost::regex>(se_8, my_flags));
 
-    std::string the_text = ParseHTML(html, 1'000'000, 10'000);
+    std::string the_text = ParseHTML(html, 1'000'000, 20'000);
     std::vector<EM::sv> possibilites = FindCandidates(the_text);
+
+    if (possibilites.empty())
+    {
+        spdlog::info("No possibles found");
+        std::cout << "\n\n" << the_text << "\n\n";
+        return -1;
+    }
 
     std::cout << "\npossibilities-----------------------------\n";
 
     ranges::for_each(possibilites, [](const auto& x) { std::cout << "Possible: " << x << "\n\n"; });
-
-    spdlog::debug("\nMatching results-----------------------------\n");
 
     std::string shares = "-1";
 
@@ -100,11 +105,9 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
         const boost::regex regex_comma{R"***(,)***"};
         shares = boost::regex_replace(shares, regex_comma, delete_this);
 
-        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(),
-                    shares_outstanding); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
         {
-            throw ExtractorException(catenate("Problem converting shares outstanding: ",
-                        std::make_error_code(ec).message(), '\n'));
+            throw ExtractorException(catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
         }
     }
     else
@@ -116,7 +119,7 @@ int64_t SharesOutstanding::operator() (EM::sv html) const
     return shares_outstanding;
 }		// -----  end of method SharesOutstanding::operator()  ----- 
 
-std::string CleanText(GumboNode* node, size_t max_length_to_clean)
+std::string CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text)
 {
     //    this code is based on example code in Gumbo Parser project
     //    I've added the ability to break out of the recursive
@@ -142,7 +145,7 @@ std::string CleanText(GumboNode* node, size_t max_length_to_clean)
 
         for (unsigned int i = 0; i < children->length; ++i)
         {
-            const std::string text = CleanText((GumboNode*) children->data[i], max_length_to_clean);
+            const std::string text = CleanText((GumboNode*) children->data[i], max_length_to_clean, cleaned_text);
             if (! text.empty())
             {
                 if (boost::regex_match(text, regex_nbr))
@@ -150,13 +153,14 @@ std::string CleanText(GumboNode* node, size_t max_length_to_clean)
                     contents += ' ';
                 }
                 contents.append(text);
-                if (max_length_to_clean > 0 && contents.size() >= max_length_to_clean)
-                {
-                    throw std::length_error(contents);
-                }
             }
         }
         contents += ' ';
+        cleaned_text += contents;
+        if (max_length_to_clean > 0 && cleaned_text.size() >= max_length_to_clean)
+        {
+            throw std::length_error("'stop iteration'");
+        }
         return contents;
     }
     return {};
@@ -179,7 +183,7 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only7);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position(), m.length() + 10);
+        EM::sv xx(the_text.data() + m.position(), m.length());
         results.push_back(xx);
     });
 
@@ -217,11 +221,11 @@ std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_lengt
     std::string parsed_text;
     try
     {
-        parsed_text = CleanText(output->root, max_length_to_clean);
+        CleanText(output->root, max_length_to_clean, parsed_text);
     }
     catch (std::length_error& e)
     {
-        parsed_text = e.what();
+//        parsed_text = e.what();
     }
     gumbo_destroy_output(&options, output.release());
     //

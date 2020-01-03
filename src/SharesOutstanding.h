@@ -82,7 +82,7 @@ private:
 
 // NOTE: this method can throw length_error if max_length_to_parse_ != 0
 
-std::string CleanText(GumboNode* node, size_t max_length_to_clean);
+std::string CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text);
 
 [[nodiscard]] std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0);
 
