@@ -67,9 +67,8 @@ CFG_LIB := -lpthread -ltbb \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
-		-L/usr/local/lib/spdlog \
-		-lspdlog \
 		-L/usr/local/lib \
+		-lspdlog \
 		-lgumbo \
 		-lgq \
 		-lfmt \
@@ -102,9 +101,8 @@ CFG_LIB := -lpthread -ltbb \
 		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
-		-L/usr/local/lib/spdlog \
-		-lspdlog \
 		-L/usr/local/lib \
+		-lspdlog \
 		-lgumbo \
 		-lgq \
 		-lfmt \
