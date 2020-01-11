@@ -178,7 +178,7 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
         boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only8);
         std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
         {
-            EM::sv xx(the_text.data() + m.position(), m.length() + 100);
+            EM::sv xx(the_text.data() + m.position(), m.length());
             if (boost::regex_search(xx.begin(), xx.end(), regex_shares))
             {
                 results.push_back(xx);
@@ -204,6 +204,7 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
 std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean)
 {
     static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    static const boost::regex regex_control_chars{R"***([\x00-\x1f])***"};
     static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
     static const boost::regex regex_nl{R"***(\n{1,})***"};
     static const std::string one_space = " ";
@@ -231,6 +232,7 @@ std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_lengt
     // do a little cleanup to make searching easier
 
     std::string the_text = boost::regex_replace(parsed_text, regex_hi_ascii, one_space);
+    the_text = boost::regex_replace(the_text, regex_control_chars, one_space);
     the_text = boost::regex_replace(the_text, regex_multiple_spaces, one_space);
     the_text = boost::regex_replace(the_text, regex_nl, one_space);
     the_text = boost::regex_replace(the_text, regex_nbr, " $1 ");
