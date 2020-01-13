@@ -49,16 +49,9 @@ const int32_t MAX_TEXT_TO_CLEAN = 20'000;
 
 int64_t SharesOutstanding::operator() (EM::sv html) const
 {
-//    const std::string se_8 = R"***(\byes\b.{1,10}?no.{1,1000}?(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-    const std::string se_8 = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
-
+    const std::string nbr_of_shares = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
-
-//    std::map<int, std::unique_ptr<boost::regex>> shares_extractors_;
-//
-//    shares_extractors_.emplace(1, std::make_unique<boost::regex>(se_8, my_flags));
-
-    const boost::regex regex_share_extractor{se_8, my_flags};
+    const boost::regex regex_share_extractor{nbr_of_shares, my_flags};
 
     std::string the_text = ParseHTML(html, MAX_HTML_TO_PARSE, MAX_TEXT_TO_CLEAN);
     std::vector<EM::sv> possibilites = FindCandidates(the_text);
@@ -118,7 +111,7 @@ void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned
     //    loop if a maximum length to parse is given.
     //    I use a Pythonic approach...throw an exception (think 'stop iteration').
 
-    static const boost::regex regex_nbr{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
+    const boost::regex regex_nbr{R"***(\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
 
     if (node->type == GUMBO_NODE_TEXT)
     {
@@ -156,41 +149,35 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     // this regex looks for an identifiable part of the form followed by something which
     // looks like the number of outstanding shares.
 
-    static const std::string shares = R"***((?:\bshares|outstanding|common\b))***";
-    static const std::string a7 = R"***(\byes\b.{1,10}?no.{1,1000}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***";
-    static const std::string a8 = R"***((?:\binidcate\b|\bas of \b|\bnumber of\b).{1,200}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***";
+    const std::string shares = R"***((?:\bshares|outstanding|common\b))***";
+    const std::string yes_no = R"***(\byes\b.{1,10}?no.{1,1000}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***";
+    const std::string indicator = R"***((?:\binidcate\b|\bas of \b|\bnumber of\b).{1,200}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b(?:.{1,100}?(?:shares|common|outstanding))?)***";
 
-    static const boost::regex regex_shares{shares, boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_shares_only7{a7, boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex regex_shares_only8{a8, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_shares{shares, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_shares_yes_no{yes_no, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_shares_indicator{indicator, boost::regex_constants::normal | boost::regex_constants::icase};
 
     std::vector<EM::sv> results;
 
-    boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_only7);
+    boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_yes_no);
     std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
     {
-        EM::sv xx(the_text.data() + m.position(), m.length());
-        results.push_back(xx);
+        EM::sv possible(the_text.data() + m.position(), m.length());
+        results.push_back(possible);
     });
 
     if (results.empty())
     {
-        boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_only8);
-        std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
+        boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_indicator);
+        std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results,& regex_shares] (const boost::smatch& m)
         {
-            EM::sv xx(the_text.data() + m.position(), m.length());
-            if (boost::regex_search(xx.begin(), xx.end(), regex_shares))
+            EM::sv possible(the_text.data() + m.position(), m.length());
+            if (boost::regex_search(possible.begin(), possible.end(), regex_shares))
             {
-                results.push_back(xx);
+                results.push_back(possible);
             }
         });
     }
-//    boost::sregex_iterator iter3(the_text.begin(), the_text.end(), regex_shares_only6);
-//    std::for_each(iter3, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
-//    {
-//        EM::sv xx(the_text.data() + m.position() -10, m.length() + 110);
-//        results.push_back(xx);
-//    });
 
     // prefer shortest matches
 
@@ -203,13 +190,13 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
 
 std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean)
 {
-    static const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
-    static const boost::regex regex_control_chars{R"***([\x00-\x1f])***"};
-    static const boost::regex regex_multiple_spaces{R"***( {2,})***"};
-    static const boost::regex regex_nl{R"***(\n{1,})***"};
-    static const std::string one_space = " ";
-    static const boost::regex regex_nbr{R"***(([1-9](?:[0-9]{0,2})(?:,[0-9]{3})+))***"};
-    static const boost::regex regex_dollar_number{R"***(\$ +\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
+    const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
+    const boost::regex regex_control_chars{R"***([\x00-\x1f])***"};
+    const boost::regex regex_multiple_spaces{R"***( {2,})***"};
+    const boost::regex regex_nl{R"***(\n{1,})***"};
+    const std::string one_space = " ";
+    const boost::regex regex_nbr{R"***(([1-9](?:[0-9]{0,2})(?:,[0-9]{3})+))***"};
+    const boost::regex regex_dollar_number{R"***(\$ +\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
 
     GumboOptions options = kGumboDefaultOptions;
 

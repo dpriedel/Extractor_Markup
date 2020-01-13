@@ -38,17 +38,6 @@
 //
 // =====================================================================================
 
-// using terms from above book
-
-using vocabulary = std::vector<std::string>;                    //  words
-using document_features = std::map<std::string, int>;           //  words and counts for single doc/query
-using document_idf = std::map<std::string, float>;              //  vocab word, inverse document frequency
-
-using features_list = std::map<int, document_features>;         //  collection of doc/query ID, query features
-
-using features_vectors = std::map<int, std::vector<float>>;
-using idfs_vector = std::map<int, std::vector<float>>;  //  weights = count * idf
-
 class SharesOutstanding
 {
 public:
