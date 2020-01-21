@@ -150,20 +150,34 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     // looks like the number of outstanding shares.
 
     const std::string shares = R"***((?:\bshares|outstanding|common\b))***";
+    const std::string number = R"***((?:\bshares|outstanding|number\b))***";
+    const std::string market_value = R"***(\bmarket value\b)***";
     const std::string yes_no = R"***(\byes\b.{1,10}?no.{1,1000}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***";
     const std::string indicator = R"***((?:\binidcate\b|\bas of \b|\bnumber of\b).{1,200}?\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b(?:.{1,100}?(?:shares|common|outstanding))?)***";
 
     const boost::regex regex_shares{shares, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_number{number, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_market_value{market_value, boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_shares_yes_no{yes_no, boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_shares_indicator{indicator, boost::regex_constants::normal | boost::regex_constants::icase};
 
     std::vector<EM::sv> results;
 
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_yes_no);
-    std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results] (const boost::smatch& m)
+    std::for_each(iter1, boost::sregex_iterator{}, [&the_text, &results, &regex_number, &regex_market_value] (const boost::smatch& m)
     {
         EM::sv possible(the_text.data() + m.position(), m.length());
-        results.push_back(possible);
+        if (boost::regex_search(possible.begin(), possible.end(), regex_market_value))
+        {
+            if (boost::regex_search(possible.begin(), possible.end(), regex_number))
+            {
+                results.push_back(possible);
+            }
+        }
+        else
+        {
+            results.push_back(possible);
+        }
     });
 
     if (results.empty())
