@@ -210,7 +210,7 @@ std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_lengt
     const boost::regex regex_nl{R"***(\n{1,})***"};
     const std::string one_space = " ";
     const boost::regex regex_nbr{R"***(([1-9](?:[0-9]{0,2})(?:,[0-9]{3})+))***"};
-    const boost::regex regex_dollar_number{R"***(\$ +\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
+    const boost::regex regex_dollar_number{R"***(\$ *\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b)***"};
 
     GumboOptions options = kGumboDefaultOptions;
 

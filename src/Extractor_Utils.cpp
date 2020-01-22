@@ -246,6 +246,13 @@ EM::sv FindHTML (EM::sv document)
             throw HTMLException("Can't find end of HTML in document.\n");
         }
 
+        // sometimes the document is actually XBRL with embedded HTML
+        // we don't want that.
+
+        if (document.find(R"***(<XBRL>)***") != EM::sv::npos)
+        {
+            throw HTMLException("Looks like it's really XBRL.\n");
+        }
         return document;
     }
     return {};
