@@ -5,8 +5,8 @@
  *
  *    Description:  Routines shared by XBRL and HTLM extracts.
  *
- *        Version:  1.0
- *        Created:  11/14/2018 11:13:04 AM
+ *        Version:  2.0
+ *        Created:  01/27/2020 09:56:52 AM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -48,6 +48,11 @@
 #include <boost/assert.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/mp11.hpp>
+
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/view/split.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/trim.hpp>
 
 #include "Extractor.h"
 
@@ -189,46 +194,27 @@ public:
     explicit MaxFilesException(const std::string& what);
 };
 
+//  let's do a little 'template normal' programming again along with
+//  some ranges.  See if this is a little simpler.
 
-// function to split a string on a delimiter and return a vector of string-views
+// function to split a string on a delimiter and return a vector of items
+// might be nice to use concepts to restrict to strings and string_views.
 
-inline std::vector<EM::sv> split_string_to_sv(EM::sv string_data, char delim)
+template<typename T>
+inline std::vector<T> split_string(EM::sv string_data, char delim)
+    requires std::is_same<T, std::string>::value || std::is_same<T, EM::sv>::value
 {
-    std::vector<EM::sv> results;
-	for (size_t it = 0; it < string_data.size(); ++it)
-	{
-		auto pos = string_data.find(delim, it);
-        if (pos != EM::sv::npos)
-        {
-    		results.emplace_back(string_data.substr(it, pos - it));
-        }
-        else
-        {
-    		results.emplace_back(string_data.substr(it));
-            break;
-        }
-		it = pos;
-	}
-    return results;
-}
+    std::vector<T> results;
 
-inline std::vector<std::string> split_string(EM::sv string_data, char delim)
-{
-    std::vector<std::string> results;
-	for (size_t it = 0; it < string_data.size(); ++it)
-	{
-		auto pos = string_data.find(delim, it);
-        if (pos != EM::sv::npos)
-        {
-    		results.emplace_back(string_data.substr(it, pos - it));
-        }
-        else
-        {
-    		results.emplace_back(string_data.substr(it));
-            break;
-        }
-		it = pos;
-	}
+    auto splitter = ranges::views::split(delim)
+        | ranges::views::transform([](const auto& rng)
+            {
+                T item(&*ranges::begin(rng), ranges::distance(rng));
+                return item;
+            });
+
+    ranges::for_each(string_data | splitter, [&results](const T& e) { results.push_back(e); } );
+
     return results;
 }
 

@@ -100,22 +100,22 @@ void FinancialStatements::PrepareTableContent ()
 {
     if (! balance_sheet_.empty())
     {
-        balance_sheet_.lines_ = split_string_to_sv(balance_sheet_.parsed_data_, '\n');
+        balance_sheet_.lines_ = split_string<EM::sv>(balance_sheet_.parsed_data_, '\n');
         balance_sheet_.values_ = CollectStatementValues(balance_sheet_.lines_, balance_sheet_.multiplier_s_);
     }
     if (! statement_of_operations_.empty())
     {
-        statement_of_operations_.lines_ = split_string_to_sv(statement_of_operations_.parsed_data_, '\n');
+        statement_of_operations_.lines_ = split_string<EM::sv>(statement_of_operations_.parsed_data_, '\n');
         statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.multiplier_s_);
     }
     if (! cash_flows_.empty())
     {
-        cash_flows_.lines_ = split_string_to_sv(cash_flows_.parsed_data_, '\n');
+        cash_flows_.lines_ = split_string<EM::sv>(cash_flows_.parsed_data_, '\n');
         cash_flows_.values_ = CollectStatementValues(cash_flows_.lines_, cash_flows_.multiplier_s_);
     }
     if (! stockholders_equity_.empty())
     {
-        stockholders_equity_.lines_ = split_string_to_sv(stockholders_equity_.parsed_data_, '\n');
+        stockholders_equity_.lines_ = split_string<EM::sv>(stockholders_equity_.parsed_data_, '\n');
         stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.multiplier_s_);
     }
 }		/* -----  end of method FinancialStatements::PrepareTableContent  ----- */
@@ -466,7 +466,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
     // one more test...let's try to eliminate matches on arbitrary blocks of text which happen
     // to contain our match criteria.
 
-    auto lines = split_string_to_sv(table, '\n');
+    auto lines = split_string<EM::sv>(table, '\n');
     auto regex = *regexs[1];
 
     for (auto line : lines)

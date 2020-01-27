@@ -345,19 +345,19 @@ bool ExtractorApp::CheckArgs ()
 
     if (! form_.empty())
     {
-        form_list_ = split_string(form_, ',');
+        form_list_ = split_string<std::string>(form_, ',');
     }
 
     if (! CIK_.empty())
     {
-        CIK_list_ = split_string(CIK_, ',');
+        CIK_list_ = split_string<std::string>(CIK_, ',');
         BOOST_ASSERT_MSG(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }),
                 "All CIKs must be 10 digits in length.");
     }
 
     if (! SIC_.empty())
     {
-        SIC_list_ = split_string(SIC_, ',');
+        SIC_list_ = split_string<std::string>(SIC_, ',');
     }
 
     if (! single_file_to_process_.empty())
@@ -421,7 +421,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
 
-    list_of_files_to_process_ = split_string_to_sv(file_list_data_, '\n');
+    list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, '\n');
 
     spdlog::debug(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
