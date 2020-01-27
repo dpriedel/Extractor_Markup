@@ -276,7 +276,7 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_n
 {
     auto check_for_form_in_name([file_name](auto& form_type)
     {
-        auto pos = file_name.find(("/" += form_type) += "/");
+        auto pos = file_name.find(catenate('/', form_type, '/'));
         return (pos != std::string::npos);
     }
     );
