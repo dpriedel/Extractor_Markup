@@ -331,7 +331,7 @@ bool ExtractorApp::CheckArgs ()
 
     if (! mode_.empty())
     {
-        BOOST_ASSERT_MSG(mode_ == "HTML"s || mode_ == "XBRL"s, "Mode must be: 'HTML' or 'XBRL'.");
+        BOOST_ASSERT_MSG(mode_ == "HTML" || mode_ == "XBRL", "Mode must be: 'HTML' or 'XBRL'.");
     }
 
     if (! DB_mode_.empty())

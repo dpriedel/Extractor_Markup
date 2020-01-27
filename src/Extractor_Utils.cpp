@@ -251,7 +251,21 @@ EM::sv FindHTML (EM::sv document)
 
         if (document.find(R"***(<XBRL>)***") != EM::sv::npos)
         {
-            throw HTMLException("Looks like it's really XBRL.\n");
+//            // let's see if it contains HTML
+//
+//            const boost::regex regex_meta{R"***(<meta.*?</meta>)***"};
+//            boost::cmatch matches;
+//
+//            if (boost::regex_search(document.begin(), document.end(), matches, regex_meta))
+//            {
+//                EM::sv meta(document.data() + matches.position(), matches.length());
+//                if (meta.find("text/html"))
+//                {
+//                    return document;
+//                }
+//            }
+            spdlog::info("Looks like it's really XBRL.\n");
+            return {};
         }
         return document;
     }
@@ -260,9 +274,9 @@ EM::sv FindHTML (EM::sv document)
 
 bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_name)
 {
-    auto check_for_form_in_name([&file_name](auto form_type)
+    auto check_for_form_in_name([file_name](auto& form_type)
     {
-        auto pos = file_name.find(("/"s += form_type) += "/");
+        auto pos = file_name.find(("/" += form_type) += "/");
         return (pos != std::string::npos);
     }
     );

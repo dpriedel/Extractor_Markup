@@ -1100,64 +1100,57 @@ int UpdateOutstandingShares (const SharesOutstanding& so, EM::sv file_content, c
     {
         int64_t file_shares = so(financial_content->html_);
 
-        if (file_shares != -1)
-        {
-            pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
-            pqxx::work trxn{cnxn};
+        pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
+        pqxx::work trxn{cnxn};
 
-            auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+        auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                trxn.esc(fields.at("cik")),
+                trxn.esc(fields.at("form_type")),
+                trxn.esc(fields.at("quarter_ending")),
+                trxn.esc(schema_name))
+                ;
+        auto row = trxn.exec1(check_for_existing_content_cmd);
+        auto have_data = row[0].as<int>();
+
+        if (have_data)
+        {
+            auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
                 " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                     trxn.esc(fields.at("cik")),
                     trxn.esc(fields.at("form_type")),
                     trxn.esc(fields.at("quarter_ending")),
                     trxn.esc(schema_name))
                     ;
-            auto row = trxn.exec1(check_for_existing_content_cmd);
-            auto have_data = row[0].as<int>();
+            auto row1 = trxn.exec1(query_cmd);
+            int64_t DB_shares = row1[0].as<int64_t>();
 
-            if (have_data)
+            if (DB_shares != file_shares)
             {
-                auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
+                auto update_cmd = fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
                     " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                         trxn.esc(fields.at("cik")),
                         trxn.esc(fields.at("form_type")),
                         trxn.esc(fields.at("quarter_ending")),
-                        trxn.esc(schema_name))
+                        trxn.esc(schema_name),
+                        file_shares)
                         ;
-                auto row1 = trxn.exec1(query_cmd);
-                int64_t DB_shares = row1[0].as<int64_t>();
-
-                if (DB_shares != file_shares)
-                {
-                    auto update_cmd = fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
-                        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                            trxn.esc(fields.at("cik")),
-                            trxn.esc(fields.at("form_type")),
-                            trxn.esc(fields.at("quarter_ending")),
-                            trxn.esc(schema_name),
-                            file_shares)
-                            ;
-                    auto row2 = trxn.exec(update_cmd);
-                    trxn.commit();
-                    spdlog::info(catenate("Updated DB for file: ", file_name,
-                                ". Changed shares outstanding from: ", DB_shares, " to: ", file_shares));
-                    ++entries_updated;
-                }
-                else
-                {
-                    spdlog::debug("shares match. no changes made.");
-                }
+                auto row2 = trxn.exec(update_cmd);
+                trxn.commit();
+                spdlog::info(catenate("Updated DB for file: ", file_name,
+                            ". Changed shares outstanding from: ", DB_shares, " to: ", file_shares));
+                ++entries_updated;
             }
             else
             {
-                spdlog::debug(catenate("Can't find data in DB for file: ", file_name, ". skipping..."));
+                spdlog::debug("shares match. no changes made.");
             }
-            cnxn.disconnect();
         }
         else
         {
-            spdlog::debug(catenate("Can't find shares outstanding for file: ", file_name));
+            spdlog::debug(catenate("Can't find data in DB for file: ", file_name, ". skipping..."));
         }
+        cnxn.disconnect();
     }
     else
     {
