@@ -45,12 +45,12 @@ namespace bg = boost::gregorian;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-void SEC_Header::UseData (EM::sv file_content)
+void SEC_Header::UseData (EM::FileContent file_content)
 {
     const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
 	boost::cmatch results;
 
-	bool found_it = boost::regex_search(file_content.cbegin(), file_content.cend(), results, regex_SEC_header);
+	bool found_it = boost::regex_search(file_content->cbegin(), file_content->cend(), results, regex_SEC_header);
     BOOST_ASSERT_MSG(found_it, "Can't find SEC Header");
 
     header_data_ = EM::sv(results[0].first, results[0].length());

@@ -76,7 +76,7 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     return default_result;
 }
 
-EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections)
+EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -87,10 +87,10 @@ EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections)
             return TrimExcessXML(document);
         }
     }
-    return {};
+    return EM::XBRLContent{EM::sv{}};
 }
 
-EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections)
+EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& document_sections)
 {
     for (auto document : document_sections)
     {
@@ -101,7 +101,7 @@ EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections)
             return TrimExcessXML(document);
         }
     }
-    return {};
+    return EM::XBRLContent{EM::sv{}};
 }
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
@@ -433,25 +433,25 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     return result;
 }
 
-EM::sv TrimExcessXML(EM::sv document)
+EM::XBRLContent TrimExcessXML(EM::DocumentSection document)
 {
-    auto xbrl_loc = document.find(R"***(<XBRL>)***");
-    document.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+    auto xbrl_loc = document.get().find(R"***(<XBRL>)***");
+    document.get().remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
-    auto xbrl_end_loc = document.rfind(R"***(</XBRL>)***");
+    auto xbrl_end_loc = document.get().rfind(R"***(</XBRL>)***");
     if (xbrl_end_loc != EM::sv::npos)
     {
-        document.remove_suffix(document.length() - xbrl_end_loc);
-        return document;
+        document.get().remove_suffix(document.get().length() - xbrl_end_loc);
+        return EM::XBRLContent{document.get()};
     }
     throw XBRLException("Can't find end of XBLR in document.\n");
 
 }
 
-pugi::xml_document ParseXMLContent(EM::sv document)
+pugi::xml_document ParseXMLContent(EM::XBRLContent document)
 {
     pugi::xml_document doc;
-    auto result = doc.load_buffer(document.data(), document.size(), pugi::parse_default | pugi::parse_wnorm_attribute);
+    auto result = doc.load_buffer(document->data(), document->size(), pugi::parse_default | pugi::parse_wnorm_attribute);
     if (! result)
     {
         throw XBRLException{catenate("Error description: ", result.description(), "\nError offset: ", result.offset, '\n')};

@@ -161,15 +161,15 @@ std::string LoadDataFileForUse (EM::sv file_name)
  *  Description:  
  * =====================================================================================
  */
-std::vector<EM::sv> LocateDocumentSections(EM::sv file_content)
+std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content)
 {
     const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-    std::vector<EM::sv> result;
+    std::vector<EM::DocumentSection> result;
 
-    for (auto doc = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc);
+    for (auto doc = boost::cregex_token_iterator(file_content->cbegin(), file_content->cend(), regex_doc);
         doc != boost::cregex_token_iterator{}; ++doc)
     {
-		result.emplace_back(EM::sv(doc->first, doc->length()));
+		result.emplace_back(EM::DocumentSection{EM::sv(doc->first, doc->length())});
     }
 
     return result;
@@ -181,12 +181,12 @@ std::vector<EM::sv> LocateDocumentSections(EM::sv file_content)
  *  Description:  
  * =====================================================================================
  */
-EM::sv FindFileName(EM::sv document)
+EM::sv FindFileName(EM::DocumentSection document)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
 
-    bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_fname);
+    bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname);
     if (found_it)
     {
         const EM::sv file_name(matches[1].first, matches[1].length());
@@ -201,12 +201,12 @@ EM::sv FindFileName(EM::sv document)
  *  Description:  
  * =====================================================================================
  */
-EM::sv FindFileType(EM::sv document)
+EM::sv FindFileType(EM::DocumentSection document)
 {
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
 
-    if (bool found_it = boost::regex_search(document.cbegin(), document.cend(), matches, regex_ftype); found_it)
+    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_ftype); found_it)
     {
         const EM::sv file_type(matches[1].first, matches[1].length());
         return file_type;
@@ -221,25 +221,26 @@ EM::sv FindFileType(EM::sv document)
  * =====================================================================================
  */
 
-EM::sv FindHTML (EM::sv document)
+EM::HTMLContent FindHTML (EM::DocumentSection document)
 {
     auto file_name = FindFileName(document);
     if (file_name.ends_with(".htm"))
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
-        auto x = document.find(R"***(<TEXT>)***");
+        EM::HTMLContent result{document.get()};
+        auto x = result->find(R"***(<TEXT>)***");
 
         // skip 1 more line.
 
-        x = document.find('\n', x + 1);
+        x = result->find('\n', x + 1);
 
-        document.remove_prefix(x);
+        result->remove_prefix(x);
 
-        auto xbrl_end_loc = document.rfind(R"***(</TEXT>)***");
+        auto xbrl_end_loc = result->rfind(R"***(</TEXT>)***");
         if (xbrl_end_loc != EM::sv::npos)
         {
-            document.remove_suffix(document.length() - xbrl_end_loc);
+            result->remove_suffix(result->length() - xbrl_end_loc);
         }
         else
         {
@@ -249,27 +250,27 @@ EM::sv FindHTML (EM::sv document)
         // sometimes the document is actually XBRL with embedded HTML
         // we don't want that.
 
-        if (document.find(R"***(<XBRL>)***") != EM::sv::npos)
+        if (result->find(R"***(<XBRL>)***") != EM::sv::npos)
         {
 //            // let's see if it contains HTML
 //
 //            const boost::regex regex_meta{R"***(<meta.*?</meta>)***"};
 //            boost::cmatch matches;
 //
-//            if (boost::regex_search(document.begin(), document.end(), matches, regex_meta))
+//            if (boost::regex_search(result.begin(), result.end(), matches, regex_meta))
 //            {
-//                EM::sv meta(document.data() + matches.position(), matches.length());
+//                EM::sv meta(result.data() + matches.position(), matches.length());
 //                if (meta.find("text/html"))
 //                {
-//                    return document;
+//                    return result;
 //                }
 //            }
             spdlog::info("Looks like it's really XBRL.\n");
-            return {};
+            return EM::HTMLContent{EM::sv{}};
         }
-        return document;
+        return result;
     }
-    return {};
+    return EM::HTMLContent{EM::sv{}};
 }		/* -----  end of function FindHTML  ----- */
 
 bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_name)
@@ -283,9 +284,9 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_n
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
-    return (file_content.find(R"***(<XBRL>)***") != EM::sv::npos);
+    return (file_content->find(R"***(<XBRL>)***") != EM::sv::npos);
 }		/* -----  end of method FileHasXBRL::operator()  ----- */
 
 /* 
@@ -294,19 +295,19 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv fil
  *  Description:  
  * =====================================================================================
  */
-bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::sv file_content) const
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::FileContent file_content) const
 {
     const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
 
-    return boost::regex_search(file_content.cbegin(), file_content.cend(), regex_fname);
+    return boost::regex_search(file_content->cbegin(), file_content->cend(), regex_fname);
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
     return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -318,12 +319,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file
     return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
     return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
@@ -349,7 +350,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::sv file_content) const 
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
 {
     auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
 

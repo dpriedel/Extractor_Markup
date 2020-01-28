@@ -45,9 +45,9 @@
 
 #include "Extractor.h"
 
-EM::sv LocateInstanceDocument(const std::vector<EM::sv>& document_sections);
+EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& document_sections);
 
-EM::sv LocateLabelDocument(const std::vector<EM::sv>& document_sections);
+EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& document_sections);
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
@@ -69,9 +69,9 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
 
 EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml);
 
-pugi::xml_document ParseXMLContent(EM::sv document);
+pugi::xml_document ParseXMLContent(EM::XBRLContent document);
 
-EM::sv TrimExcessXML(EM::sv document);
+EM::XBRLContent TrimExcessXML(EM::DocumentSection document);
 
 std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date);
 

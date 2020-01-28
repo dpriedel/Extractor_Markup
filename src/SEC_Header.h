@@ -56,7 +56,7 @@ class SEC_Header
 
 		// ====================  MUTATORS      =======================================
 
-		void UseData(EM::sv file_content);
+		void UseData(EM::FileContent file_content);
 		void ExtractHeaderFields();
 
 		// ====================  OPERATORS     =======================================

@@ -40,6 +40,8 @@
 #include <string_view>
 #include <vector>
 
+#include "named_type/named_type.hpp"
+
 namespace Extractor
 {
     using sv = std::string_view;
@@ -77,6 +79,17 @@ namespace Extractor
 	// };
 	using Extractor_Labels = std::map<std::string, std::string>;
 	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
+
+    // we don't want to have naked string_views all over the place so
+    // lets' add a little type safety from fluentcpp
+
+    using namespace fluent;
+
+    using FileContent = NamedType<sv, struct FileContentTag, Callable>;
+    using DocumentSection = NamedType<sv, struct DocumentSectionTag>;
+    using XBRLContent = NamedType<sv, struct XBRLContentTag, Callable>;
+    using HTMLContent = NamedType<sv, struct HTMLContentTag, Callable>;
+
 }		// namespace Extractor
 
 namespace EM = Extractor;
