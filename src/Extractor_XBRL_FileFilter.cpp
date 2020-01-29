@@ -82,7 +82,7 @@ EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& d
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
-        if (file_type.ends_with(".INS") && file_name.ends_with(".xml"))
+        if (file_type.get().ends_with(".INS") && file_name.get().ends_with(".xml"))
         {
             return TrimExcessXML(document);
         }
@@ -96,7 +96,7 @@ EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& docu
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
-        if (file_type.ends_with(".LAB") && file_name.ends_with(".xml"))
+        if (file_type.get().ends_with(".LAB") && file_name.get().ends_with(".xml"))
         {
             return TrimExcessXML(document);
         }

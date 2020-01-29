@@ -86,9 +86,13 @@ namespace Extractor
     using namespace fluent;
 
     using FileContent = NamedType<sv, struct FileContentTag, Callable>;
+    // NOTE: making DocumentSection 'Callable' seems to confuse things in some cases
+    // like vector push_back calls
     using DocumentSection = NamedType<sv, struct DocumentSectionTag>;
     using XBRLContent = NamedType<sv, struct XBRLContentTag, Callable>;
     using HTMLContent = NamedType<sv, struct HTMLContentTag, Callable>;
+    using FileName = NamedType<sv, struct FileNameTag, Callable>;
+    using FileType = NamedType<sv, struct FileTypeTag, Callable>;
 
 }		// namespace Extractor
 

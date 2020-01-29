@@ -145,10 +145,10 @@ MaxFilesException::MaxFilesException(const std::string& text)
  *  Description:  
  * =====================================================================================
  */
-std::string LoadDataFileForUse (EM::sv file_name)
+std::string LoadDataFileForUse (EM::FileName file_name)
 {
-    std::string file_content(fs::file_size(file_name), '\0');
-    std::ifstream input_file{fs::path{file_name}, std::ios_base::in | std::ios_base::binary};
+    std::string file_content(fs::file_size(file_name.get()), '\0');
+    std::ifstream input_file{fs::path{file_name.get()}, std::ios_base::in | std::ios_base::binary};
     input_file.read(&file_content[0], file_content.size());
     input_file.close();
     
@@ -181,7 +181,7 @@ std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_con
  *  Description:  
  * =====================================================================================
  */
-EM::sv FindFileName(EM::DocumentSection document)
+EM::FileName FindFileName(EM::DocumentSection document)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
@@ -189,7 +189,7 @@ EM::sv FindFileName(EM::DocumentSection document)
     bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname);
     if (found_it)
     {
-        const EM::sv file_name(matches[1].first, matches[1].length());
+        EM::FileName file_name{EM::sv(matches[1].first, matches[1].length())};
         return file_name;
     }
     throw ExtractorException("Can't find file name in document.\n");
@@ -201,14 +201,14 @@ EM::sv FindFileName(EM::DocumentSection document)
  *  Description:  
  * =====================================================================================
  */
-EM::sv FindFileType(EM::DocumentSection document)
+EM::FileType FindFileType(EM::DocumentSection document)
 {
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
 
     if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_ftype); found_it)
     {
-        const EM::sv file_type(matches[1].first, matches[1].length());
+        EM::FileType file_type{EM::sv(matches[1].first, matches[1].length())};
         return file_type;
     }
     throw ExtractorException("Can't find file type in document.\n");
@@ -224,7 +224,7 @@ EM::sv FindFileType(EM::DocumentSection document)
 EM::HTMLContent FindHTML (EM::DocumentSection document)
 {
     auto file_name = FindFileName(document);
-    if (file_name.ends_with(".htm"))
+    if (file_name.get().ends_with(".htm"))
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
@@ -237,10 +237,10 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
 
         result->remove_prefix(x);
 
-        auto xbrl_end_loc = result->rfind(R"***(</TEXT>)***");
-        if (xbrl_end_loc != EM::sv::npos)
+        auto text_end_loc = result->rfind(R"***(</TEXT>)***");
+        if (text_end_loc != EM::sv::npos)
         {
-            result->remove_suffix(result->length() - xbrl_end_loc);
+            result->remove_suffix(result->length() - text_end_loc);
         }
         else
         {
@@ -284,9 +284,20 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_n
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
-    return (file_content->find(R"***(<XBRL>)***") != EM::sv::npos);
+    // need to do a little more detailed check.
+
+    for (auto document : document_sections)
+    {
+        auto file_name = FindFileName(document);
+        auto file_type = FindFileType(document);
+        if (file_type.get().ends_with(".INS") && file_name.get().ends_with(".xml"))
+        {
+            return true;
+        }
+    }
+    return false;
 }		/* -----  end of method FileHasXBRL::operator()  ----- */
 
 /* 
@@ -295,19 +306,31 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileCo
  *  Description:  
  * =====================================================================================
  */
-bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, EM::FileContent file_content) const
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const std::vector<EM::DocumentSection>& document_sections) const
 {
-    const boost::regex regex_fname{R"***(^<FILENAME>.*\.htm$)***"};
+    // need to do a little more detailed check.
 
-    return boost::regex_search(file_content->cbegin(), file_content->cend(), regex_fname);
+    for (auto document : document_sections)
+    {
+        auto file_name = FindFileName(document);
+        if (file_name.get().ends_with(".htm"))
+        {
+            auto content = FindHTML(document);
+            if (! content->empty())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
     return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -319,12 +342,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileCon
     return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
     return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
@@ -350,7 +373,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const 
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
     auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
 

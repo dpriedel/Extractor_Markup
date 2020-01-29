@@ -141,7 +141,7 @@ auto SumT(const std::tuple<Ts...>& t)
     return std::apply(z_, t);
 }
 
-std::string LoadDataFileForUse(EM::sv file_name);
+std::string LoadDataFileForUse(EM::FileName file_name);
 
 // so we can recognize our errors if we want to do something special
 // now that we have both XBRL and HTML based extractors, we need
@@ -235,20 +235,20 @@ auto AllNotEmpty(Ts ...ts)
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content, Ts ...ts)
+auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& sections, Ts ...ts)
 {
     // unary left fold
 
-	return (... && (ts(SEC_fields, file_content)));
+	return (... && (ts(SEC_fields, sections)));
 }
 
 bool FormIsInFileName(const std::vector<std::string>& form_types, EM::sv file_name);
 
 std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content);
 
-EM::sv FindFileName(EM::DocumentSection document);
+EM::FileName FindFileName(EM::DocumentSection document);
 
-EM::sv FindFileType(EM::DocumentSection document);
+EM::FileType FindFileType(EM::DocumentSection document);
 
 EM::HTMLContent FindHTML(EM::DocumentSection document);
 
@@ -256,14 +256,14 @@ EM::HTMLContent FindHTML(EM::DocumentSection document);
 
 struct FileHasXBRL
 {
-    bool operator()(const EM::SEC_Header_fields&, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields&, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasXBRL"};
 };
 
 struct FileHasHTML
 {
-    bool operator()(const EM::SEC_Header_fields&, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields&, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasHTML"};
 };
@@ -273,7 +273,7 @@ struct FileHasFormType
     explicit FileHasFormType(const std::vector<std::string>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasFormType"};
 
@@ -285,7 +285,7 @@ struct FileHasCIK
     explicit FileHasCIK(const std::vector<std::string>& CIK_list)
         : CIK_list_{CIK_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasCIK"};
 
@@ -297,7 +297,7 @@ struct FileHasSIC
     explicit FileHasSIC(const std::vector<std::string>& SIC_list)
         : SIC_list_{SIC_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasSIC"};
 
@@ -309,7 +309,7 @@ struct NeedToUpdateDBContent
     NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
         : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"NeedToUpdateDBContent"};
 
@@ -322,7 +322,7 @@ struct FileIsWithinDateRange
     FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, EM::FileContent file_content) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileIsWithinDateRange"};
 
