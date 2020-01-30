@@ -41,6 +41,8 @@
 
 #include <boost/regex.hpp>
 
+#include <range/v3/algorithm/find.hpp>
+
 #include <pqxx/pqxx>
 
 #include "fmt/core.h"
@@ -148,7 +150,7 @@ MaxFilesException::MaxFilesException(const std::string& text)
 std::string LoadDataFileForUse (EM::FileName file_name)
 {
     std::string file_content(fs::file_size(file_name.get()), '\0');
-    std::ifstream input_file{fs::path{file_name.get()}, std::ios_base::in | std::ios_base::binary};
+    std::ifstream input_file{std::string{file_name.get()}, std::ios_base::in | std::ios_base::binary};
     input_file.read(&file_content[0], file_content.size());
     input_file.close();
     
@@ -186,8 +188,7 @@ EM::FileName FindFileName(EM::DocumentSection document)
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
 
-    bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname);
-    if (found_it)
+    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname); found_it)
     {
         EM::FileName file_name{EM::sv(matches[1].first, matches[1].length())};
         return file_name;
@@ -266,18 +267,18 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
 //                }
 //            }
             spdlog::info("Looks like it's really XBRL.\n");
-            return EM::HTMLContent{EM::sv{}};
+            return EM::HTMLContent{{}};
         }
         return result;
     }
-    return EM::HTMLContent{EM::sv{}};
+    return EM::HTMLContent{{}};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (const std::vector<std::string>& form_types, EM::sv file_name)
+bool FormIsInFileName (const std::vector<std::string>& form_types, EM::FileName file_name)
 {
-    auto check_for_form_in_name([file_name](auto& form_type)
+    auto check_for_form_in_name([&file_name](auto& form_type)
     {
-        auto pos = file_name.find(catenate('/', form_type, '/'));
+        auto pos = file_name.get().find(catenate('/', form_type, '/'));
         return (pos != std::string::npos);
     }
     );
@@ -313,7 +314,10 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
     for (auto document : document_sections)
     {
         auto file_name = FindFileName(document);
-        if (file_name.get().ends_with(".htm"))
+        auto file_type = FindFileType(document);
+
+        if (file_name.get().ends_with(".htm")
+                && ranges::find(form_list_, file_type.get()) != ranges::end(form_list_))
         {
             auto content = FindHTML(document);
             if (! content->empty())
@@ -327,7 +331,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
 
 bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
-    return (std::find(std::begin(form_list_), std::end(form_list_), SEC_fields.at("form_type")) != std::end(form_list_));
+    return (ranges::find(form_list_, SEC_fields.at("form_type")) != ranges::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
 bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
@@ -339,12 +343,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const std::
         return (CIK_list_[0] <= SEC_fields.at("cik") && SEC_fields.at("cik") <= CIK_list_[1]);
     }
     
-    return (std::find(std::begin(CIK_list_), std::end(CIK_list_), SEC_fields.at("cik")) != std::end(CIK_list_));
+    return (ranges::find(CIK_list_, SEC_fields.at("cik")) != ranges::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
 bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
 {
-    return (std::find(std::begin(SIC_list_), std::end(SIC_list_), SEC_fields.at("sic")) != std::end(SIC_list_));
+    return (ranges::find(SIC_list_, SEC_fields.at("sic")) != ranges::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
 bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 

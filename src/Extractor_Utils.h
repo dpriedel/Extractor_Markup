@@ -197,12 +197,12 @@ public:
 //  let's do a little 'template normal' programming again along with
 //  some ranges.  See if this is a little simpler.
 
-// function to split a string on a delimiter and return a vector of items
+// function to split a string on a delimiter and return a vector of items.
 // might be nice to use concepts to restrict to strings and string_views.
 
 template<typename T>
 inline std::vector<T> split_string(EM::sv string_data, char delim)
-    requires std::is_same<T, std::string>::value || std::is_same<T, EM::sv>::value
+    requires std::is_same_v<T, std::string> || std::is_same_v<T, EM::sv>
 {
     std::vector<T> results;
 
@@ -242,7 +242,7 @@ auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM:
 	return (... && (ts(SEC_fields, sections)));
 }
 
-bool FormIsInFileName(const std::vector<std::string>& form_types, EM::sv file_name);
+bool FormIsInFileName(const std::vector<std::string>& form_types, EM::FileName file_name);
 
 std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content);
 
@@ -263,9 +263,14 @@ struct FileHasXBRL
 
 struct FileHasHTML
 {
+    explicit FileHasHTML(const std::vector<std::string>& form_list)
+        : form_list_{form_list} {}
+
     bool operator()(const EM::SEC_Header_fields&, const std::vector<EM::DocumentSection>& document_sections) const ;
 
     const std::string filter_name_{"FileHasHTML"};
+
+    const std::vector<std::string>& form_list_;
 };
 
 struct FileHasFormType
