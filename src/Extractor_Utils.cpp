@@ -176,37 +176,39 @@ std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_con
     auto found_begin = file_content.get().begin();
     auto content_end = file_content.get().end();
 
+    auto doc_searcher = std::boyer_moore_searcher(doc_end.begin(), doc_end.end());
+
     while(found_begin != content_end)
     {
         // look for our begin tag
 
         found_begin = std::search(found_begin,
-                content_end,
-                doc_begin.begin(),
-                doc_begin.end()
-                );
+            content_end,
+            doc_begin.begin(),
+            doc_begin.end());
+
         if (found_begin == content_end)
         {
             break;
         }
 
         // now, look for our end tag.
-        // but we need to check for nested tags which should not happen.
+        // since this can be rather far away, try boyer-moore
 
         auto found_end = std::search(found_begin + doc_begin_len,
-                content_end,
-                doc_end.begin(),
-                doc_end.end()
-                );
+            content_end,
+            doc_searcher);
 
         if (found_end == content_end)
         {
-            throw std::runtime_error("Can't find end of 'DOCUMENT'");
+            throw ExtractorException("Can't find end of 'DOCUMENT'");
         }
+
+        // but we need to check for nested tags which should not happen.
 
         if (*(found_end - 1) != '/' or *(found_end - 2) != '<')
         {
-            throw std::runtime_error("Looks like embedded 'DOCUMENT' sections.");
+            throw ExtractorException("Looks like embedded 'DOCUMENT' sections.");
         }
 
         result.emplace_back(EM::DocumentSection{EM::sv(found_begin, found_end + doc_end_len - found_begin)});
@@ -268,13 +270,13 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
         EM::HTMLContent result{document.get()};
-        auto x = result->find(R"***(<TEXT>)***");
+        auto text_begin_loc = result->find(R"***(<TEXT>)***");
 
         // skip 1 more line.
 
-        x = result->find('\n', x + 1);
+        text_begin_loc = result->find('\n', text_begin_loc + 1);
 
-        result->remove_prefix(x);
+        result->remove_prefix(text_begin_loc);
 
         auto text_end_loc = result->rfind(R"***(</TEXT>)***");
         if (text_end_loc != EM::sv::npos)
