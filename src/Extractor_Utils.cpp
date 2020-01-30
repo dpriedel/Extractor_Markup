@@ -34,6 +34,7 @@
 
 #include "Extractor_Utils.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -165,15 +166,52 @@ std::string LoadDataFileForUse (EM::FileName file_name)
  */
 std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content)
 {
-    const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
+    const std::string doc_begin{"<DOCUMENT>"};
+    const std::string doc_end{"DOCUMENT>"};
+    const auto doc_begin_len = doc_begin.size();
+    const auto doc_end_len = doc_end.size();
+
     std::vector<EM::DocumentSection> result;
+    
+    auto found_begin = file_content.get().begin();
+    auto content_end = file_content.get().end();
 
-    for (auto doc = boost::cregex_token_iterator(file_content->cbegin(), file_content->cend(), regex_doc);
-        doc != boost::cregex_token_iterator{}; ++doc)
+    while(found_begin != content_end)
     {
-		result.emplace_back(EM::DocumentSection{EM::sv(doc->first, doc->length())});
-    }
+        // look for our begin tag
 
+        found_begin = std::search(found_begin,
+                content_end,
+                doc_begin.begin(),
+                doc_begin.end()
+                );
+        if (found_begin == content_end)
+        {
+            break;
+        }
+
+        // now, look for our end tag.
+        // but we need to check for nested tags which should not happen.
+
+        auto found_end = std::search(found_begin + doc_begin_len,
+                content_end,
+                doc_end.begin(),
+                doc_end.end()
+                );
+
+        if (found_end == content_end)
+        {
+            throw std::runtime_error("Can't find end of 'DOCUMENT'");
+        }
+
+        if (*(found_end - 1) != '/' or *(found_end - 2) != '<')
+        {
+            throw std::runtime_error("Looks like embedded 'DOCUMENT' sections.");
+        }
+
+        result.emplace_back(EM::DocumentSection{EM::sv(found_begin, found_end + doc_end_len - found_begin)});
+        found_begin = found_end + doc_end_len;
+    }
     return result;
 }		/* -----  end of function LocateDocumentSections  ----- */
 
