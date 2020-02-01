@@ -39,11 +39,98 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "named_type/named_type.hpp"
+#include <type_traits>
 
 namespace Extractor
 {
+    // thanks to Jonathan Boccara of fluentcpp.com for his articles on
+    // Strong Types and the NamedType library.
+    //
+    // this code is a simplified and somewhat stripped down version of his.
+
+    // =====================================================================================
+    //        Class:  UniqType
+    //  Description: Provides a wrapper which makes embedded common data types distinguisable 
+    // =====================================================================================
+
+    template <typename T, typename Uniqueifier>
+    class UniqType
+    {
+        public:
+            // ====================  LIFECYCLE     ======================================= 
+
+            UniqType() requires std::is_default_constructible_v<T>
+                : value_{} {}
+
+            UniqType(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_constructible_v<T>
+                : value_{rhs.value_} {}
+
+            explicit UniqType(T const& value) requires std::is_copy_constructible_v<T>
+                : value_{value} {}
+
+            UniqType(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_constructible_v<T>
+                : value_(std::move(rhs.value_)) {}
+            
+            explicit UniqType(T&& value) requires std::is_move_constructible_v<T>
+                : value_(std::move(value)) {}
+
+            // ====================  ACCESSORS     ======================================= 
+
+            T& get() { return value_; }
+            const T& get() const { return value_; }
+
+            // ====================  MUTATORS      ======================================= 
+
+            // ====================  OPERATORS     ======================================= 
+
+            UniqType& operator=(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_assignable_v<T>
+            {
+                if (this != &rhs)
+                {
+                    value_ = rhs.value_;
+                }
+                return *this;
+            }
+            UniqType& operator=(const T& rhs) requires std::is_copy_assignable_v<T>
+            {
+                if (&value_ != &rhs.value_)
+                {
+                    value_ = rhs.value_;
+                }
+                return *this;
+            }
+            UniqType& operator=(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_assignable_v<T>
+            {
+                if (this != &rhs)
+                {
+                    value_ = std::move(rhs.value_);
+                }
+                return *this;
+            }
+            UniqType& operator=(T&& rhs) requires std::is_move_assignable_v<T>
+            {
+                if (&value_ != &rhs.value_)
+                {
+                    value_ = std::move(rhs.value_);
+                }
+                return *this;
+            }
+
+        protected:
+            // ====================  METHODS       ======================================= 
+
+            // ====================  DATA MEMBERS  ======================================= 
+
+        private:
+            // ====================  METHODS       ======================================= 
+
+            // ====================  DATA MEMBERS  ======================================= 
+            
+            T value_;
+
+    }; // -----  end of class UniqType  ----- 
+
+
     using sv = std::string_view;
 	using SEC_Header_fields = std::map<std::string, std::string>;
 
@@ -81,18 +168,16 @@ namespace Extractor
 	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
 
     // we don't want to have naked string_views all over the place so
-    // lets' add a little type safety from fluentcpp
+    // lets' add a little type safety based on ideas from fluentcpp
 
-    using namespace fluent;
+    using FileContent = UniqType<sv, struct FileContentTag>;
+    using DocumentSection = UniqType<sv, struct DocumentSectionTag>;
+    using XBRLContent = UniqType<sv, struct XBRLContentTag>;
+    using HTMLContent = UniqType<sv, struct HTMLContentTag>;
+    using FileName = UniqType<sv, struct FileNameTag>;
+    using FileType = UniqType<sv, struct FileTypeTag>;
 
-    using FileContent = NamedType<sv, struct FileContentTag, Callable>;
-    // NOTE: making DocumentSection 'Callable' seems to confuse things in some cases
-    // like vector push_back calls
-    using DocumentSection = NamedType<sv, struct DocumentSectionTag>;
-    using XBRLContent = NamedType<sv, struct XBRLContentTag, Callable>;
-    using HTMLContent = NamedType<sv, struct HTMLContentTag, Callable>;
-    using FileName = NamedType<sv, struct FileNameTag, Callable>;
-    using FileType = NamedType<sv, struct FileTypeTag, Callable>;
+    using DocumentSectionList = std::vector<DocumentSection>;
 
 }		// namespace Extractor
 
