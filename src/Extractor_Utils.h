@@ -235,7 +235,7 @@ auto AllNotEmpty(Ts ...ts)
 // a little helper to run our filters.
 
 template<typename... Ts>
-auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& sections, Ts ...ts)
+auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections, Ts ...ts)
 {
     // unary left fold
 
@@ -244,7 +244,7 @@ auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM:
 
 bool FormIsInFileName(const std::vector<std::string>& form_types, EM::FileName file_name);
 
-std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content);
+EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content);
 
 EM::FileName FindFileName(EM::DocumentSection document);
 
@@ -256,7 +256,7 @@ EM::HTMLContent FindHTML(EM::DocumentSection document);
 
 struct FileHasXBRL
 {
-    bool operator()(const EM::SEC_Header_fields&, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields&, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileHasXBRL"};
 };
@@ -266,7 +266,7 @@ struct FileHasHTML
     explicit FileHasHTML(const std::vector<std::string>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EM::SEC_Header_fields&, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields&, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileHasHTML"};
 
@@ -278,7 +278,7 @@ struct FileHasFormType
     explicit FileHasFormType(const std::vector<std::string>& form_list)
         : form_list_{form_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileHasFormType"};
 
@@ -290,7 +290,7 @@ struct FileHasCIK
     explicit FileHasCIK(const std::vector<std::string>& CIK_list)
         : CIK_list_{CIK_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileHasCIK"};
 
@@ -302,7 +302,7 @@ struct FileHasSIC
     explicit FileHasSIC(const std::vector<std::string>& SIC_list)
         : SIC_list_{SIC_list} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileHasSIC"};
 
@@ -314,7 +314,7 @@ struct NeedToUpdateDBContent
     NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
         : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"NeedToUpdateDBContent"};
 
@@ -327,7 +327,7 @@ struct FileIsWithinDateRange
     FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
-    bool operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const ;
+    bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileIsWithinDateRange"};
 

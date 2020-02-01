@@ -45,9 +45,9 @@
 
 #include "Extractor.h"
 
-EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& document_sections);
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections);
 
-EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& document_sections);
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections);
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 

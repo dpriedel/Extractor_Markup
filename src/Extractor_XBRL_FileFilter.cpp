@@ -76,9 +76,9 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     return default_result;
 }
 
-EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& document_sections)
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections)
 {
-    for (auto document : document_sections)
+    for (const auto& document : document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
@@ -87,12 +87,12 @@ EM::XBRLContent LocateInstanceDocument(const std::vector<EM::DocumentSection>& d
             return TrimExcessXML(document);
         }
     }
-    return EM::XBRLContent{EM::sv{}};
+    return EM::XBRLContent{};
 }
 
-EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& document_sections)
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections)
 {
-    for (auto document : document_sections)
+    for (const auto& document : document_sections)
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
@@ -101,7 +101,7 @@ EM::XBRLContent LocateLabelDocument(const std::vector<EM::DocumentSection>& docu
             return TrimExcessXML(document);
         }
     }
-    return EM::XBRLContent{EM::sv{}};
+    return EM::XBRLContent{};
 }
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
@@ -119,7 +119,7 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
     return EM::FilingData{trading_symbol, period_end_date, context_ID,
-        shares_outstanding.empty() ? "0" : std::string{shares_outstanding}};
+        shares_outstanding.empty() ? "-1" : std::string{shares_outstanding}};
 }
 
 std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
@@ -226,23 +226,11 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
         labels = FindLabelElements(top_level_node, label_link_name, label_node_name.substr(namespace_prefix.size()));
     }
 
-//    std::cout << "LABELS:\n";
-//    for (auto [name, value] : labels)
-//    {
-//        std::cout << "name: " << name << "\t\tvalue: " << value << '\n';
-//    }
-
     auto locs = FindLocElements(top_level_node, label_link_name, loc_node_name);
     if (locs.empty())
     {
         locs = FindLocElements(top_level_node, label_link_name, loc_node_name.substr(namespace_prefix.size()));
     }
-
-//    std::cout << "LOCS:\n";
-//    for (auto [name, value] : locs)
-//    {
-//        std::cout << "name: " << name << "\t\tvalue: " << value << '\n';
-//    }
 
     auto arcs = FindLabelArcElements(top_level_node, label_link_name, arc_node_name);
     if (arcs.empty())
@@ -250,19 +238,8 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
         arcs = FindLabelArcElements(top_level_node, label_link_name, arc_node_name.substr(namespace_prefix.size()));
     }
 
-//    std::cout << "ARCS:\n";
-//    for (auto [name, value] : arcs)
-//    {
-//        std::cout << "from: " << name << "\t\tto: " << value << '\n';
-//    }
-
     auto result = AssembleLookupTable(labels, locs, arcs);
 
-//    std::cout << "RESULT:\n";
-//    for (auto [name, value] : result)
-//    {
-//        std::cout << "key: " << name << "\t\tvalue: " << value << '\n';
-//    }
     return result;
 }		// -----  end of function ExtractFieldLabels2  -----
 
@@ -276,7 +253,8 @@ std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements (const pugi::xml_node& 
         for (auto label_node : links.children(label_node_name.c_str()))
         {
             EM::sv role{label_node.attribute("xlink:role").value()};
-            if (role.ends_with("label") || role.ends_with("Label"))
+//            if (role.ends_with("label") || role.ends_with("Label"))
+            if (role.ends_with("abel"))
             {
                 EM::sv link_name{label_node.attribute("xlink:label").value()};
                 labels.emplace_back(link_name, label_node.child_value());
@@ -451,7 +429,7 @@ EM::XBRLContent TrimExcessXML(EM::DocumentSection document)
 pugi::xml_document ParseXMLContent(EM::XBRLContent document)
 {
     pugi::xml_document doc;
-    auto result = doc.load_buffer(document->data(), document->size(), pugi::parse_default | pugi::parse_wnorm_attribute);
+    auto result = doc.load_buffer(document.get().data(), document.get().size(), pugi::parse_default | pugi::parse_wnorm_attribute);
     if (! result)
     {
         throw XBRLException{catenate("Error description: ", result.description(), "\nError offset: ", result.offset, '\n')};

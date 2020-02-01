@@ -164,14 +164,14 @@ std::string LoadDataFileForUse (EM::FileName file_name)
  *  Description:  
  * =====================================================================================
  */
-std::vector<EM::DocumentSection> LocateDocumentSections(EM::FileContent file_content)
+EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content)
 {
     const std::string doc_begin{"<DOCUMENT>"};
     const std::string doc_end{"DOCUMENT>"};
     const auto doc_begin_len = doc_begin.size();
     const auto doc_end_len = doc_end.size();
 
-    std::vector<EM::DocumentSection> result;
+    EM::DocumentSectionList result;
     
     auto found_begin = file_content.get().begin();
     auto content_end = file_content.get().end();
@@ -270,18 +270,18 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
         EM::HTMLContent result{document.get()};
-        auto text_begin_loc = result->find(R"***(<TEXT>)***");
+        auto text_begin_loc = result.get().find(R"***(<TEXT>)***");
 
         // skip 1 more line.
 
-        text_begin_loc = result->find('\n', text_begin_loc + 1);
+        text_begin_loc = result.get().find('\n', text_begin_loc + 1);
 
-        result->remove_prefix(text_begin_loc);
+        result.get().remove_prefix(text_begin_loc);
 
-        auto text_end_loc = result->rfind(R"***(</TEXT>)***");
+        auto text_end_loc = result.get().rfind(R"***(</TEXT>)***");
         if (text_end_loc != EM::sv::npos)
         {
-            result->remove_suffix(result->length() - text_end_loc);
+            result.get().remove_suffix(result.get().length() - text_end_loc);
         }
         else
         {
@@ -291,7 +291,7 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
         // sometimes the document is actually XBRL with embedded HTML
         // we don't want that.
 
-        if (result->find(R"***(<XBRL>)***") != EM::sv::npos)
+        if (result.get().find(R"***(<XBRL>)***") != EM::sv::npos)
         {
 //            // let's see if it contains HTML
 //
@@ -307,11 +307,11 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
 //                }
 //            }
             spdlog::info("Looks like it's really XBRL.\n");
-            return EM::HTMLContent{{}};
+            return EM::HTMLContent{};
         }
         return result;
     }
-    return EM::HTMLContent{{}};
+    return EM::HTMLContent{};
 }		/* -----  end of function FindHTML  ----- */
 
 bool FormIsInFileName (const std::vector<std::string>& form_types, EM::FileName file_name)
@@ -325,7 +325,7 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::FileName 
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 }		/* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     // need to do a little more detailed check.
 
@@ -347,7 +347,7 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const std:
  *  Description:  
  * =====================================================================================
  */
-bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const std::vector<EM::DocumentSection>& document_sections) const
+bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const EM::DocumentSectionList& document_sections) const
 {
     // need to do a little more detailed check.
 
@@ -360,7 +360,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
                 && ranges::find(form_list_, file_type.get()) != ranges::end(form_list_))
         {
             auto content = FindHTML(document);
-            if (! content->empty())
+            if (! content.get().empty())
             {
                 return true;
             }
@@ -369,12 +369,12 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
     return false;
 }		/* -----  end of function FileHasHTML::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     return (ranges::find(form_list_, SEC_fields.at("form_type")) != ranges::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     // if our list has only 2 elements, the consider this a range.  otherwise, just a list.
 
@@ -386,12 +386,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const std::
     return (ranges::find(CIK_list_, SEC_fields.at("cik")) != ranges::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     return (ranges::find(SIC_list_, SEC_fields.at("sic")) != ranges::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
@@ -417,7 +417,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, const std::vector<EM::DocumentSection>& document_sections) const 
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
     auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
 
