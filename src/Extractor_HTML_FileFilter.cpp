@@ -86,7 +86,7 @@ const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|bill
  *  Description:  
  * =====================================================================================
  */
-std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList document_sections)
+std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections)
 {
     std::vector<HtmlInfo> results;
 
@@ -168,7 +168,7 @@ EM::AnchorContent FindFinancialContentTopLevelAnchor (EM::HTMLContent financial_
  *  Description:  
  * =====================================================================================
  */
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (const EM::DocumentSectionList& document_sections)
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections)
 {
     // sometimes we don't have a top level anchor but we do have
     // anchors for individual statements.
@@ -488,7 +488,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const std::vector<std::string>& forms)
+FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms)
 {
     // we use a 2-ph<ase scan.
     // first, try to find based on anchors.
@@ -1087,7 +1087,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 //  Description: updates the values of shares outstanding in the DB if not same as in file. 
 // =====================================================================================
 
-int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& fields,
+int UpdateOutstandingShares (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const EM::SEC_Header_fields& fields,
         const std::vector<std::string>& forms, const std::string& schema_name, std::string file_name)
 {
     int entries_updated{0};

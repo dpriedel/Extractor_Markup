@@ -207,7 +207,7 @@ std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
 EM::AnchorContent FindFinancialContentTopLevelAnchor (EM::HTMLContent financial_content, const AnchorData& anchors);
 
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (const EM::DocumentSectionList& document_sections);
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections);
 
 AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorsFromHTML& anchors);
 
@@ -215,7 +215,7 @@ MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
 //std::vector<EM::sv> LocateFinancialTables(const MultDataList& multiplier_data);
 
-std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList document_sections);
+std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections);
 
 bool BalanceSheetFilter(EM::sv table);
 
@@ -229,7 +229,7 @@ bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, EM::sv
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const std::vector<std::string>& forms);
+FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms);
 
 FinancialStatements ExtractFinancialStatements(EM::HTMLContent financial_content);
 
@@ -287,7 +287,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSe
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
         const std::string& schema_name);
 
-int UpdateOutstandingShares(const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& fields,
+int UpdateOutstandingShares(const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const EM::SEC_Header_fields& fields,
         const std::vector<std::string>& forms, const std::string& schema_name, std::string file_name);
 
 #endif

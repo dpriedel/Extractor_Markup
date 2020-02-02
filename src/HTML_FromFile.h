@@ -72,7 +72,7 @@ public:
     /* ====================  LIFECYCLE     ======================================= */
 
     HTML_FromFile() = default;
-    explicit HTML_FromFile (const EM::DocumentSectionList& document_sections);                /* constructor */
+    explicit HTML_FromFile (EM::DocumentSectionList const * document_sections);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -81,7 +81,7 @@ public:
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return document_sections_.empty(); }
+    [[nodiscard]] bool empty() const { return document_sections_->empty(); }
 
     /* ====================  MUTATORS      ======================================= */
 
@@ -97,7 +97,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    EM::DocumentSectionList document_sections_;
+    EM::DocumentSectionList const * document_sections_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 
@@ -120,7 +120,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
 
     html_itor() = default;
-    explicit html_itor(const EM::DocumentSectionList& document_sections);
+    explicit html_itor(EM::DocumentSectionList const* document_sections);
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -149,7 +149,7 @@ private:
     
     int current_doc_ = -1;
 
-    EM::DocumentSectionList document_sections_;
+    EM::DocumentSectionList const * document_sections_;
 
     mutable HtmlInfo html_info_;
 
