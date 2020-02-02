@@ -56,80 +56,80 @@ namespace Extractor
     template <typename T, typename Uniqueifier>
     class UniqType
     {
-        public:
-            // ====================  LIFECYCLE     ======================================= 
+    public:
+        // ====================  LIFECYCLE     ======================================= 
 
-            UniqType() requires std::is_default_constructible_v<T>
-                : value_{} {}
+        UniqType() requires std::is_default_constructible_v<T>
+            : value_{} {}
 
-            UniqType(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_constructible_v<T>
-                : value_{rhs.value_} {}
+        UniqType(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_constructible_v<T>
+            : value_{rhs.value_} {}
 
-            explicit UniqType(T const& value) requires std::is_copy_constructible_v<T>
-                : value_{value} {}
+        explicit UniqType(T const& value) requires std::is_copy_constructible_v<T>
+            : value_{value} {}
 
-            UniqType(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_constructible_v<T>
-                : value_(std::move(rhs.value_)) {}
-            
-            explicit UniqType(T&& value) requires std::is_move_constructible_v<T>
-                : value_(std::move(value)) {}
+        UniqType(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_constructible_v<T>
+            : value_(std::move(rhs.value_)) {}
+        
+        explicit UniqType(T&& value) requires std::is_move_constructible_v<T>
+            : value_(std::move(value)) {}
 
-            // ====================  ACCESSORS     ======================================= 
+        // ====================  ACCESSORS     ======================================= 
 
-            T& get() { return value_; }
-            const T& get() const { return value_; }
+        // not needed because we have assignment operators
+//        T& get() { return value_; }
+        const T& get() const { return value_; }
 
-            // ====================  MUTATORS      ======================================= 
+        // ====================  MUTATORS      ======================================= 
 
-            // ====================  OPERATORS     ======================================= 
+        // ====================  OPERATORS     ======================================= 
 
-            UniqType& operator=(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_assignable_v<T>
+        UniqType& operator=(const UniqType<T, Uniqueifier>& rhs) requires std::is_copy_assignable_v<T>
+        {
+            if (this != &rhs)
             {
-                if (this != &rhs)
-                {
-                    value_ = rhs.value_;
-                }
-                return *this;
+                value_ = rhs.value_;
             }
-            UniqType& operator=(const T& rhs) requires std::is_copy_assignable_v<T>
+            return *this;
+        }
+        UniqType& operator=(const T& rhs) requires std::is_copy_assignable_v<T>
+        {
+            if (&value_ != &rhs)
             {
-                if (&value_ != &rhs.value_)
-                {
-                    value_ = rhs.value_;
-                }
-                return *this;
+                value_ = rhs;
             }
-            UniqType& operator=(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_assignable_v<T>
+            return *this;
+        }
+        UniqType& operator=(UniqType<T, Uniqueifier>&& rhs) requires std::is_move_assignable_v<T>
+        {
+            if (this != &rhs)
             {
-                if (this != &rhs)
-                {
-                    value_ = std::move(rhs.value_);
-                }
-                return *this;
+                value_ = std::move(rhs.value_);
             }
-            UniqType& operator=(T&& rhs) requires std::is_move_assignable_v<T>
+            return *this;
+        }
+        UniqType& operator=(T&& rhs) requires std::is_move_assignable_v<T>
+        {
+            if (&value_ != &rhs)
             {
-                if (&value_ != &rhs.value_)
-                {
-                    value_ = std::move(rhs.value_);
-                }
-                return *this;
+                value_ = std::move(rhs);
             }
+            return *this;
+        }
 
-        protected:
-            // ====================  METHODS       ======================================= 
+    protected:
+        // ====================  METHODS       ======================================= 
 
-            // ====================  DATA MEMBERS  ======================================= 
+        // ====================  DATA MEMBERS  ======================================= 
 
-        private:
-            // ====================  METHODS       ======================================= 
+    private:
+        // ====================  METHODS       ======================================= 
 
-            // ====================  DATA MEMBERS  ======================================= 
-            
-            T value_;
+        // ====================  DATA MEMBERS  ======================================= 
+        
+        T value_;
 
     }; // -----  end of class UniqType  ----- 
-
 
     using sv = std::string_view;
 	using SEC_Header_fields = std::map<std::string, std::string>;
@@ -176,6 +176,8 @@ namespace Extractor
     using HTMLContent = UniqType<sv, struct HTMLContentTag>;
     using FileName = UniqType<sv, struct FileNameTag>;
     using FileType = UniqType<sv, struct FileTypeTag>;
+    using AnchorContent = UniqType<sv, struct AnchorContentTag>;
+    using TableContent = UniqType<sv, struct TableContentTag>;
 
     using DocumentSectionList = std::vector<DocumentSection>;
 

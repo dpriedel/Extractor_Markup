@@ -49,8 +49,8 @@ struct AnchorData
     std::string href_;
     std::string name_;
     std::string text_;
-    EM::sv anchor_content_;
-    EM::sv html_document_;
+    EM::AnchorContent anchor_content_;
+    EM::HTMLContent html_document_;
 };				/* ----------  end of struct AnchorData  ---------- */
 
 using AnchorList = std::vector<AnchorData>;
@@ -74,7 +74,7 @@ public:
     /* ====================  LIFECYCLE     ======================================= */
 
     AnchorsFromHTML() = default;
-    explicit AnchorsFromHTML (EM::sv html);                             /* constructor */
+    explicit AnchorsFromHTML (EM::HTMLContent html);                             /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -83,7 +83,7 @@ public:
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return html_.empty(); }
+    [[nodiscard]] bool empty() const { return html_.get().empty(); }
 
     /* ====================  MUTATORS      ======================================= */
 
@@ -102,7 +102,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    EM::sv html_;
+    EM::HTMLContent html_;
 
     mutable AnchorList found_anchors_;
 
@@ -131,7 +131,7 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    EM::sv to_sview() const { return the_anchor_.anchor_content_; }
+    EM::AnchorContent AnchorContent() const { return the_anchor_.anchor_content_; }
 
     // ====================  MUTATORS      ======================================= 
 
@@ -157,12 +157,12 @@ private:
 
     std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
     const char* FindAnchorEnd(const char* begin, const char* end, int level);
-    AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::sv html);
+    AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::HTMLContent html);
 
     // ====================  DATA MEMBERS  ======================================= 
 
     const AnchorsFromHTML* anchors_ = nullptr;
-    EM::sv html_;
+    EM::HTMLContent html_;
     const char* anchor_search_start = nullptr;
     const char* anchor_search_end = nullptr;
     mutable AnchorData the_anchor_;

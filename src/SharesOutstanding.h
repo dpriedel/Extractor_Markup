@@ -52,7 +52,7 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    int64_t operator()(EM::sv html) const;
+    int64_t operator()(EM::HTMLContent html) const;
 
 protected:
     // ====================  METHODS       ======================================= 
@@ -72,7 +72,7 @@ private:
 
 void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text);
 
-[[nodiscard]] std::string ParseHTML(EM::sv html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0);
+[[nodiscard]] std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0);
 
 [[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string& parsed_text);
 

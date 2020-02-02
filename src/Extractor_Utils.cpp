@@ -269,19 +269,19 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
-        EM::HTMLContent result{document.get()};
-        auto text_begin_loc = result.get().find(R"***(<TEXT>)***");
+        auto result{document.get()};
+        auto text_begin_loc = result.find(R"***(<TEXT>)***");
 
         // skip 1 more line.
 
-        text_begin_loc = result.get().find('\n', text_begin_loc + 1);
+        text_begin_loc = result.find('\n', text_begin_loc + 1);
 
-        result.get().remove_prefix(text_begin_loc);
+        result.remove_prefix(text_begin_loc);
 
-        auto text_end_loc = result.get().rfind(R"***(</TEXT>)***");
+        auto text_end_loc = result.rfind(R"***(</TEXT>)***");
         if (text_end_loc != EM::sv::npos)
         {
-            result.get().remove_suffix(result.get().length() - text_end_loc);
+            result.remove_suffix(result.length() - text_end_loc);
         }
         else
         {
@@ -291,7 +291,7 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
         // sometimes the document is actually XBRL with embedded HTML
         // we don't want that.
 
-        if (result.get().find(R"***(<XBRL>)***") != EM::sv::npos)
+        if (result.find(R"***(<XBRL>)***") != EM::sv::npos)
         {
 //            // let's see if it contains HTML
 //
@@ -309,7 +309,7 @@ EM::HTMLContent FindHTML (EM::DocumentSection document)
             spdlog::info("Looks like it's really XBRL.\n");
             return EM::HTMLContent{};
         }
-        return result;
+        return EM::HTMLContent{result};
     }
     return EM::HTMLContent{};
 }		/* -----  end of function FindHTML  ----- */

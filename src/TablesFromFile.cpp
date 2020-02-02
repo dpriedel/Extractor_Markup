@@ -94,12 +94,14 @@ TablesFromHTML::table_itor::table_itor(TablesFromHTML const * tables)
         return;
     }
     html_ = tables_->html_;
-    if (html_.empty())
+    auto html_val = html_.get();
+
+    if (html_val.empty())
     {
         return;
     }
 
-    doc_ = boost::cregex_token_iterator(html_.cbegin(), html_.cend(), tables_->regex_table_);
+    doc_ = boost::cregex_token_iterator(html_val.cbegin(), html_val.cend(), tables_->regex_table_);
     auto next_table = FindNextTable();
     if (next_table)
     {
@@ -216,7 +218,7 @@ std::optional<TableData> TablesFromHTML::table_itor::FindNextTable ()
     {
         try
         {
-            next_table.current_table_html_ = EM::sv(doc_->first, doc_->length());
+            next_table.current_table_html_ = EM::TableContent{EM::sv(doc_->first, doc_->length())};
             if (TableHasMarkup(next_table.current_table_html_))
             {
                 next_table.current_table_parsed_ = CollectTableContent(next_table.current_table_html_);
@@ -248,23 +250,26 @@ std::optional<TableData> TablesFromHTML::table_itor::FindNextTable ()
 }		// -----  end of method TablesFromHTML::table_itor::FindNextTable  ----- 
 
 
-bool TablesFromHTML::table_itor::TableHasMarkup (EM::sv table)
+bool TablesFromHTML::table_itor::TableHasMarkup (EM::TableContent table)
 {
-    auto have_td = table.find("</TD>") != EM::sv::npos || table.find("</td>") != EM::sv::npos;
-    auto have_tr = table.find("</TR>") != EM::sv::npos || table.find("</tr>") != EM::sv::npos;
+    auto table_val = table.get();
+    auto have_td = table_val.find("</TD>") != EM::sv::npos || table_val.find("</td>") != EM::sv::npos;
+    auto have_tr = table_val.find("</TR>") != EM::sv::npos || table_val.find("</tr>") != EM::sv::npos;
 //    auto have_div = table.find("</div>") != std::string::npos;
 
     return have_td && have_tr;
 }		// -----  end of method TablesFromHTML::table_itor::TableHasMarkup  -----
 
-std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
+std::string TablesFromHTML::table_itor::CollectTableContent(EM::TableContent a_table)
 {
 
     // let's try this...
 
     std::string tmp;
-    tmp.reserve(a_table.size());
-    boost::regex_replace(std::back_inserter(tmp), a_table.begin(), a_table.end(),
+    auto a_table_val = a_table.get();
+
+    tmp.reserve(a_table_val.size());
+    boost::regex_replace(std::back_inserter(tmp), a_table_val.begin(), a_table_val.end(),
             tables_->regex_bogus_em_dash, tables_->pseudo_em_dash);
     tmp = boost::regex_replace(tmp, tables_->regex_real_em_dash, tables_->pseudo_em_dash);
 
@@ -281,8 +286,8 @@ std::string TablesFromHTML::table_itor::CollectTableContent(EM::sv a_table)
     {
         // now, for each table, extract all the text
 
-        CNode a_table = all_tables.nodeAt(indx);
-        table_data += ExtractTextDataFromTable(a_table);
+        CNode a_table_val = all_tables.nodeAt(indx);
+        table_data += ExtractTextDataFromTable(a_table_val);
     }
 
     // after parsing, let's do a little cleanup

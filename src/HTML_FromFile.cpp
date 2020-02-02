@@ -37,7 +37,6 @@
 #include "HTML_FromFile.h"
 #include "Extractor_Utils.h"
 
-#include <boost/algorithm/string/predicate.hpp>
 /*
  *--------------------------------------------------------------------------------------
  *       Class:  HTML_FromFile
@@ -46,21 +45,21 @@
  *--------------------------------------------------------------------------------------
  */
 
-HTML_FromFile::HTML_FromFile (EM::sv file_content)
-    : file_content_{file_content}
+HTML_FromFile::HTML_FromFile (const EM::DocumentSectionList& document_sections)
+    : document_sections_{document_sections}
 {
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
 
 HTML_FromFile::iterator HTML_FromFile::begin ()
 {
-    iterator it{file_content_};
+    iterator it{document_sections_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
 HTML_FromFile::const_iterator HTML_FromFile::begin () const
 {
-    const_iterator it{file_content_};
+    const_iterator it{document_sections_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
@@ -81,39 +80,37 @@ HTML_FromFile::const_iterator HTML_FromFile::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTML_FromFile::html_itor::html_itor (EM::sv file_content)
-    : file_content_{file_content}
+HTML_FromFile::html_itor::html_itor (const EM::DocumentSectionList& document_sections) 
+    : document_sections_{document_sections}
 {
-    const boost::regex regex_doc_{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-    doc_ = boost::cregex_token_iterator(file_content.cbegin(), file_content.cend(), regex_doc_);
-    for (; doc_ != end_; ++doc_)
+    for (++current_doc_; current_doc_ < document_sections_.size(); ++current_doc_)
     {
-        EM::sv document(doc_->first, doc_->length());
-        html_info_.html_ = FindHTML(document);
-        if (! html_info_.html_.empty())
+        html_info_.html_ = FindHTML(document_sections_[current_doc_]);
+        if (! html_info_.html_.get().empty())
         {
-            html_info_.document_ = document;
-            html_info_.file_name_ = FindFileName(document);
-            html_info_.file_type_ = FindFileType(document);
-            break;
+            html_info_.document_ = document_sections_[current_doc_];
+            html_info_.file_name_ = FindFileName(document_sections_[current_doc_]);
+            html_info_.file_type_ = FindFileType(document_sections_[current_doc_]);
+            return;
         }
     }
+    current_doc_ = -1;
 }  /* -----  end of method HTML_FromFile::html_itor::HTML_FromFile::html_itor  (constructor)  ----- */
 
 HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
 {
-    for (++doc_; doc_ != end_; ++doc_)
+    for (++current_doc_; current_doc_ < document_sections_.size(); ++current_doc_)
     {
-        EM::sv document(doc_->first, doc_->length());
-        html_info_.html_ = FindHTML(document);
-        if (! html_info_.html_.empty())
+        html_info_.html_ = FindHTML(document_sections_[current_doc_]);
+        if (! html_info_.html_.get().empty())
         {
-            html_info_.document_ = document;
-            html_info_.file_name_ = FindFileName(document);
-            html_info_.file_type_ = FindFileType(document);
-            break;
+            html_info_.document_ = document_sections_[current_doc_];
+            html_info_.file_name_ = FindFileName(document_sections_[current_doc_]);
+            html_info_.file_type_ = FindFileType(document_sections_[current_doc_]);
+            return *this;
         }
     }
+    current_doc_ = -1;
     return *this;
 }		/* -----  end of method HTML_FromFile::iterator::operator++  ----- */
 

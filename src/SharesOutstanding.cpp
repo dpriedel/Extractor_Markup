@@ -47,7 +47,7 @@
 const int32_t MAX_HTML_TO_PARSE = 1'000'000;
 const int32_t MAX_TEXT_TO_CLEAN = 20'000;
 
-int64_t SharesOutstanding::operator() (EM::sv html) const
+int64_t SharesOutstanding::operator() (EM::HTMLContent html) const
 {
     const std::string nbr_of_shares = R"***((\b[1-9](?:[0-9]{0,2})(?:,[0-9]{3})+\b))***";
     const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
@@ -202,7 +202,7 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     return results;
 }		// -----  end of method SharesOutstanding::FindCandidates  ----- 
 
-std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_length_to_clean)
+std::string ParseHTML (EM::HTMLContent html, size_t max_length_to_parse, size_t max_length_to_clean)
 {
     const boost::regex regex_hi_ascii{R"***([^\x00-\x7f])***"};
     const boost::regex regex_control_chars{R"***([\x00-\x1f])***"};
@@ -214,9 +214,9 @@ std::string ParseHTML (EM::sv html, size_t max_length_to_parse, size_t max_lengt
 
     GumboOptions options = kGumboDefaultOptions;
 
-    size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.length() : std::min(html.length(), max_length_to_parse);
+    size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.get().length() : std::min(html.get().length(), max_length_to_parse);
 
-    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.data(), length_HTML_to_parse),
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(gumbo_parse_with_options(&options, html.get().data(), length_HTML_to_parse),
             [&options](GumboOutput* output){ gumbo_destroy_output(&options, output); });
 
     std::string parsed_text;

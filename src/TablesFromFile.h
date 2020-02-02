@@ -53,12 +53,12 @@ class CNode;
 
 struct TableData
 {
-    EM::sv current_table_html_;
+    EM::TableContent current_table_html_;
     std::string current_table_parsed_;
 
     bool operator==(TableData const& rhs) const
     {
-        return current_table_html_ == rhs.current_table_html_;
+        return current_table_html_.get() == rhs.current_table_html_.get();
     }
 };
 
@@ -83,7 +83,7 @@ public:
     /* ====================  LIFECYCLE     ======================================= */
 
     TablesFromHTML() = default;
-    explicit TablesFromHTML (EM::sv html) : html_{html} { }         /* constructor */
+    explicit TablesFromHTML (EM::HTMLContent html) : html_{html} { }         /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -109,7 +109,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    EM::sv html_;
+    EM::HTMLContent html_;
 
     mutable TableDataList found_tables_;
     mutable bool found_all_tables_ = false;
@@ -163,8 +163,8 @@ public:
 
     // ====================  ACCESSORS     ======================================= 
 
-    EM::sv to_sview() const { return table_data_.current_table_html_; }
-    bool TableHasMarkup (EM::sv table);
+    EM::TableContent TableContent() const { return table_data_.current_table_html_; }
+    bool TableHasMarkup (EM::TableContent table);
 
     // ====================  MUTATORS      ======================================= 
 
@@ -188,7 +188,7 @@ private:
     // ====================  METHODS       ======================================= 
 
     std::optional<TableData> FindNextTable();
-    std::string CollectTableContent(EM::sv html);
+    std::string CollectTableContent(EM::TableContent html);
 
     // a_table is non-const because the qumbo-query library doesn't do 'const'
 
@@ -201,7 +201,7 @@ private:
     boost::cregex_token_iterator end_;
 
     TablesFromHTML const * tables_;
-    EM::sv html_;
+    EM::HTMLContent html_;
     
     mutable TableData table_data_;
 

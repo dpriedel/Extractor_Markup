@@ -40,8 +40,6 @@
 #include <iterator>
 #include <string>
 
-#include <boost/regex.hpp>
-
 #include "Extractor.h"
 
 /*
@@ -55,10 +53,10 @@
 
 struct HtmlInfo
 {
-    EM::sv document_;
-    EM::sv html_;
-    EM::sv file_name_;
-    EM::sv file_type_;
+    EM::DocumentSection document_;
+    EM::HTMLContent html_;
+    EM::FileName file_name_;
+    EM::FileType file_type_;
 };
 
 class HTML_FromFile
@@ -74,7 +72,7 @@ public:
     /* ====================  LIFECYCLE     ======================================= */
 
     HTML_FromFile() = default;
-    explicit HTML_FromFile (EM::sv file_content);                /* constructor */
+    explicit HTML_FromFile (const EM::DocumentSectionList& document_sections);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -83,7 +81,7 @@ public:
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return file_content_.empty(); }
+    [[nodiscard]] bool empty() const { return document_sections_.empty(); }
 
     /* ====================  MUTATORS      ======================================= */
 
@@ -99,7 +97,7 @@ private:
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    EM::sv file_content_;
+    EM::DocumentSectionList document_sections_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 
@@ -122,7 +120,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
 
     html_itor() = default;
-    explicit html_itor(EM::sv file_content);
+    explicit html_itor(const EM::DocumentSectionList& document_sections);
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -133,7 +131,7 @@ public:
 
     // ====================  OPERATORS     ======================================= 
 
-    bool operator==(const html_itor& other) const { return doc_ == other.doc_; }
+    bool operator==(const html_itor& other) const { return current_doc_ == other.current_doc_; }
     bool operator!=(const html_itor& other) const { return !(*this == other); }
 
     reference operator*() const { return html_info_; }
@@ -149,10 +147,9 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
     
-    boost::cregex_token_iterator doc_;
-    boost::cregex_token_iterator end_;
+    int current_doc_ = -1;
 
-    EM::sv file_content_;
+    EM::DocumentSectionList document_sections_;
 
     mutable HtmlInfo html_info_;
 

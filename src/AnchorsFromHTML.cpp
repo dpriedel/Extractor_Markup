@@ -55,7 +55,7 @@ using namespace std::string_literals;
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::AnchorsFromHTML (EM::sv html)
+AnchorsFromHTML::AnchorsFromHTML (EM::HTMLContent html)
     : html_{html}
 {
 }  /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
@@ -95,12 +95,14 @@ AnchorsFromHTML::anchor_itor::anchor_itor (const AnchorsFromHTML* anchors)
         return;
     }
     html_ = anchors_->html_;
-    if (html_.empty())
+    auto val = html_.get();
+
+    if (val.empty())
     {
         return;
     }
-    anchor_search_start = html_.begin();
-    anchor_search_end = html_.end();
+    anchor_search_start = val.begin();
+    anchor_search_end = val.end();
 
     operator++();
 
@@ -119,7 +121,7 @@ AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++ ()
     }
 
     the_anchor_ = *next_anchor;
-    anchor_search_start = the_anchor_.anchor_content_.end();
+    anchor_search_start = the_anchor_.anchor_content_.get().end();
 
     return *this;
 }		/* -----  end of method AnchorsFromHTML::iterator::operator++  ----- */
@@ -204,7 +206,7 @@ const char* AnchorsFromHTML::iterator::FindAnchorEnd (const char* begin, const c
     return nullptr;
 }		/* -----  end of method AnchorsFromHTML::iterator::FindAnchorEnd  ----- */
 
-AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, EM::sv html)
+AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, const char* end, EM::HTMLContent html)
 {
     CDocument whole_anchor;
     const std::string working_copy{start, end};
@@ -213,7 +215,7 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, 
     BOOST_ASSERT_MSG(the_anchor.nodeNum() > 0, "No anchor found in extractecd anchor!!");
 
     AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
-        the_anchor.nodeAt(0).text(), EM::sv(start, end - start), html};
+        the_anchor.nodeAt(0).text(), EM::AnchorContent{EM::sv(start, end - start)}, html};
 
     // href sometimes is quoted, so remove them.
 
