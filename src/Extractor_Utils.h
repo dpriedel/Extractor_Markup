@@ -270,7 +270,7 @@ struct FileHasHTML
 
     const std::string filter_name_{"FileHasHTML"};
 
-    const std::vector<std::string>& form_list_;
+    const std::vector<std::string> form_list_;
 };
 
 struct FileHasFormType
@@ -282,7 +282,7 @@ struct FileHasFormType
 
     const std::string filter_name_{"FileHasFormType"};
 
-    const std::vector<std::string>& form_list_;
+    const std::vector<std::string> form_list_;
 };
 
 struct FileHasCIK
@@ -294,7 +294,7 @@ struct FileHasCIK
 
     const std::string filter_name_{"FileHasCIK"};
 
-    const std::vector<std::string>& CIK_list_;
+    const std::vector<std::string> CIK_list_;
 };
 
 struct FileHasSIC
@@ -306,7 +306,7 @@ struct FileHasSIC
 
     const std::string filter_name_{"FileHasSIC"};
 
-    const std::vector<std::string>& SIC_list_;
+    const std::vector<std::string> SIC_list_;
 };
 
 struct NeedToUpdateDBContent
@@ -331,8 +331,8 @@ struct FileIsWithinDateRange
 
     const std::string filter_name_{"FileIsWithinDateRange"};
 
-    const bg::date& begin_date_;
-    const bg::date& end_date_;
+    const bg::date begin_date_;
+    const bg::date end_date_;
 };
 
 struct ConvertInputHierarchyToOutputHierarchy
