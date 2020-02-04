@@ -413,14 +413,15 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
 
 EM::XBRLContent TrimExcessXML(EM::DocumentSection document)
 {
-    auto xbrl_loc = document.get().find(R"***(<XBRL>)***");
-    document.get().remove_prefix(xbrl_loc + XBLR_TAG_LEN);
+    auto doc_val = document.get();
+    auto xbrl_loc = doc_val.find(R"***(<XBRL>)***");
+    doc_val.remove_prefix(xbrl_loc + XBLR_TAG_LEN);
 
-    auto xbrl_end_loc = document.get().rfind(R"***(</XBRL>)***");
+    auto xbrl_end_loc = doc_val.rfind(R"***(</XBRL>)***");
     if (xbrl_end_loc != EM::sv::npos)
     {
-        document.get().remove_suffix(document.get().length() - xbrl_end_loc);
-        return EM::XBRLContent{document.get()};
+        doc_val.remove_suffix(doc_val.length() - xbrl_end_loc);
+        return EM::XBRLContent{doc_val};
     }
     throw XBRLException("Can't find end of XBLR in document.\n");
 
