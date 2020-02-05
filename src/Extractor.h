@@ -35,11 +35,12 @@
 #define EXTRACTOR_H_
 
 
+#include <filesystem>
 #include <map>
 #include <string>
 #include <string_view>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 namespace Extractor
 {
@@ -133,6 +134,7 @@ namespace Extractor
 
     using sv = std::string_view;
 	using SEC_Header_fields = std::map<std::string, std::string>;
+    using std::filesystem::path;
 
 	struct FilingData
 	{
@@ -174,7 +176,7 @@ namespace Extractor
     using DocumentSection = UniqType<sv, struct DocumentSectionTag>;
     using XBRLContent = UniqType<sv, struct XBRLContentTag>;
     using HTMLContent = UniqType<sv, struct HTMLContentTag>;
-    using FileName = UniqType<sv, struct FileNameTag>;
+    using FileName = UniqType<path, struct FileNameTag>;
     using FileType = UniqType<sv, struct FileTypeTag>;
     using AnchorContent = UniqType<sv, struct AnchorContentTag>;
     using TableContent = UniqType<sv, struct TableContentTag>;
@@ -185,6 +187,22 @@ namespace Extractor
 
 namespace EM = Extractor;
 
+//  seems to be needed by boost program options
 
+template <typename T, typename Uniqueifier>
+std::ostream& operator<<(std::ostream& os, const EM::UniqType<T, Uniqueifier>& a_type)
+{
+    os << a_type.get();
+    return os;
+}
+
+template <typename T, typename Uniqueifier>
+std::istream& operator>>(std::istream& is, EM::UniqType<T, Uniqueifier>& a_type)
+{
+    T temp = a_type.get();
+    is >> temp;
+    a_type = temp;
+    return is;
+}
 
 #endif /* end of include guard: EXTRACTOR_H_ */
