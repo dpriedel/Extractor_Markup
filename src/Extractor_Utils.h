@@ -42,6 +42,7 @@
 #include <map>
 #include <sstream>
 #include <tuple>
+#include <typeinfo>
 #include <type_traits>
 #include <vector>
 
@@ -61,6 +62,9 @@ namespace mp11 = boost::mp11;
 namespace bg = boost::gregorian;
 
 namespace fs = std::filesystem;
+
+using namespace std::string_literals;
+
 
 
 // some code to help with putting together error messages,
@@ -88,11 +92,17 @@ void append_to_string(std::string& s, const T& t)
 
         s += std::to_string(t);
     }
+    else if constexpr(std::is_same_v<T, fs::path>)
+    {
+        // it's a number so convert it.
+
+        s += t.string();
+    }
     else
     {
         // we don't know what to do with it.
 
-        throw std::invalid_argument("wrong type for 'catenate' function.");
+        throw std::invalid_argument("wrong type for 'catenate' function: "s + typeid(t).name());
     }
 }
 
@@ -342,13 +352,13 @@ struct ConvertInputHierarchyToOutputHierarchy
     ConvertInputHierarchyToOutputHierarchy(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
     ConvertInputHierarchyToOutputHierarchy(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
 
-    ConvertInputHierarchyToOutputHierarchy(const fs::path& source_prefix, const fs::path& destination_prefix)
-        : source_prefix_{source_prefix}, destination_prefix_{destination_prefix} {}
+    ConvertInputHierarchyToOutputHierarchy(EM::FileName source_prefix, EM::FileName destination_prefix)
+        : source_prefix_{source_prefix.get()}, destination_prefix_{destination_prefix.get()} {}
 
     ConvertInputHierarchyToOutputHierarchy& operator=(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
     ConvertInputHierarchyToOutputHierarchy& operator=(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
 
-    fs::path operator() (const fs::path& source_file_path, const std::string& destination_file_name);
+    fs::path operator() (EM::FileName source_file_path, const std::string& destination_file_name);
 
     fs::path source_prefix_;
     fs::path destination_prefix_;
