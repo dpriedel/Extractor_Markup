@@ -230,7 +230,7 @@ EM::FileName FindFileName(EM::DocumentSection document)
 
     if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname); found_it)
     {
-        EM::FileName file_name{EM::sv(matches[1].first, matches[1].length())};
+        EM::FileName file_name{std::string(matches[1].first, matches[1].length())};
         return file_name;
     }
     throw ExtractorException("Can't find file name in document.\n");
@@ -265,7 +265,7 @@ EM::FileType FindFileType(EM::DocumentSection document)
 EM::HTMLContent FindHTML (EM::DocumentSection document)
 {
     auto file_name = FindFileName(document);
-    if (file_name.get().ends_with(".htm"))
+    if (file_name.get().extension() == ".htm")
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
 
@@ -318,7 +318,7 @@ bool FormIsInFileName (const std::vector<std::string>& form_types, EM::FileName 
 {
     auto check_for_form_in_name([&file_name](auto& form_type)
     {
-        auto pos = file_name.get().find(catenate('/', form_type, '/'));
+        auto pos = file_name.get().string().find(catenate('/', form_type, '/'));
         return (pos != std::string::npos);
     }
     );
@@ -333,7 +333,7 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::
     {
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
-        if (file_type.get().ends_with(".INS") && file_name.get().ends_with(".xml"))
+        if (file_type.get().ends_with(".INS") && file_name.get().extension() == ".xml")
         {
             return true;
         }
@@ -356,7 +356,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
         auto file_name = FindFileName(document);
         auto file_type = FindFileType(document);
 
-        if (file_name.get().ends_with(".htm")
+        if (file_name.get().extension() == ".htm"
                 && ranges::find(form_list_, file_type.get()) != ranges::end(form_list_))
         {
             auto content = FindHTML(document);
@@ -425,7 +425,7 @@ bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, 
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
 
 
-fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& source_file_path, const std::string& destination_file_name)
+fs::path ConvertInputHierarchyToOutputHierarchy::operator() (EM::FileName source_file_path, const std::string& destination_file_name)
 {
 	// want keep the directory hierarchy the same as on the source directory
 	// EXCEPT for the source directory prefix (which is given to our ctor)
@@ -433,7 +433,7 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const fs::path& sou
 	// we will assume there is not trailing delimiter on the stored remote prefix.
 	// (even though we have no edit to enforce that for now.)
 
-	std::string source_index_name = boost::algorithm::replace_first_copy(source_file_path.string(),
+	std::string source_index_name = boost::algorithm::replace_first_copy(source_file_path.get().string(),
             source_prefix_.string(), "");
 
     //  there seems to be a change in behaviour.  appending a path starting with '/' actually does an assignment, not an append.

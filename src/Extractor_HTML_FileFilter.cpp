@@ -1087,13 +1087,13 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 //  Description: updates the values of shares outstanding in the DB if not same as in file. 
 // =====================================================================================
 
-int UpdateOutstandingShares (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const EM::SEC_Header_fields& fields,
-        const std::vector<std::string>& forms, const std::string& schema_name, std::string file_name)
+int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& fields,
+        const std::vector<std::string>& forms, const std::string& schema_name, EM::FileName file_name)
 {
     int entries_updated{0};
 
     FinancialDocumentFilter document_filter{forms};
-    HTML_FromFile htmls{document_sections};
+    HTML_FromFile htmls{&document_sections};
 
     auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
     if (financial_content != htmls.end())
@@ -1137,7 +1137,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, EM::DocumentSectionLis
                         ;
                 auto row2 = trxn.exec(update_cmd);
                 trxn.commit();
-                spdlog::info(catenate("Updated DB for file: ", file_name,
+                spdlog::info(catenate("Updated DB for file: ", file_name.get(),
                             ". Changed shares outstanding from: ", DB_shares, " to: ", file_shares));
                 ++entries_updated;
             }
@@ -1148,13 +1148,13 @@ int UpdateOutstandingShares (const SharesOutstanding& so, EM::DocumentSectionLis
         }
         else
         {
-            spdlog::debug(catenate("Can't find data in DB for file: ", file_name, ". skipping..."));
+            spdlog::debug(catenate("Can't find data in DB for file: ", file_name.get(), ". skipping..."));
         }
         cnxn.disconnect();
     }
     else
     {
-        spdlog::debug(catenate("Can't find financial content for file: ", file_name));
+        spdlog::debug(catenate("Can't find financial content for file: ", file_name.get()));
     }
     return entries_updated;
 }		// -----  end of function UpdateOutstandingShares  -----

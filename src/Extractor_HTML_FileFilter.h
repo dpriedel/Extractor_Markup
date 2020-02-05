@@ -287,7 +287,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSe
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
         const std::string& schema_name);
 
-int UpdateOutstandingShares(const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const EM::SEC_Header_fields& fields,
-        const std::vector<std::string>& forms, const std::string& schema_name, std::string file_name);
+int UpdateOutstandingShares(const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& fields,
+        const std::vector<std::string>& forms, const std::string& schema_name, EM::FileName file_name);
 
 #endif

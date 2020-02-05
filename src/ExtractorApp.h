@@ -103,26 +103,26 @@ protected:
 
 	void BuildFilterList();
 	void BuildListOfFilesToProcess();
-	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, std::string_view file_name,
-            EM::sv file_content, std::atomic<int>* forms_processed);
+	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name,
+            const EM::DocumentSectionList& sections, std::atomic<int>* forms_processed); 
 
-    bool LoadFileFromFolderToDB(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
+    bool LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
             EM::sv sec_header);
-    bool LoadFileFromFolderToDB_XBRL(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content);
-    bool LoadFileFromFolderToDB_HTML(EM::sv file_name, const EM::SEC_Header_fields& SEC_fields, EM::sv file_content,
+    bool LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections); 
+    bool LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
             EM::sv sec_header);
-    bool ExportHtmlFromSingleFile(EM::sv file_content, const fs::path& file_name, EM::sv sec_header);
+    bool ExportHtmlFromSingleFile(const EM::DocumentSectionList& sections, EM::FileName file_name, EM::sv sec_header); 
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, EM::sv file_name);
+        int& error_counter, EM::FileName file_name);
 
-    std::tuple<int, int, int> LoadSingleFileToDB(const fs::path& input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const fs::path& input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_HTML(const fs::path& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB(EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_HTML(EM::FileName input_file_name);
     std::tuple<int, int, int> ProcessDirectory();
     std::tuple<int, int, int> LoadFilesFromListToDB();
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(EM::sv file_name, std::atomic<int>* forms_processed);
+    std::tuple<int, int, int> LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed);
 
 		// ====================  DATA MEMBERS  =======================================
 
@@ -162,7 +162,6 @@ private:
     std::string logging_level_{"information"};
     std::string resume_at_this_filename_;
     std::string file_list_data_;
-    std::string list_of_files_to_process_path_;
 
 	std::vector<std::string> form_list_;
 	std::vector<std::string> CIK_list_;
@@ -170,12 +169,13 @@ private:
 
 	FilterList filters_;
 
-	fs::path log_file_path_name_;
-	fs::path local_form_file_directory_;
-	fs::path single_file_to_process_;
-    fs::path SS_export_directory_;
-    fs::path HTML_export_source_directory_;
-    fs::path HTML_export_target_directory_;
+    EM::FileName list_of_files_to_process_path_;
+	EM::FileName log_file_path_name_;
+	EM::FileName local_form_file_directory_;
+	EM::FileName single_file_to_process_;
+    EM::FileName SS_export_directory_;
+    EM::FileName HTML_export_source_directory_;
+    EM::FileName HTML_export_target_directory_;
 
     std::vector<EM::sv> list_of_files_to_process_;
     
