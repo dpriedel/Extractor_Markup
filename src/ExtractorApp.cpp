@@ -260,7 +260,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("list-file", po::value<EM::FileName>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-		("mode,m", po::value<std::string>(&mode_)->required(), "Must be either 'HTML' or 'XBRL'.")
+		("mode,m", po::value<std::string>(&mode_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
 		("DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")
 		("form", po::value<std::string>(&form_)->default_value("10-Q"),
          "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
@@ -331,12 +331,12 @@ bool ExtractorApp::CheckArgs ()
 
     if (! mode_.empty())
     {
-        BOOST_ASSERT_MSG(mode_ == "HTML" || mode_ == "XBRL", "Mode must be: 'HTML' or 'XBRL'.");
+        BOOST_ASSERT_MSG(mode_ == "BOTH" || mode_ == "HTML" || mode_ == "XBRL", "Mode must be: 'BOTH' or 'HTML' or 'XBRL'.");
     }
 
     if (! DB_mode_.empty())
     {
-        BOOST_ASSERT_MSG(DB_mode_ == "test"s || DB_mode_ == "live"s, "DB-mode must be: 'test' or 'live'.");
+        BOOST_ASSERT_MSG(DB_mode_ == "test" || DB_mode_ == "live", "DB-mode must be: 'test' or 'live'.");
         schema_prefix_ = (DB_mode_ == "test" ? "" : "live_");
     }
 
@@ -372,7 +372,7 @@ bool ExtractorApp::CheckArgs ()
         BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_.get()), ("Can't find SEC file directory: "
                     + local_form_file_directory_.get().string()).c_str());
         BOOST_ASSERT_MSG(fs::is_directory(local_form_file_directory_.get()),
-                ("Path :"s + local_form_file_directory_.get().string() + " is not a directory.").c_str());
+                catenate("Path: ", local_form_file_directory_.get(), " is not a directory.").c_str());
     }
     
     if (! resume_at_this_filename_.empty())
@@ -387,7 +387,7 @@ bool ExtractorApp::CheckArgs ()
         BOOST_ASSERT_MSG(fs::exists(list_of_files_to_process_path_val),
                 ("Can't find file: " + list_of_files_to_process_path_val.string()).c_str());
         BOOST_ASSERT_MSG(fs::is_regular_file(list_of_files_to_process_path_val),
-                ("Path :"s + list_of_files_to_process_path_val.string() + " is not a regular file.").c_str());
+                catenate("Path: ", list_of_files_to_process_path_val, " is not a regular file.").c_str());
         BuildListOfFilesToProcess();
     }
 
@@ -442,6 +442,8 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
 void ExtractorApp::BuildFilterList()
 {
+    //  // XBRL and HTML filters will be applied manually, later
+    
     //  we always need to do this first since it just needs the SEC header fields.
 
     if (begin_date_ != bg::date() || end_date_ != bg::date())
@@ -449,18 +451,12 @@ void ExtractorApp::BuildFilterList()
         filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
     }
 
-    if (mode_ == "HTML"s)
+    if (mode_ == "BOTH" || mode_ == "HTML")
     {
-        filters_.emplace_back(FileHasHTML{form_list_});
         if (! (export_HTML_forms_ || update_shares_outstanding_))
         {
             filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
         }
-    }
-    else
-    {
-        filters_.emplace_back(FileHasXBRL{});
-        //TODO: set up replace filter for XBRL content too
     }
 
     if (! form_.empty())
@@ -534,17 +530,41 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::Fil
             spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ",
                         std::visit([](auto& f) -> std::string { return f.filter_name_; }, filter),
                         "."));
-            break;
+            return false;
         }
     }
-    if (use_file)
+
+    // these 2 filters are a little more expensive to use, so do after the above tests
+    // also, if we find we have XBRL, don't look for HTML.
+
+    if (mode_ == "BOTH" || mode_ == "XBRL")
     {
-        auto x = forms_processed->fetch_add(1);
-        if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+        FileHasXBRL filter1;
+        use_file = filter1(EM::SEC_Header_fields{}, sections);
+        if (use_file)
         {
-            throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+            auto x = forms_processed->fetch_add(1);
+            if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+            {
+                throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+            }
+            return use_file;
         }
     }
+    if (mode_ == "BOTH" || mode_ == "HTML")
+    {
+        FileHasHTML filter1{form_list_};
+        use_file = filter1(EM::SEC_Header_fields{}, sections);
+        if (use_file)
+        {
+            auto x = forms_processed->fetch_add(1);
+            if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+            {
+                throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+            }
+        }
+    }
+
     return use_file;
 }
 
