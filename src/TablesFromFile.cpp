@@ -107,36 +107,6 @@ TablesFromHTML::table_itor::table_itor(TablesFromHTML const * tables)
     {
         table_data_ = *next_table;
     }
-//    if (doc_ != end_)
-//    {
-//        try
-//        {
-//            table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
-//            if (TableHasMarkup(table_data_.current_table_html_))
-//            {
-//                table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
-//            }
-//            else
-//            {
-//                spdlog::debug("Little or no HTML found in table...Skipping.");
-//                operator++();
-//            }
-//        }
-//        catch (AssertionException& e)
-//        {
-//            // let's ignore it and continue.
-//
-//            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-//            operator++();
-//        }
-//        catch (HTMLException& e)
-//        {
-//            // let's ignore it and continue.
-//
-//            spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-//            operator++();
-//        }
-//    }
 }  /* -----  end of method TablesFromHTML::table_itor::table_itor  (constructor)  ----- */
 
 TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
@@ -146,7 +116,10 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
         return *this;
     }
     
-    ++doc_;
+    if (doc_ != end_)
+    {
+        ++doc_;
+    }
     auto next_table = FindNextTable();
     if (! next_table)
     {
@@ -157,49 +130,6 @@ TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++ ()
     table_data_ = * next_table;
 
     return *this;
-//    bool done = false;
-//    while (! done)
-//    {
-//        if (++doc_ != end_)
-//        {
-//            try
-//            {
-//                table_data_.current_table_html_ = EM::sv(doc_->first, doc_->length());
-//                if (TableHasMarkup(table_data_.current_table_html_))
-//                {
-//                    table_data_.current_table_parsed_ = CollectTableContent(table_data_.current_table_html_);
-//                    done = true;
-//                }
-//                else
-//                {
-//                    spdlog::debug("Little or no HTML found in table...Skipping.");
-//                    continue;
-//                }
-//            }
-//            catch (AssertionException& e)
-//            {
-//                // let's ignore it and continue.
-//
-//                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-//                continue;
-//            }
-//            catch (HTMLException& e)
-//            {
-//                // let's ignore it and continue.
-//
-//                spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
-//                continue;
-//            }
-//        }
-//        else
-//        {
-//            table_data_.current_table_html_ = {};
-//            table_data_.current_table_parsed_.erase();
-//            tables_ = nullptr;
-//            done = true;
-//        }
-//    }
-//    return *this;
 }		/* -----  end of method TablesFromHTML::table_itor::operator++  ----- */
 
 std::optional<TableData> TablesFromHTML::table_itor::FindNextTable ()
