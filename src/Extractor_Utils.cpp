@@ -396,13 +396,28 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-			trxn.esc(SEC_fields.at("cik")),
-			trxn.esc(SEC_fields.at("form_type")),
-			trxn.esc(SEC_fields.at("quarter_ending")),
-            schema_name_)
-			;
+    std::string check_for_existing_content_cmd;
+    if (mode_ == "BOTH")
+    {
+        check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}unified_extracts.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(SEC_fields.at("quarter_ending")),
+                schema_prefix_)
+                ;
+    }
+    else
+    {
+        check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}unified_extracts.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = '{4}'",
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(SEC_fields.at("quarter_ending")),
+                schema_prefix_,
+                mode_)
+                ;
+    }
 
     auto row = trxn.exec1(check_for_existing_content_cmd);
     trxn.commit();

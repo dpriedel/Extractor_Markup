@@ -321,14 +321,15 @@ struct FileHasSIC
 
 struct NeedToUpdateDBContent
 {
-    NeedToUpdateDBContent(const std::string& schema_name, bool replace_DB_content)
-        : schema_name_{schema_name}, replace_DB_content_{replace_DB_content} {}
+    NeedToUpdateDBContent(const std::string& schema_prefix, const std::string& mode, bool replace_DB_content)
+        : schema_prefix_{schema_prefix}, mode_{mode}, replace_DB_content_{replace_DB_content}{}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"NeedToUpdateDBContent"};
 
-    const std::string schema_name_;
+    const std::string schema_prefix_;
+    const std::string mode_;
     bool replace_DB_content_;
 };
 

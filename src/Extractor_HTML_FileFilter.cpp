@@ -984,7 +984,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     pqxx::work trxn{cnxn};
 
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
 			trxn.esc(SEC_fields.at("quarter_ending")),
@@ -993,10 +993,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     auto row = trxn.exec1(check_for_existing_content_cmd);
 	auto have_data = row[0].as<int>();
 
-    if (have_data)
+    if (have_data != 0)
     {
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
                 trxn.esc(SEC_fields.at("cik")),
                 trxn.esc(SEC_fields.at("form_type")),
                 trxn.esc(SEC_fields.at("quarter_ending")),
@@ -1007,8 +1007,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
-        " shares_outstanding)"
-		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
+        " shares_outstanding, data_source)"
+		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{10}') RETURNING filing_ID",
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
 		trxn.esc(SEC_fields.at("file_name")),
@@ -1018,7 +1018,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 		trxn.esc(SEC_fields.at("date_filed")),
 		trxn.esc(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,
-        schema_name)
+        schema_name,
+        "HTML")
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd);
@@ -1104,7 +1105,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
         pqxx::work trxn{cnxn};
 
         auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
                 trxn.esc(fields.at("cik")),
                 trxn.esc(fields.at("form_type")),
                 trxn.esc(fields.at("quarter_ending")),
@@ -1116,7 +1117,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
         if (have_data)
         {
             auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
-                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
                     trxn.esc(fields.at("cik")),
                     trxn.esc(fields.at("form_type")),
                     trxn.esc(fields.at("quarter_ending")),
@@ -1128,7 +1129,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
             if (DB_shares != file_shares)
             {
                 auto update_cmd = fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
-                    " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                    " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
                         trxn.esc(fields.at("cik")),
                         trxn.esc(fields.at("form_type")),
                         trxn.esc(fields.at("quarter_ending")),

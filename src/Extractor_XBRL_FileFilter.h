@@ -77,6 +77,6 @@ std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date);
 
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData& filing_fields,
     const std::vector<EM::GAAP_Data>& gaap_fields, const EM::Extractor_Labels& label_fields,
-    const EM::ContextPeriod& context_fields, bool replace_content);
+    const EM::ContextPeriod& context_fields, const std::string& schema_name);
 
 #endif   /* ----- #ifndef _EXTRACTOR_XBRL_FILEFILTER_INC_  ----- */

@@ -451,12 +451,9 @@ void ExtractorApp::BuildFilterList()
         filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
     }
 
-    if (mode_ == "BOTH" || mode_ == "HTML")
+    if (! (export_HTML_forms_ || update_shares_outstanding_))
     {
-        if (! (export_HTML_forms_ || update_shares_outstanding_))
-        {
-            filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_ + "html_extracts", replace_DB_content_});
-        }
+        filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_, mode_, replace_DB_content_});
     }
 
     if (! form_.empty())
@@ -607,7 +604,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileName inp
         auto context_data = ExtractContextDefinitions(instance_xml);
         auto label_data = ExtractFieldLabels(labels_xml);
 
-        did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
+        did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
+                schema_prefix_ + "unified_extracts");
     }
     catch(const std::exception& e)
     {
@@ -644,7 +642,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileName inp
 
         if (update_shares_outstanding_)
         {
-            UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "html_extracts", input_file_name);
+            UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", input_file_name);
             return {1, 0, 0};
         }
 
@@ -665,7 +663,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileName inp
                     + input_file_name.get().string()).c_str());
 
 //        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
+        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
     }
     catch(const std::system_error& e)
     {
@@ -907,7 +905,8 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM:
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, replace_DB_content_);
+    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
+                schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
@@ -915,7 +914,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM:
 {
     if (update_shares_outstanding_)
     {
-        UpdateOutstandingShares(so_, sections, SEC_fields, form_list_, schema_prefix_ + "html_extracts", file_name);
+        UpdateOutstandingShares(so_, sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", file_name);
         return true;
     }
 
@@ -928,7 +927,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM:
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
-    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "html_extracts");
+    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed)
