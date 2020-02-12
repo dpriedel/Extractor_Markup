@@ -43,6 +43,7 @@
 #include <atomic>
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <tuple>
 #include <variant>
 #include <vector>
@@ -90,6 +91,8 @@ public:
 
 protected:
 
+    enum class FileMode { e_HTML,  e_XBRL };
+
 	//	Setup for parsing program options.
 
 	void	SetupProgramOptions();
@@ -103,11 +106,11 @@ protected:
 
 	void BuildFilterList();
 	void BuildListOfFilesToProcess();
-	bool ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name,
+    std::optional<FileMode> ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name,
             const EM::DocumentSectionList& sections, std::atomic<int>* forms_processed); 
 
     bool LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
-            EM::sv sec_header);
+            EM::sv sec_header, FileMode file_mode);
     bool LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections); 
     bool LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
             EM::sv sec_header);
@@ -116,8 +119,8 @@ protected:
         int& error_counter, EM::FileName file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(EM::FileName input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(EM::FileName input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_HTML(EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
     std::tuple<int, int, int> ProcessDirectory();
     std::tuple<int, int, int> LoadFilesFromListToDB();
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
@@ -153,7 +156,7 @@ private:
 
     std::string start_date_;
     std::string stop_date_;
-	std::string mode_{"HTML"};
+	std::string data_source_{"HTML"};
 	std::string form_{"10-Q"};
     std::string DB_mode_{"test"};
     std::string schema_prefix_;

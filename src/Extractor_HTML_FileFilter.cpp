@@ -1033,7 +1033,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 //    pqxx::work trxn{c};
     int counter = 0;
     pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
-        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
     {
@@ -1048,7 +1048,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     inserter1.complete();
 
     pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
-        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
     {
@@ -1063,7 +1063,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     inserter2.complete();
 
     pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
-        std::vector<std::string>{"filing_ID", "html_label", "html_value"}};
+        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
     {

@@ -260,7 +260,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("list-file", po::value<EM::FileName>(&list_of_files_to_process_path_),"path to file with list of files to process.")
 		("log-level,l", po::value<std::string>(&logging_level_),
          "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-		("mode,m", po::value<std::string>(&mode_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
+		("mode,m", po::value<std::string>(&data_source_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
 		("DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")
 		("form", po::value<std::string>(&form_)->default_value("10-Q"),
          "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
@@ -329,9 +329,9 @@ bool ExtractorApp::CheckArgs ()
         spdlog::info("Neither begin date nor end date specified. No date range filtering to be done.");
     }
 
-    if (! mode_.empty())
+    if (! data_source_.empty())
     {
-        BOOST_ASSERT_MSG(mode_ == "BOTH" || mode_ == "HTML" || mode_ == "XBRL", "Mode must be: 'BOTH' or 'HTML' or 'XBRL'.");
+        BOOST_ASSERT_MSG(data_source_ == "BOTH" || data_source_ == "HTML" || data_source_ == "XBRL", "Mode must be: 'BOTH' or 'HTML' or 'XBRL'.");
     }
 
     if (! DB_mode_.empty())
@@ -369,8 +369,8 @@ bool ExtractorApp::CheckArgs ()
 
     if (! local_form_file_directory_.get().empty())
     {
-        BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_.get()), ("Can't find SEC file directory: "
-                    + local_form_file_directory_.get().string()).c_str());
+        BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_.get()), catenate("Can't find SEC file directory: ",
+                    local_form_file_directory_.get()).c_str());
         BOOST_ASSERT_MSG(fs::is_directory(local_form_file_directory_.get()),
                 catenate("Path: ", local_form_file_directory_.get(), " is not a directory.").c_str());
     }
@@ -385,7 +385,7 @@ bool ExtractorApp::CheckArgs ()
     if (! list_of_files_to_process_path_val.empty())
     {
         BOOST_ASSERT_MSG(fs::exists(list_of_files_to_process_path_val),
-                ("Can't find file: " + list_of_files_to_process_path_val.string()).c_str());
+                catenate("Can't find file: ", list_of_files_to_process_path_val).c_str());
         BOOST_ASSERT_MSG(fs::is_regular_file(list_of_files_to_process_path_val),
                 catenate("Path: ", list_of_files_to_process_path_val, " is not a regular file.").c_str());
         BuildListOfFilesToProcess();
@@ -410,7 +410,7 @@ bool ExtractorApp::CheckArgs ()
 
     if (update_shares_outstanding_)
     {
-        BOOST_ASSERT_MSG(mode_ == "HTML", "Must use HTML mode.");
+        BOOST_ASSERT_MSG(data_source_ == "HTML", "Must use HTML mode.");
     }
 
     return true;
@@ -421,6 +421,8 @@ void ExtractorApp::BuildListOfFilesToProcess()
     list_of_files_to_process_.clear();      //  in case of reprocessing.
 
     file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
+
+    // coult be a million files so use list of string_views
 
     list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, '\n');
 
@@ -433,7 +435,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     auto pos = std::find(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), resume_at_this_filename_);
     BOOST_ASSERT_MSG(pos != std::end(list_of_files_to_process_),
-            ("File: " + resume_at_this_filename_ + " not found in list of files.").c_str());
+            catenate("File: ", resume_at_this_filename_, " not found in list of files.").c_str());
 
     list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
 
@@ -453,7 +455,7 @@ void ExtractorApp::BuildFilterList()
 
     if (! (export_HTML_forms_ || update_shares_outstanding_))
     {
-        filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_, mode_, replace_DB_content_});
+        filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_, data_source_, replace_DB_content_});
     }
 
     if (! form_.empty())
@@ -515,7 +517,7 @@ void ExtractorApp::Run()
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
-bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name, const EM::DocumentSectionList& sections,
+std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name, const EM::DocumentSectionList& sections,
         std::atomic<int>* forms_processed)
 {
     bool use_file{true};
@@ -525,16 +527,15 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::Fil
         if (! use_file)
         {
             spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ",
-                        std::visit([](auto& f) -> std::string { return f.filter_name_; }, filter),
-                        "."));
-            return false;
+                std::visit([](auto& f) -> std::string { return f.filter_name_; }, filter), "."));
+            return std::nullopt;
         }
     }
 
     // these 2 filters are a little more expensive to use, so do after the above tests
     // also, if we find we have XBRL, don't look for HTML.
 
-    if (mode_ == "BOTH" || mode_ == "XBRL")
+    if (data_source_ == "BOTH" || data_source_ == "XBRL")
     {
         FileHasXBRL filter1;
         use_file = filter1(EM::SEC_Header_fields{}, sections);
@@ -545,10 +546,14 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::Fil
             {
                 throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
             }
-            return use_file;
+            return FileMode{FileMode::e_XBRL};
+        }
+        else if (data_source_ == "XBRL")
+        {
+            return std::nullopt;
         }
     }
-    if (mode_ == "BOTH" || mode_ == "HTML")
+    if (data_source_ == "BOTH" || data_source_ == "HTML")
     {
         FileHasHTML filter1{form_list_};
         use_file = filter1(EM::SEC_Header_fields{}, sections);
@@ -559,26 +564,16 @@ bool ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::Fil
             {
                 throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
             }
+            return FileMode{FileMode::e_HTML};
         }
     }
 
-    return use_file;
+    return std::nullopt;
 }
 
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_file_name)
 {
-    if (mode_ == "XBRL")
-    {
-        return LoadSingleFileToDB_XBRL(input_file_name);
-    }
-    return LoadSingleFileToDB_HTML(input_file_name);
-}		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
-
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileName input_file_name)
-{
-    bool did_load{false};
     std::atomic<int> forms_processed{0};
-
     try
     {
         const std::string content{LoadDataFileForUse(input_file_name)};
@@ -590,80 +585,14 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileName inp
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        bool use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
+        auto use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
-        auto labels_document = LocateLabelDocument(document_sections);
-        auto labels_xml = ParseXMLContent(labels_document);
-
-        auto instance_document = LocateInstanceDocument(document_sections);
-        auto instance_xml = ParseXMLContent(instance_document);
-
-        auto filing_data = ExtractFilingData(instance_xml);
-        auto gaap_data = ExtractGAAPFields(instance_xml);
-        auto context_data = ExtractContextDefinitions(instance_xml);
-        auto label_data = ExtractFieldLabels(labels_xml);
-
-        did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
-                schema_prefix_ + "unified_extracts");
-    }
-    catch(const std::exception& e)
-    {
-        spdlog::error(catenate("Problem processing file: ", input_file_name.get().string(), ". ", e.what()));
-        return {0, 0, 1};
-    }
-
-    if (did_load)
-    {
-        return {1, 0, 0};
-    }
-    return {0, 1, 0};
-}		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
-
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileName input_file_name)
-{
-    bool did_load{false};
-    std::atomic<int> forms_processed{0};
-
-    try
-    {
-        const std::string content{LoadDataFileForUse(input_file_name)};
-        EM::FileContent file_content{content};
-        const auto document_sections = LocateDocumentSections(file_content);
-
-        SEC_Header SEC_data;
-        SEC_data.UseData(file_content);
-        SEC_data.ExtractHeaderFields();
-        decltype(auto) SEC_fields = SEC_data.GetFields();
-        auto sec_header = SEC_data.GetHeader();
-
-        bool use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
-        BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
-
-        if (update_shares_outstanding_)
+        if (use_file.value() == FileMode::e_XBRL)
         {
-            UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", input_file_name);
-            return {1, 0, 0};
+            return LoadSingleFileToDB_XBRL(file_content, document_sections, SEC_fields, input_file_name);
         }
-
-        if (export_HTML_forms_)
-        {
-            if (ExportHtmlFromSingleFile(document_sections, input_file_name, sec_header))
-            {
-                return {1, 0, 0};
-            }
-            return {0, 0, 1};
-        }
-
-        auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_);
-        BOOST_ASSERT_MSG(the_tables.has_data(), ("Can't find required HTML financial tables: "
-                    + input_file_name.get().string()).c_str());
-
-        BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), ("Can't find any data fields in tables: "
-                    + input_file_name.get().string()).c_str());
-
-//        did_load = true;
-        did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+        return LoadSingleFileToDB_HTML(file_content, document_sections, SEC_data.GetHeader(), SEC_fields, input_file_name);
     }
     catch(const std::system_error& e)
     {
@@ -676,6 +605,60 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileName inp
         return {0, 0, 1};
     }
 
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
+
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+{
+    bool did_load{false};
+
+    auto labels_document = LocateLabelDocument(document_sections);
+    auto labels_xml = ParseXMLContent(labels_document);
+
+    auto instance_document = LocateInstanceDocument(document_sections);
+    auto instance_xml = ParseXMLContent(instance_document);
+
+    auto filing_data = ExtractFilingData(instance_xml);
+    auto gaap_data = ExtractGAAPFields(instance_xml);
+    auto context_data = ExtractContextDefinitions(instance_xml);
+    auto label_data = ExtractFieldLabels(labels_xml);
+
+    did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts");
+
+    if (did_load)
+    {
+        return {1, 0, 0};
+    }
+    return {0, 1, 0};
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
+
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+{
+    bool did_load{false};
+
+    if (update_shares_outstanding_)
+    {
+        UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", input_file_name);
+        return {1, 0, 0};
+    }
+
+    if (export_HTML_forms_)
+    {
+        if (ExportHtmlFromSingleFile(document_sections, input_file_name, sec_header))
+        {
+            return {1, 0, 0};
+        }
+        return {0, 0, 1};
+    }
+
+    auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_);
+    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ",
+        input_file_name.get()).c_str());
+
+    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
+        input_file_name.get()).c_str());
+
+//        did_load = true;
+    did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
     if (did_load)
     {
         return {1, 0, 0};
@@ -815,9 +798,9 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
             decltype(auto) SEC_fields = SEC_data.GetFields();
             auto sec_header = SEC_data.GetHeader();
 
-            if (bool use_file = this->ApplyFilters(SEC_fields, file_name,  document_sections, forms_processed); use_file)
+            if (auto use_file = this->ApplyFilters(SEC_fields, file_name,  document_sections, forms_processed); use_file)
             {
-                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header) ? ++success_counter : ++skipped_counter;
+                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
             }
             else
             {
@@ -880,11 +863,11 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
-        const EM::DocumentSectionList& sections, EM::sv sec_header)
+        const EM::DocumentSectionList& sections, EM::sv sec_header, FileMode file_mode)
 {
     spdlog::debug(catenate("Loading contents from file: ", file_name.get()));
 
-    if (mode_ == "XBRL")
+    if (file_mode == FileMode::e_XBRL)
     {
         return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, sections);
     }
@@ -956,9 +939,9 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, st
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
-    if (bool use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
+    if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
     {
-        LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header) ? ++success_counter : ++skipped_counter;
+        LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
     }
     else
     {
