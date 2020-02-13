@@ -457,7 +457,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     pqxx::work trxn{c};
 
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'XBRL'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
 			trxn.esc(SEC_fields.at("form_type")),
 			trxn.esc(filing_fields.period_end_date),
@@ -469,7 +469,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     if (have_data != 0)
     {
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'XBRL'",
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
                 trxn.esc(SEC_fields.at("form_type")),
                 trxn.esc(filing_fields.period_end_date),
