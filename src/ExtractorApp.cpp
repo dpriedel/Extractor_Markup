@@ -550,6 +550,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         }
         else if (data_source_ == "XBRL")
         {
+            spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
             return std::nullopt;
         }
     }
@@ -565,6 +566,10 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
                 throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
             }
             return FileMode{FileMode::e_HTML};
+        }
+        else
+        {
+            spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
         }
     }
 
@@ -784,6 +789,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
                 if (! FormIsInFileName(form_list_, file_name))
                 {
                     ++skipped_counter;
+                    spdlog::debug(catenate(file_name.get(), ": File skipped because path is supposed to contain form name but doesn't."));
                     return;
                 }
             }
