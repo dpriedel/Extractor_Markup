@@ -13,15 +13,16 @@ CREATE TABLE live_unified_extracts.sec_filing_id
 (
     filing_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	cik TEXT NOT NULL,
-	alternate_id1 TEXT,
-	alternate_id2 TEXT,
+	alternate_id1 TEXT DEFAULT NULL,
+	alternate_id2 TEXT DEFAULT NULL,
 	company_name TEXT NOT NULL,
 	file_name TEXT NOT NULL,
-	symbol TEXT ,
+	symbol TEXT DEFAULT NULL,
     sic TEXT NOT NULL,
 	form_type TEXT NOT NULL,
 	date_filed DATE NOT NULL,
 	period_ending DATE NOT NULL,
+	period_context_ID TEXT DEFAULT NULL,
     shares_outstanding NUMERIC DEFAULT -1,
     data_source TEXT NOT NULL,
 	UNIQUE(cik, form_type, period_ending),
@@ -34,22 +35,14 @@ ALTER TABLE live_unified_extracts.sec_filing_id OWNER TO extractor_pg;
 DROP TABLE IF EXISTS live_unified_extracts.sec_bal_sheet_data ;
 DROP TABLE IF EXISTS live_unified_extracts.sec_stmt_of_ops_data ;
 DROP TABLE IF EXISTS live_unified_extracts.sec_cash_flows_data ;
-
--- this definition is just a dummy placeholder for now.
--- the main thing was to get the foreign key stuff in plance.
+DROP TABLE IF EXISTS live_unified_extracts.sec_xbrl_data ;
 
 CREATE TABLE live_unified_extracts.sec_bal_sheet_data
 (
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES live_unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
-	xbrl_label TEXT DEFAULT NULL,
 	label TEXT NOT NULL,
     value TEXT NOT NULL,
-	context_ID TEXT DEFAULT NULL,
-	period_begin DATE DEFAULT NULL,
-	period_end DATE DEFAULT NULL,
-	units TEXT DEFAULT NULL,
-	decimals TEXT,
 	tsv TSVECTOR,
 	PRIMARY KEY(filing_data_ID)
 );
@@ -71,14 +64,8 @@ CREATE TABLE live_unified_extracts.sec_stmt_of_ops_data
 (
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES live_unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
-	xbrl_label TEXT DEFAULT NULL,
 	label TEXT NOT NULL,
     value TEXT NOT NULL,
-	context_ID TEXT DEFAULT NULL,
-	period_begin DATE DEFAULT NULL,
-	period_end DATE DEFAULT NULL,
-	units TEXT DEFAULT NULL,
-	decimals TEXT,
 	tsv TSVECTOR,
 	PRIMARY KEY(filing_data_ID)
 );
@@ -100,14 +87,8 @@ CREATE TABLE live_unified_extracts.sec_cash_flows_data
 (
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES live_unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
-	xbrl_label TEXT DEFAULT NULL,
 	label TEXT NOT NULL,
     value TEXT NOT NULL,
-	context_ID TEXT DEFAULT NULL,
-	period_begin DATE DEFAULT NULL,
-	period_end DATE DEFAULT NULL,
-	units TEXT DEFAULT NULL,
-	decimals TEXT,
 	tsv TSVECTOR,
 	PRIMARY KEY(filing_data_ID)
 );
@@ -125,3 +106,31 @@ DROP INDEX IF EXISTS idx_cash_flows ;
 
 CREATE INDEX idx_cash_flows ON live_unified_extracts.sec_cash_flows_data USING GIN (tsv);
 
+CREATE TABLE live_unified_extracts.sec_xbrl_data
+(
+    filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
+	filing_ID bigint REFERENCES live_unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
+	xbrl_label TEXT NOT NULL,
+	label TEXT NOT NULL,
+    value TEXT NOT NULL,
+	context_ID TEXT NOT NULL,
+	period_begin DATE NOT NULL,
+	period_end DATE NOT NULL,
+	units TEXT NOT NULL,
+	decimals TEXT,
+	tsv TSVECTOR,
+	PRIMARY KEY(filing_data_ID)
+);
+
+ALTER TABLE live_unified_extracts.sec_xbrl_data OWNER TO extractor_pg;
+
+DROP TRIGGER IF EXISTS tsv_update ON live_unified_extracts.sec_xbrl_data ;
+
+CREATE TRIGGER tsv_update
+	BEFORE INSERT OR UPDATE ON live_unified_extracts.sec_xbrl_data FOR EACH ROW
+	EXECUTE PROCEDURE
+		tsvector_update_trigger(tsv, 'pg_catalog.english', label);
+
+DROP INDEX IF EXISTS idx_field_label ;
+
+CREATE INDEX idx_field_label ON live_unified_extracts.sec_xbrl_data USING GIN (tsv);

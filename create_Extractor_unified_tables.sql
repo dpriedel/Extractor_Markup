@@ -37,9 +37,6 @@ DROP TABLE IF EXISTS unified_extracts.sec_stmt_of_ops_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_cash_flows_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_xbrl_data ;
 
--- this definition is just a dummy placeholder for now.
--- the main thing was to get the foreign key stuff in plance.
-
 CREATE TABLE unified_extracts.sec_bal_sheet_data
 (
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
