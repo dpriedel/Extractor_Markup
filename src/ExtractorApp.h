@@ -156,7 +156,7 @@ private:
 
     std::string start_date_;
     std::string stop_date_;
-	std::string data_source_{"HTML"};
+	std::string data_source_{"BOTH"};
 	std::string form_{"10-Q"};
     std::string DB_mode_{"test"};
     std::string schema_prefix_;
