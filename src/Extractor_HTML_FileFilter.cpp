@@ -47,14 +47,16 @@
 #include "SEC_Header.h"
 #include "TablesFromFile.h"
 
-#include <boost/algorithm/string/predicate.hpp>
+//#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 #include <range/v3/action/remove_if.hpp>
 #include <range/v3/action/transform.hpp>
 #include <range/v3/algorithm/any_of.hpp>
+#include <range/v3/algorithm/count_if.hpp>
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/algorithm/transform.hpp>
 
@@ -252,10 +254,9 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
         }
 
         return ranges::equal( looking_for, anchor.name_,
-                [](char a, char b) { return tolower(a) == tolower(b); }
-                );
+                [](char a, char b) { return tolower(a) == tolower(b); });
     });
-    auto found_it = std::find_if(anchors.begin(), anchors.end(), do_compare);
+    auto found_it = ranges::find_if(anchors, do_compare);
     if (found_it == anchors.end())
     {
         throw HTMLException("Can't find destination anchor for: " + financial_anchor.href_);
@@ -456,7 +457,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
         {
             return boost::regex_search(table.begin(), table.end(), *regex, boost::regex_constants::match_not_dot_newline);
         });
-    int how_many_matches = std::count_if(regexs.begin(), regexs.end(), matcher);
+    int how_many_matches = ranges::count_if(regexs, matcher);
 
     if (how_many_matches < matches_needed)
     {
@@ -490,7 +491,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  */
 FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms)
 {
-    // we use a 2-ph<ase scan.
+    // we use a 2-phase scan.
     // first, try to find based on anchors.
     // if that doesn't work, then scan content directly.
 
@@ -499,7 +500,7 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
 
     HTML_FromFile htmls{document_sections};
 
-    auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
+    auto financial_content = ranges::find_if(htmls, document_filter);
     if (financial_content != htmls.end())
     {
         try
@@ -520,8 +521,6 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
         }
 
         // OK, we didn't have any success following anchors so do it the long way.
-        // we need to do the loops manually since the first match we get
-        // may not be the actual content we want.
 
         financial_statements = ExtractFinancialStatements(financial_content->html_);
         if (financial_statements.has_data())
@@ -535,6 +534,8 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
     }
 
     //  do it the hard way
+    // we need to do the loops manually since the first match we get
+    // may not be the actual content we want.
 
     static const boost::regex regex_finance_statements{R"***(financ.+?statement)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -579,22 +580,19 @@ FinancialStatements ExtractFinancialStatements (EM::HTMLContent financial_conten
 
     FinancialStatements the_tables;
 
-    auto balance_sheet = std::find_if(tables.begin(), tables.end(),
-            [](const auto& x) { return BalanceSheetFilter(x.current_table_parsed_); });
+    auto balance_sheet = ranges::find_if(tables, [](const auto& x) { return BalanceSheetFilter(x.current_table_parsed_); });
     if (balance_sheet != tables.end())
     {
         the_tables.balance_sheet_.parsed_data_ = balance_sheet->current_table_parsed_;
         the_tables.balance_sheet_.raw_data_ = balance_sheet.TableContent();
 
-        auto statement_of_ops = std::find_if(tables.begin(), tables.end(),
-                [](const auto& x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
+        auto statement_of_ops = ranges::find_if(tables, [](const auto& x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
         if (statement_of_ops != tables.end())
         {
             the_tables.statement_of_operations_.parsed_data_ = statement_of_ops->current_table_parsed_;
             the_tables.statement_of_operations_.raw_data_ = statement_of_ops.TableContent();
 
-            auto cash_flows = std::find_if(tables.begin(), tables.end(),
-                    [](const auto& x) { return CashFlowsFilter(x.current_table_parsed_); });
+            auto cash_flows = ranges::find_if(tables, [](const auto& x) { return CashFlowsFilter(x.current_table_parsed_); });
             if (cash_flows != tables.end())
             {
                 the_tables.cash_flows_.parsed_data_ = cash_flows->current_table_parsed_;
@@ -603,13 +601,13 @@ FinancialStatements ExtractFinancialStatements (EM::HTMLContent financial_conten
                 auto data_starts_at = std::min({ the_tables.balance_sheet_.raw_data_.get().data(),
                         the_tables.statement_of_operations_.raw_data_.get().data(),
                         the_tables.cash_flows_.raw_data_.get().data()},
-                        [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                        [](auto lhs, auto rhs) { return lhs < rhs; });
                 the_tables.financial_statements_begin_ = data_starts_at;
 
                 auto data_ends_at = std::max({the_tables.balance_sheet_.raw_data_.get().data() + the_tables.balance_sheet_.raw_data_.get().size(),
                         the_tables.statement_of_operations_.raw_data_.get().data() + the_tables.statement_of_operations_.raw_data_.get().size(),
                         the_tables.cash_flows_.raw_data_.get().data() + the_tables.cash_flows_.raw_data_.get().size()},
-                        [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                        [](auto lhs, auto rhs) { return lhs < rhs; });
                 the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
 
 //                auto stockholders_equity = std::find_if(tables.begin(), tables.end(), StockholdersEquityFilter);
@@ -678,13 +676,13 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors (EM::HTMLContent fina
                 the_tables.balance_sheet_.raw_data_.get().data(),
                 the_tables.statement_of_operations_.raw_data_.get().data(),
                 the_tables.cash_flows_.raw_data_.get().data()},
-                [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                [](auto lhs, auto rhs) { return lhs < rhs; });
         the_tables.financial_statements_begin_ = data_starts_at;
 
         auto data_ends_at = std::max({the_tables.balance_sheet_.raw_data_.get().data() + the_tables.balance_sheet_.raw_data_.get().size(),
                 the_tables.statement_of_operations_.raw_data_.get().data() + the_tables.statement_of_operations_.raw_data_.get().size(),
                 the_tables.cash_flows_.raw_data_.get().data() + the_tables.cash_flows_.raw_data_.get().size()},
-                [](auto& lhs, auto& rhs) { return lhs < rhs; });
+                [](auto lhs, auto rhs) { return lhs < rhs; });
         the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
     }
 
@@ -943,7 +941,7 @@ std::string CleanLabel (const std::string& label)
 
     // lastly, lowercase
 
-    std::for_each(cleaned_label.begin(), cleaned_label.end(), [] (char& c) { c = std::tolower(c); } );
+    ranges::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
 
     return cleaned_label;
 }		// -----  end of function CleanLabel  -----

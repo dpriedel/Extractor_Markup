@@ -57,8 +57,12 @@
 // #include <parallel/algorithm>
 // #include <streambuf>
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
+#include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/find_if.hpp>
+#include <range/v3/algorithm/for_each.hpp>
+
+//#include <boost/algorithm/string/classification.hpp>
+//#include <boost/algorithm/string/split.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "spdlog/sinks/basic_file_sink.h"
@@ -433,11 +437,11 @@ void ExtractorApp::BuildListOfFilesToProcess()
         return;
     }
 
-    auto pos = std::find(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), resume_at_this_filename_);
+    auto pos = ranges::find(list_of_files_to_process_, resume_at_this_filename_);
     BOOST_ASSERT_MSG(pos != std::end(list_of_files_to_process_),
             catenate("File: ", resume_at_this_filename_, " not found in list of files.").c_str());
 
-    list_of_files_to_process_.erase(std::begin(list_of_files_to_process_), pos);
+    list_of_files_to_process_.erase(list_of_files_to_process_.begin(), pos);
 
     spdlog::info(catenate("Resuming with: ", list_of_files_to_process_.size(), " files in list."));
 }		/* -----  end of method ExtractorApp::BuildListOfFilesToProcess  ----- */
@@ -612,10 +616,9 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_fi
 
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
+        const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
 {
-    bool did_load{false};
-
     auto labels_document = LocateLabelDocument(document_sections);
     auto labels_xml = ParseXMLContent(labels_document);
 
@@ -627,7 +630,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent 
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts");
+    bool did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts");
 
     if (did_load)
     {
@@ -636,10 +639,9 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent 
     return {0, 1, 0};
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
+        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
 {
-    bool did_load{false};
-
     if (update_shares_outstanding_)
     {
         UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", input_file_name);
@@ -663,7 +665,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent 
         input_file_name.get()).c_str());
 
 //        did_load = true;
-    did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
     if (did_load)
     {
         return {1, 0, 0};
@@ -702,7 +704,7 @@ bool ExtractorApp::ExportHtmlFromSingleFile (const EM::DocumentSectionList& sect
 
     HTML_FromFile htmls{&sections};
 
-    auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), regex_document_filter);
+    auto financial_content = ranges::find_if(htmls, regex_document_filter);
     if (financial_content == htmls.end())
     {
         spdlog::info(catenate("Unable to find financial content in file: ", file_name.get(), " Looking for forms..."));
@@ -772,7 +774,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
         Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, EM::FileName{file_name});
     });
 
-    std::for_each(std::begin(list_of_files_to_process_), std::end(list_of_files_to_process_), process_file);
+    ranges::for_each(list_of_files_to_process_, process_file);
 
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
@@ -862,7 +864,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
         }
     });
 
-    std::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()), fs::recursive_directory_iterator(),
+    ranges::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()), fs::recursive_directory_iterator(),
             process_file);
 
     return {success_counter, skipped_counter, error_counter};
@@ -983,7 +985,6 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     std::exception_ptr ep{nullptr};
 
-    // TODO: use strong types here.
     std::tuple<int, int, int> counters{0, 0, 0};  // success, skips, errors
 
     std::atomic<int> forms_processed{0};
