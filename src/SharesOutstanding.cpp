@@ -58,8 +58,8 @@ int64_t SharesOutstanding::operator() (EM::HTMLContent html) const
 
     if (possibilites.empty())
     {
-        spdlog::info("No possibles found");
-        spdlog::info(the_text);
+        spdlog::debug("No possibles found");
+        spdlog::debug(the_text);
         return -1;
     }
 

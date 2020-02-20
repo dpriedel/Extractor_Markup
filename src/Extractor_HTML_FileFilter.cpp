@@ -517,7 +517,7 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
         }
         catch (const HTMLException& e)
         {
-            spdlog::info(catenate("Problem with anchors: ", e.what(), ". continuing with the long way."));
+            spdlog::debug(catenate("Problem with anchors: ", e.what(), ". continuing with the long way."));
         }
 
         // OK, we didn't have any success following anchors so do it the long way.
@@ -746,7 +746,7 @@ bool FindAndStoreMultipliersUsingAnchors (FinancialStatements& financial_stateme
 
         return true;
     }
-    spdlog::info("Have anchors but no multipliers found. Doing it the 'hard' way.\n");
+    spdlog::debug("Have anchors but no multipliers found. Doing it the 'hard' way.\n");
 
     return false;
 }		/* -----  end of function FindAndStoreMultipliersUsingAnchors  ----- */
@@ -842,7 +842,7 @@ void FinancialStatements::FindSharesOutstanding(const SharesOutstanding& so, EM:
     outstanding_shares_ = so(html);
     if (outstanding_shares_ == -1)
     {
-        spdlog::info("Can't find shares outstanding.\n");
+        spdlog::debug("Can't find shares outstanding.\n");
     }
 
 }		/* -----  end of method FinancialStatements::FindSharesOutstanding  ----- */
@@ -1147,7 +1147,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
         }
         else
         {
-            spdlog::debug(catenate("Can't find data in DB for file: ", file_name.get(), ". skipping..."));
+            spdlog::info(catenate("Can't find data in DB for file: ", file_name.get(), ". skipping..."));
         }
         cnxn.disconnect();
     }

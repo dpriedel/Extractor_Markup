@@ -426,7 +426,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
 
     if (have_data != 0 && ! replace_DB_content_)
     {
-        spdlog::debug(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
+        spdlog::info(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
         return false;
     }
     return true;

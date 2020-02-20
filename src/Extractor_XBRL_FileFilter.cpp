@@ -331,7 +331,7 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
                 { return e.first == link_to->second; } );
         if (value == labels.end())
         {
-            std::cout << "missing label: " << label << '\n';
+            spdlog::debug(catenate("missing label: ", label).c_str());
             continue;
         }
         result.emplace(href, value->second);
@@ -404,7 +404,7 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
         if (auto [it, success] = result.try_emplace(second_level_nodes.attribute("id").value(),
             EM::Extractor_TimePeriod{start_ptr, end_ptr}); ! success)
         {
-            std::cout << "Can't insert value for label: " << second_level_nodes.attribute("id").value()  << '\n';
+            spdlog::debug(catenate("Can't insert value for label: ", second_level_nodes.attribute("id").value()).c_str());
         }
     }
 

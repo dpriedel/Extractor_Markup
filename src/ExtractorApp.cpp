@@ -430,7 +430,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, '\n');
 
-    spdlog::debug(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
+    spdlog::info(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
     if (resume_at_this_filename_.empty())
     {
@@ -530,7 +530,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         use_file = std::visit([&SEC_fields, sections](auto& f) -> bool { return f(SEC_fields, sections); }, filter);
         if (! use_file)
         {
-            spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ",
+            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ",
                 std::visit([](auto& f) -> std::string { return f.filter_name_; }, filter), "."));
             return std::nullopt;
         }
@@ -554,7 +554,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         }
         else if (data_source_ == "XBRL")
         {
-            spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
+            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
             return std::nullopt;
         }
     }
@@ -573,7 +573,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         }
         else
         {
-            spdlog::debug(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
+            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
         }
     }
 
@@ -791,11 +791,11 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
                 if (! FormIsInFileName(form_list_, file_name))
                 {
                     ++skipped_counter;
-                    spdlog::debug(catenate(file_name.get(), ": File skipped because path is supposed to contain form name but doesn't."));
+                    spdlog::info(catenate(file_name.get(), ": File skipped because path is supposed to contain form name but doesn't."));
                     return;
                 }
             }
-            spdlog::debug(catenate("Scanning file: ", file_name.get()));
+            spdlog::info(catenate("Scanning file: ", file_name.get()));
             const std::string content{LoadDataFileForUse(file_name)};
             EM::FileContent file_content{content};
             const auto document_sections = LocateDocumentSections(file_content);
@@ -873,7 +873,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
 bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& sections, EM::sv sec_header, FileMode file_mode)
 {
-    spdlog::debug(catenate("Loading contents from file: ", file_name.get()));
+    spdlog::info(catenate("Loading contents from file: ", file_name.get()));
 
     if (file_mode == FileMode::e_XBRL)
     {
@@ -936,7 +936,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, st
         }
     }
     
-    spdlog::debug(catenate("Scanning file: ", file_name.get()));
+    spdlog::info(catenate("Scanning file: ", file_name.get()));
     const std::string content(LoadDataFileForUse(file_name));
     EM::FileContent file_content{content};
     const auto document_sections = LocateDocumentSections(file_content);
@@ -953,7 +953,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, st
     }
     else
     {
-        spdlog::debug(catenate("Skipping file: ", file_name.get()));
+        spdlog::info(catenate("Skipping file: ", file_name.get()));
         ++skipped_counter;
     }
 

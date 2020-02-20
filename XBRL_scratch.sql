@@ -46,7 +46,7 @@ select * from live_extracts.edgar_filing_data limit 5;
 
 select filing_id, user_label, xbrl_value from live_extracts.edgar_filing_data limit 5;
 
-select filing_id, user_label, xbrl_value from live_extracts.edgar_filing_data where tsv @@ phraseto_tsquery('total & revenue')  and period_end between '2012-01-01' and '2015-12-31'order by filing_id, period_end asc  limit 15;
+select filing_id, label, value from unified_extracts.sec_xbrl_data where tsv @@ phraseto_tsquery('total & revenue')  and period_end between '2012-01-01' and '2015-12-31'order by filing_id, period_end asc  limit 15;
 
 select count(*) from live_extracts.edgar_filing_data where tsv @@ phraseto_tsquery('revenue') and period_begin = period_end  and period_end between '2010-01-01' and '2017-12-31' ;
 
@@ -56,8 +56,8 @@ select count(*) from live_extracts.edgar_filing_data where tsv @@ phraseto_tsque
 
 select * from crosstab
 (
-    'select filing_id, user_label, xbrl_value from live_extracts.edgar_filing_data where tsv @@ phraseto_tsquery(''total & revenue'') and period_end between ''2012-01-01'' and ''2015-12-31'' order by filing_id, period_end asc  limit 5',
-    'select distinct filing_id from live_extracts.edgar_filing_data order by 1'
+    'select filing_id, label, value from unified_extracts.sec_xbrl_data where tsv @@ phraseto_tsquery(''total & revenue'') and period_end between ''2012-01-01'' and ''2015-12-31'' order by filing_id, period_end asc  limit 5',
+    'select distinct filing_id from unified_extracts.sec_xbrl_data order by 1'
 )
 as
 (
