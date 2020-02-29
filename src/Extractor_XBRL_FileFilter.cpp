@@ -143,19 +143,18 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
 
-    for (auto second_level_nodes = top_level_node.first_child(); ! second_level_nodes.empty();
-        second_level_nodes = second_level_nodes.next_sibling())
+    for (auto second_level_node : top_level_node)
     {
         // us-gaap is a namespace but pugixml doesn't directly support namespaces.
 
-        if (US_GAAP_NS.compare(0, GAAP_LEN, second_level_nodes.name(), GAAP_LEN) != 0)
+        if (US_GAAP_NS.compare(0, GAAP_LEN, second_level_node.name(), GAAP_LEN) != 0)
         {
             continue;
         }
 
         // need to filter out table type content.
 
-        if (EM::sv sv{second_level_nodes.child_value()};
+        if (EM::sv sv{second_level_node.child_value()};
             sv.find("<table") != EM::sv::npos
             || sv.find("<div") != EM::sv::npos
             || sv.find("<p ") != EM::sv::npos)
@@ -165,9 +164,9 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // collect our data: name, context, units, decimals, value.
 
-        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_nodes.name() + GAAP_LEN),
-            second_level_nodes.attribute("contextRef").value(), second_level_nodes.attribute("unitRef").value(),
-            second_level_nodes.attribute("decimals").value(), second_level_nodes.child_value()};
+        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_node.name() + GAAP_LEN),
+            second_level_node.attribute("contextRef").value(), second_level_node.attribute("unitRef").value(),
+            second_level_node.attribute("decimals").value(), second_level_node.child_value()};
 
         result.push_back(std::move(fields));
     }
@@ -210,10 +209,10 @@ EM::Extractor_Labels ExtractFieldLabels (const pugi::xml_document& labels_xml)
         namespace_prefix = n_name.substr(0, pos + 1);
     }
 
-    std::string label_node_name{namespace_prefix + "label"};
-    std::string loc_node_name{namespace_prefix + "loc"};
-    std::string arc_node_name{namespace_prefix + "labelArc"};
-    std::string label_link_name{namespace_prefix + "labelLink"};
+    const std::string label_node_name{namespace_prefix + "label"};
+    const std::string loc_node_name{namespace_prefix + "loc"};
+    const std::string arc_node_name{namespace_prefix + "labelArc"};
+    const std::string label_link_name{namespace_prefix + "labelLink"};
 
     // some files have separate labelLink sections for each link element set !!
 
@@ -371,22 +370,22 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
         }
     }
 
-    std::string node_name{namespace_prefix + "context"};
-    std::string entity_label{namespace_prefix + "entity"};
-    std::string period_label{namespace_prefix + "period"};
-    std::string start_label{namespace_prefix + "startDate"};
-    std::string end_label{namespace_prefix + "endDate"};
-    std::string instant_label{namespace_prefix + "instant"};
+    const std::string node_name{namespace_prefix + "context"};
+    const std::string entity_label{namespace_prefix + "entity"};
+    const std::string period_label{namespace_prefix + "period"};
+    const std::string start_label{namespace_prefix + "startDate"};
+    const std::string end_label{namespace_prefix + "endDate"};
+    const std::string instant_label{namespace_prefix + "instant"};
 
-    for (auto second_level_nodes = top_level_node.child(node_name.c_str()); ! second_level_nodes.empty();
-        second_level_nodes = second_level_nodes.next_sibling(node_name.c_str()))
+    for (auto second_level_node = top_level_node.child(node_name.c_str()); ! second_level_node.empty();
+        second_level_node = second_level_node.next_sibling(node_name.c_str()))
     {
         // need to pull out begin/end values.
 
         const char* start_ptr = nullptr;
         const char* end_ptr = nullptr;
 
-        auto period = second_level_nodes.child(period_label.c_str());
+        auto period = second_level_node.child(period_label.c_str());
 
         if (auto instant = period.child(instant_label.c_str()); instant)
         {
@@ -401,10 +400,10 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
             start_ptr = begin.child_value();
             end_ptr = end.child_value();
         }
-        if (auto [it, success] = result.try_emplace(second_level_nodes.attribute("id").value(),
+        if (auto [it, success] = result.try_emplace(second_level_node.attribute("id").value(),
             EM::Extractor_TimePeriod{start_ptr, end_ptr}); ! success)
         {
-            spdlog::debug(catenate("Can't insert value for label: ", second_level_nodes.attribute("id").value()).c_str());
+            spdlog::debug(catenate("Can't insert value for label: ", second_level_node.attribute("id").value()).c_str());
         }
     }
 

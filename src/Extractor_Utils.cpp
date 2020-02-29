@@ -167,7 +167,7 @@ std::string LoadDataFileForUse (EM::FileName file_name)
 EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content)
 {
     const std::string doc_begin{"<DOCUMENT>"};
-    const std::string doc_end{"DOCUMENT>"};
+    const std::string doc_end{"</DOCUMENT>"};
     const auto doc_begin_len = doc_begin.size();
     const auto doc_end_len = doc_end.size();
 
@@ -206,10 +206,10 @@ EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content)
 
         // but we need to check for nested tags which should not happen.
 
-        if (*(found_end - 1) != '/' or *(found_end - 2) != '<')
-        {
-            throw ExtractorException("Looks like embedded 'DOCUMENT' sections.");
-        }
+//        if (*(found_end - 1) != '/' or *(found_end - 2) != '<')
+//        {
+//            throw ExtractorException("Looks like embedded 'DOCUMENT' sections.");
+//        }
 
         result.emplace_back(EM::DocumentSection{EM::sv(found_begin, found_end + doc_end_len - found_begin)});
         found_begin = found_end + doc_end_len;
