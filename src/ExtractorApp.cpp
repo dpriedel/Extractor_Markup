@@ -41,13 +41,12 @@
 
 #include <algorithm>
 #include <cerrno>
-#include <chrono>
+//#include <chrono>
 #include <csignal>
 #include <exception>
 #include <fstream>
-#include <fstream>
 #include <future>
-#include <iterator>
+#include <iostream>
 #include <iterator>
 #include <map>
 #include <string>
@@ -63,7 +62,7 @@
 
 //#include <boost/algorithm/string/classification.hpp>
 //#include <boost/algorithm/string/split.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+//#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "spdlog/sinks/basic_file_sink.h"
 
@@ -204,7 +203,7 @@ void ExtractorApp::ConfigureLogging()
 
 bool ExtractorApp::Startup()
 {
-    spdlog::info(catenate("\n\n*** Begin run ", boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()), " ***\n"));
+    spdlog::info(catenate("\n\n*** Begin run ", LocalDateTimeAsString(std::chrono::system_clock::now()), " ***\n"));
     bool result{true};
 	try
 	{	
@@ -313,22 +312,46 @@ bool ExtractorApp::CheckArgs ()
 {
     if (! start_date_.empty())
     {
-        begin_date_ = bg::from_string(start_date_);
+        std::istringstream in{start_date_};
+        date::sys_days tp;
+        in >> date::parse("%F", tp);
+        if (in.fail())
+        {
+            // try an alternate representation
+
+            in.clear();
+            in.rdbuf()->pubseekpos(0);
+            in >> date::parse("%Y-%b-%d", tp);
+        }
+        BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse begin date: ", start_date_).c_str());
+        begin_date_ = tp;
     }
     if (! stop_date_.empty())
     {
-        end_date_ = bg::from_string(stop_date_);
+        std::istringstream in{stop_date_};
+        date::sys_days tp;
+        in >> date::parse("%F", tp);
+        if (in.fail())
+        {
+            // try an alternate representation
+
+            in.clear();
+            in.rdbuf()->pubseekpos(0);
+            in >> date::parse("%Y-%b-%d", tp);
+        }
+        BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse end date: ", end_date_).c_str());
+        end_date_ = tp;
     }
 
-    if (begin_date_ != bg::date())
+    if (! start_date_.empty())
     {
-        if (end_date_ == bg::date())
+        if (stop_date_.empty())
         {
             end_date_ = begin_date_;
         }
     }
 
-    if (begin_date_ == bg::date() && end_date_ == begin_date_)
+    if (start_date_.empty() && stop_date_.empty())
     {
         spdlog::info("Neither begin date nor end date specified. No date range filtering to be done.");
     }
@@ -452,7 +475,7 @@ void ExtractorApp::BuildFilterList()
     
     //  we always need to do this first since it just needs the SEC header fields.
 
-    if (begin_date_ != bg::date() || end_date_ != bg::date())
+    if (! start_date_.empty() || ! stop_date_.empty())
     {
         filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
     }
@@ -1187,6 +1210,6 @@ void ExtractorApp::HandleSignal(int signal)
 
 void ExtractorApp::Shutdown ()
 {
-    spdlog::info(catenate("\n\n*** End run ", boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time()), " ***\n"));
+    spdlog::info(catenate("\n\n*** End run ", LocalDateTimeAsString(std::chrono::system_clock::now()), " ***\n"));
 }       // -----  end of method ExtractorApp::Shutdown  -----
 

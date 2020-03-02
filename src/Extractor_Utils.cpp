@@ -40,6 +40,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
 
 #include <range/v3/algorithm/find.hpp>
@@ -434,7 +435,11 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
 
 bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
-    auto report_date = bg::from_simple_string(SEC_fields.at("quarter_ending"));
+    std::istringstream in{SEC_fields.at("quarter_ending")};
+    date::sys_days days;
+    in >> date::parse("%F", days);
+    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse quarter end date: ", SEC_fields.at("quarter_ending")).c_str());
+    date::year_month_day report_date = days;
 
     return (begin_date_ <= report_date && report_date <= end_date_);
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */

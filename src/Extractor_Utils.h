@@ -36,18 +36,21 @@
 #ifndef  _EXTRACTOR_UTILS_INC_
 #define  _EXTRACTOR_UTILS_INC_
 
+#include <chrono>
+#include <ctime>
 #include <exception>
 #include <filesystem>
 #include <functional>
 #include <map>
 #include <sstream>
+#include <string>
 #include <tuple>
-#include <typeinfo>
 #include <type_traits>
+#include <typeinfo>
 #include <vector>
 
 #include <boost/assert.hpp>
-#include <boost/date_time/gregorian/gregorian.hpp>
+//#include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/mp11.hpp>
 
 #include <range/v3/algorithm/for_each.hpp>
@@ -55,11 +58,13 @@
 #include <range/v3/view/transform.hpp>
 #include <range/v3/view/trim.hpp>
 
+#include "date/date.h"
+
 #include "Extractor.h"
 
 namespace mp11 = boost::mp11;
 
-namespace bg = boost::gregorian;
+//namespace bg = boost::gregorian;
 
 namespace fs = std::filesystem;
 
@@ -149,6 +154,18 @@ auto SumT(const std::tuple<Ts...>& t)
         return (... + ys);
     });
     return std::apply(z_, t);
+}
+
+// utility to convert a date::year_month_day to a string
+// based on code from "The C++ Standard Library 2nd Edition"
+// by Nicolai Josuttis p. 158
+
+inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
+{
+    std::time_t t = std::chrono::system_clock::to_time_t(a_date_time);
+    std::string ts = ctime(&t);
+    ts.resize(ts.size() - 1);       // drop trailing return
+    return ts;
 }
 
 std::string LoadDataFileForUse(EM::FileName file_name);
@@ -335,15 +352,15 @@ struct NeedToUpdateDBContent
 
 struct FileIsWithinDateRange
 {
-    FileIsWithinDateRange(const bg::date& begin_date, const bg::date& end_date)
+    FileIsWithinDateRange(const date::year_month_day& begin_date, const date::year_month_day& end_date)
         : begin_date_{begin_date}, end_date_{end_date}   {}
 
     bool operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const ;
 
     const std::string filter_name_{"FileIsWithinDateRange"};
 
-    const bg::date begin_date_;
-    const bg::date end_date_;
+    const date::year_month_day begin_date_;
+    const date::year_month_day end_date_;
 };
 
 struct ConvertInputHierarchyToOutputHierarchy

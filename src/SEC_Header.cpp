@@ -33,11 +33,12 @@
 
 #include "SEC_Header.h"
 
-#include <boost/date_time/gregorian/gregorian.hpp>
+//#include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/regex.hpp>
 
-namespace bg = boost::gregorian;
+//namespace bg = boost::gregorian;
 
+#include "date/date.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  SEC_Header
@@ -119,8 +120,14 @@ void SEC_Header::ExtractDateFiled ()
 
     BOOST_ASSERT_MSG(found_it, "Can't find 'date filed' in SEC Header");
 
-	bg::date d1{bg::from_undelimited_string(results.str(1))};
-	parsed_header_data_["date_filed"] = bg::to_iso_extended_string(d1);
+    // make sure we actually found a valid date.
+
+    std::istringstream in{results.str(1)};
+    date::sys_days tp;
+    in >> date::parse("%Y%m%d", tp);
+    assert(!in.fail());
+    assert(!in.bad());
+	parsed_header_data_["date_filed"] = date::format("%F", tp);
 }		// -----  end of method SEC_Header::ExtractDateFiled  -----
 
 void SEC_Header::ExtractQuarterEnding ()
@@ -132,8 +139,14 @@ void SEC_Header::ExtractQuarterEnding ()
 
     BOOST_ASSERT_MSG(found_it, "Can't find 'quarter ending' in SEC Header");
 
-	bg::date d1{bg::from_undelimited_string(results.str(1))};
-	parsed_header_data_["quarter_ending"] = bg::to_iso_extended_string(d1);
+    // make sure we actually found a valid date.
+
+    std::istringstream in{results.str(1)};
+    date::sys_days tp;
+    in >> date::parse("%Y%m%d", tp);
+    assert(!in.fail());
+    assert(!in.bad());
+	parsed_header_data_["quarter_ending"] = date::format("%F", tp);
 }		// -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
 void SEC_Header::ExtractFileName ()
