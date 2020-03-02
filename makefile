@@ -64,7 +64,6 @@ OUTDIR=Debug
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
@@ -72,6 +71,7 @@ CFG_LIB := -lpthread -ltbb \
 		-lgumbo \
 		-lgq \
 		-lfmt \
+		-ltz \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml
@@ -98,7 +98,6 @@ OUTDIR=Release
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
@@ -106,6 +105,7 @@ CFG_LIB := -lpthread -ltbb \
 		-lgumbo \
 		-lgq \
 		-lfmt \
+		-ltz \
 		-L/usr/lib \
 		-lpqxx -lpq \
 		-lpugixml
