@@ -58,7 +58,7 @@
 #include <range/v3/view/transform.hpp>
 #include <range/v3/view/trim.hpp>
 
-#include "date/date.h"
+#include "date/tz.h"
 
 #include "Extractor.h"
 
@@ -162,9 +162,8 @@ auto SumT(const std::tuple<Ts...>& t)
 
 inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
 {
-    std::time_t t = std::chrono::system_clock::to_time_t(a_date_time);
-    std::string ts = ctime(&t);
-    ts.resize(ts.size() - 1);       // drop trailing return
+    auto t = date::make_zoned(date::current_zone(), a_date_time);
+    std::string ts = date::format("%a, %b %d, %Y at %I:%M:%S %p %Z", t);
     return ts;
 }
 

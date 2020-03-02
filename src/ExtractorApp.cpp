@@ -64,6 +64,8 @@
 //#include <boost/algorithm/string/split.hpp>
 //#include <boost/date_time/posix_time/posix_time.hpp>
 
+#include "date/tz.h"
+
 #include "spdlog/sinks/basic_file_sink.h"
 
 #include <pqxx/pqxx>
@@ -325,6 +327,7 @@ bool ExtractorApp::CheckArgs ()
         }
         BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse begin date: ", start_date_).c_str());
         begin_date_ = tp;
+        BOOST_ASSERT_MSG(begin_date_.ok(), catenate("Invalid begin date: ", start_date_).c_str());
     }
     if (! stop_date_.empty())
     {
@@ -341,6 +344,7 @@ bool ExtractorApp::CheckArgs ()
         }
         BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse end date: ", end_date_).c_str());
         end_date_ = tp;
+        BOOST_ASSERT_MSG(end_date_.ok(), catenate("Invalid end date: ", stop_date_).c_str());
     }
 
     if (! start_date_.empty())
