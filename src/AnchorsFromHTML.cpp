@@ -221,11 +221,8 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor (const char* start, 
 
     if (result.href_[0] == '"' || result.href_[0] == "(')"[0])
     {
-        std::cout << result.href_ << '\n';
         result.href_.erase(0, 1);
         result.href_.resize(result.href_.size() - 1);
-
-        std::cout << result.href_ << '\n';
     }
     // check for name too
 
