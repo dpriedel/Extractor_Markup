@@ -191,7 +191,7 @@ private:
 	bool replace_DB_content_{false};
 	bool help_requested_{false};
     bool filename_has_form_{false};
-    bool export_SS_files_{false};
+    bool export_XLS_files_{false};
     bool export_HTML_forms_{false};
     bool update_shares_outstanding_{false};
 

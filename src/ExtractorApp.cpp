@@ -41,7 +41,6 @@
 
 #include <algorithm>
 #include <cerrno>
-//#include <chrono>
 #include <csignal>
 #include <exception>
 #include <fstream>
@@ -53,16 +52,11 @@
 #include <system_error>
 #include <thread>
 #include <vector>
-// #include <parallel/algorithm>
-// #include <streambuf>
 
+#include <range/v3/action/transform.hpp>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
-
-//#include <boost/algorithm/string/classification.hpp>
-//#include <boost/algorithm/string/split.hpp>
-//#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "date/tz.h"
 
@@ -256,7 +250,7 @@ void ExtractorApp::SetupProgramOptions ()
 		("file,f", po::value<EM::FileName>(&single_file_to_process_),	"single file to be processed.")
 		("replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
             "replace all DB content for each file. Default is 'false'")
-		("export-SS-data", po::value<bool>(&export_SS_files_)->default_value(false)->implicit_value(true),
+		("export-XLS-data", po::value<bool>(&export_XLS_files_)->default_value(false)->implicit_value(true),
             "export Excel data if any. Default is 'false'")
 		("export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true),
             "export problem HTML data if any. Default is 'false'")
@@ -376,6 +370,11 @@ bool ExtractorApp::CheckArgs ()
 
     if (! form_.empty())
     {
+        // since we use form type as part of our file name for forms stored on disk,
+        // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
+        // so we do the same here.
+
+        form_ |= ranges::actions::transform([](char c) { return (c == '/' ? '_' : c); });
         form_list_ = split_string<std::string>(form_, ',');
     }
 
@@ -427,7 +426,7 @@ bool ExtractorApp::CheckArgs ()
 
     BuildFilterList();
 
-    if (export_SS_files_)
+    if (export_XLS_files_)
     {
         BOOST_ASSERT_MSG(! SS_export_directory_.get().empty(), "Must specify SS export directory.");
     }
