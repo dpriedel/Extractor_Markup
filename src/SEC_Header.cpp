@@ -33,12 +33,13 @@
 
 #include "SEC_Header.h"
 
-//#include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/regex.hpp>
 
-//namespace bg = boost::gregorian;
+#include <range/v3/action/transform.hpp>
 
 #include "date/date.h"
+
+#include "Extractor_Utils.h"
 
 //--------------------------------------------------------------------------------------
 //       Class:  SEC_Header
@@ -108,7 +109,11 @@ void SEC_Header::ExtractFormType ()
 
     BOOST_ASSERT_MSG(found_it, "Can't find 'form type' in SEC Header");
 
-	parsed_header_data_["form_type"] = results.str(1);
+    // since we use form type as part of our file name for forms stored on disk,
+    // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
+    // so we do the same here.
+
+	parsed_header_data_["form_type"] = results.str(1) | ranges::actions::transform([](char c) { return (c == '/' ? '_' : c); });
 }		// -----  end of method SEC_Header::ExtractFormNumber  -----
 
 void SEC_Header::ExtractDateFiled ()
@@ -125,9 +130,10 @@ void SEC_Header::ExtractDateFiled ()
     std::istringstream in{results.str(1)};
     date::sys_days tp;
     in >> date::parse("%Y%m%d", tp);
-    assert(!in.fail());
-    assert(!in.bad());
-	parsed_header_data_["date_filed"] = date::format("%F", tp);
+    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse date filed: ", results.str(1)).c_str());
+    date::year_month_day the_date = tp;
+    BOOST_ASSERT_MSG(the_date.ok(), catenate("Invalid date filed: ", the_date).c_str());
+	parsed_header_data_["date_filed"] = date::format("%F", the_date);
 }		// -----  end of method SEC_Header::ExtractDateFiled  -----
 
 void SEC_Header::ExtractQuarterEnding ()
@@ -144,9 +150,10 @@ void SEC_Header::ExtractQuarterEnding ()
     std::istringstream in{results.str(1)};
     date::sys_days tp;
     in >> date::parse("%Y%m%d", tp);
-    assert(!in.fail());
-    assert(!in.bad());
-	parsed_header_data_["quarter_ending"] = date::format("%F", tp);
+    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse quarter ending date: ", results.str(1)).c_str());
+    date::year_month_day the_date = tp;
+    BOOST_ASSERT_MSG(the_date.ok(), catenate("Invalid quarter ending date: ", the_date).c_str());
+	parsed_header_data_["quarter_ending"] = date::format("%F", the_date);
 }		// -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
 void SEC_Header::ExtractFileName ()
