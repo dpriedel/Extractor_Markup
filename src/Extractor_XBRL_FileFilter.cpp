@@ -504,32 +504,29 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 
     // now, the goal of all this...save all the financial values for the given time period.
 
-//    pqxx::work trxn{c};
     int counter = 0;
+    pqxx::stream_to inserter1{trxn, schema_name + ".sec_xbrl_data",
+        std::vector<std::string>{"filing_ID", "xbrl_label", "label", "value", "context_ID", "period_begin",
+            "period_end", "units", "decimals"}};
+
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO {9}.sec_xbrl_data"
-            " (filing_ID, xbrl_label, label, value, context_ID, period_begin, period_end, units, decimals)"
-            " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')",
-    			trxn.esc(filing_ID),
-    			trxn.esc(label),
-    			trxn.esc(FindOrDefault(label_fields, label, "Missing Value")),
-    			trxn.esc(value),
-    			trxn.esc(context_ID),
-                trxn.esc(context_fields.at(context_ID).begin),
-                trxn.esc(context_fields.at(context_ID).end),
-    			trxn.esc(units),
-    			trxn.esc(decimals),
-                schema_name)
-    			;
-        // std::cout << detail_cmd << '\n';
-        trxn.exec(detail_cmd);
+        inserter1 << std::make_tuple(
+            trxn.esc(filing_ID),
+            trxn.esc(label),
+            trxn.esc(FindOrDefault(label_fields, label, "missing value")),
+            trxn.esc(value),
+            trxn.esc(context_ID),
+            trxn.esc(context_fields.at(context_ID).begin),
+            trxn.esc(context_fields.at(context_ID).end),
+            trxn.esc(units),
+            trxn.esc(decimals))
+            ;
     }
 
+    inserter1.complete();
     trxn.commit();
-    c.disconnect();
-
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */
 

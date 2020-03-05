@@ -1076,7 +1076,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     inserter3.complete();
 
     trxn.commit();
-    cnxn.disconnect();
 
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */
@@ -1149,7 +1148,6 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
         {
             spdlog::info(catenate("Can't find data in DB for file: ", file_name.get(), ". skipping..."));
         }
-        cnxn.disconnect();
     }
     else
     {

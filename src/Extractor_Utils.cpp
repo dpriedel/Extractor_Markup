@@ -423,7 +423,6 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     auto row = trxn.exec1(check_for_existing_content_cmd);
     trxn.commit();
 	auto have_data = row[0].as<int>();
-    c.disconnect();
 
     if (have_data != 0 && ! replace_DB_content_)
     {
@@ -440,6 +439,7 @@ bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, 
     in >> date::parse("%F", days);
     BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse quarter end date: ", SEC_fields.at("quarter_ending")).c_str());
     date::year_month_day report_date = days;
+    BOOST_ASSERT_MSG(report_date.ok(), catenate("Unable to convert quarter end date: ", SEC_fields.at("quarter_ending")).c_str());
 
     return (begin_date_ <= report_date && report_date <= end_date_);
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
