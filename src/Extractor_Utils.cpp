@@ -39,6 +39,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
@@ -56,6 +57,17 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 #include "Extractor.h"
+
+date::year_month_day StringToDateYMD(const std::string& input_format, std::string the_date)
+{
+    std::istringstream in{the_date};
+    date::sys_days tp;
+    in >> date::parse(input_format, tp);
+    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse given date: ", the_date).c_str());
+    date::year_month_day result = tp;
+    BOOST_ASSERT_MSG(result.ok(), catenate("Invalid date: ", the_date).c_str());
+    return result;
+}		// -----  end of method tringToDateYMD  ----- 
 
 /*
  *--------------------------------------------------------------------------------------
@@ -394,26 +406,35 @@ bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::D
 
 bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
+    // we need to work with just the base form name
+
+    auto form_type = SEC_fields.at("form_type");
+    EM::sv base_form_type{form_type};
+    if (base_form_type.ends_with("_A"))
+    {
+        base_form_type.remove_suffix(2);
+    }
+
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
     std::string check_for_existing_content_cmd;
     if (mode_ == "BOTH")
     {
-        check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}unified_extracts.sec_filing_id WHERE"
+        check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(base_form_type.data(), base_form_type.size()),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_prefix_)
                 ;
     }
     else
     {
-        check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}unified_extracts.sec_filing_id WHERE"
+        check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = '{4}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(base_form_type.data(), base_form_type.size()),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_prefix_,
                 mode_)
@@ -424,23 +445,56 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     trxn.commit();
 	auto have_data = row[0].as<int>();
 
-    if (have_data != 0 && ! replace_DB_content_)
+    if (have_data != 0 && ! replace_DB_content_ && ! form_type.ends_with("_A"))
     {
+        // simple case here
+
         spdlog::info(catenate("Skipping: Form data exists and Replace not specifed for file: ",SEC_fields.at("file_name")));
         return false;
     }
+
+    // at this point, we need to check whether we have an ammended return
+    // and if so, is there data from a previous amended return.
+    // we do that by checking for an amended_date_filed value in the DB
+    // then, is our current amended_date_filed newer.
+
+    if (have_data != 0 && ! replace_DB_content_ && form_type.ends_with("_A"))
+    {
+        check_for_existing_content_cmd = fmt::format("SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(base_form_type.data(), base_form_type.size()),
+                trxn.esc(SEC_fields.at("quarter_ending")),
+                schema_prefix_)
+                ;
+
+        pqxx::work trxn{c};
+        auto row = trxn.exec1(check_for_existing_content_cmd);
+        trxn.commit();
+        if (row[0].is_null())
+        {
+            // no previously stored ameended data so 
+            // we need to use this.
+            return true;
+        }
+
+        // lastly, let's see if this data is more recent.
+
+        auto stored_amended_date = StringToDateYMD("%F", row[0].as<std::string>());
+        auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
+        if (date_filed > stored_amended_date)
+        {
+            return true;
+        }
+        return false;
+    }
+
     return true;
 }		/* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
 bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
-    std::istringstream in{SEC_fields.at("quarter_ending")};
-    date::sys_days days;
-    in >> date::parse("%F", days);
-    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse quarter end date: ", SEC_fields.at("quarter_ending")).c_str());
-    date::year_month_day report_date = days;
-    BOOST_ASSERT_MSG(report_date.ok(), catenate("Unable to convert quarter end date: ", SEC_fields.at("quarter_ending")).c_str());
-
+	auto report_date = StringToDateYMD("%F", SEC_fields.at("quarter_ending"));
     return (begin_date_ <= report_date && report_date <= end_date_);
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
 

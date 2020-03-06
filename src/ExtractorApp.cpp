@@ -374,7 +374,7 @@ bool ExtractorApp::CheckArgs ()
         // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
         // so we do the same here.
 
-        form_ |= ranges::actions::transform([](char c) { return (c == '/' ? '_' : c); });
+        form_ |= ranges::actions::transform([](char c) { return (c == '/' ? '_' : std::toupper(c)); });
         form_list_ = split_string<std::string>(form_, ',');
     }
 
@@ -428,7 +428,7 @@ bool ExtractorApp::CheckArgs ()
 
     if (export_XLS_files_)
     {
-        BOOST_ASSERT_MSG(! SS_export_directory_.get().empty(), "Must specify SS export directory.");
+        BOOST_ASSERT_MSG(! SS_export_directory_.get().empty(), "Must specify XLS export directory.");
     }
 
     if (export_HTML_forms_)

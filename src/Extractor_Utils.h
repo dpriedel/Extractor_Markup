@@ -167,6 +167,10 @@ inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a
     return ts;
 }
 
+// seems we do this a lot too.
+
+date::year_month_day StringToDateYMD(const std::string& input_format, std::string the_date);
+
 std::string LoadDataFileForUse(EM::FileName file_name);
 
 // so we can recognize our errors if we want to do something special

@@ -113,7 +113,7 @@ void SEC_Header::ExtractFormType ()
     // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
     // so we do the same here.
 
-	parsed_header_data_["form_type"] = results.str(1) | ranges::actions::transform([](char c) { return (c == '/' ? '_' : c); });
+	parsed_header_data_["form_type"] = results.str(1) | ranges::actions::transform([](char c) { return (c == '/' ? '_' : std::toupper(c)); });
 }		// -----  end of method SEC_Header::ExtractFormNumber  -----
 
 void SEC_Header::ExtractDateFiled ()
@@ -125,14 +125,7 @@ void SEC_Header::ExtractDateFiled ()
 
     BOOST_ASSERT_MSG(found_it, "Can't find 'date filed' in SEC Header");
 
-    // make sure we actually found a valid date.
-
-    std::istringstream in{results.str(1)};
-    date::sys_days tp;
-    in >> date::parse("%Y%m%d", tp);
-    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse date filed: ", results.str(1)).c_str());
-    date::year_month_day the_date = tp;
-    BOOST_ASSERT_MSG(the_date.ok(), catenate("Invalid date filed: ", the_date).c_str());
+	auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
 	parsed_header_data_["date_filed"] = date::format("%F", the_date);
 }		// -----  end of method SEC_Header::ExtractDateFiled  -----
 
@@ -145,14 +138,7 @@ void SEC_Header::ExtractQuarterEnding ()
 
     BOOST_ASSERT_MSG(found_it, "Can't find 'quarter ending' in SEC Header");
 
-    // make sure we actually found a valid date.
-
-    std::istringstream in{results.str(1)};
-    date::sys_days tp;
-    in >> date::parse("%Y%m%d", tp);
-    BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse quarter ending date: ", results.str(1)).c_str());
-    date::year_month_day the_date = tp;
-    BOOST_ASSERT_MSG(the_date.ok(), catenate("Invalid quarter ending date: ", the_date).c_str());
+	auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
 	parsed_header_data_["quarter_ending"] = date::format("%F", the_date);
 }		// -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
