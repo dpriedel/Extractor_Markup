@@ -22,7 +22,7 @@ CREATE TABLE unified_extracts.sec_filing_id
     sic TEXT NOT NULL,
 	form_type TEXT NOT NULL,
 	date_filed DATE NOT NULL,
-	amened_date_filed DATE DEFAULT NULL,
+	amended_date_filed DATE DEFAULT NULL,
 	period_ending DATE NOT NULL,
 	period_context_ID TEXT DEFAULT NULL,
     shares_outstanding NUMERIC DEFAULT -1,
