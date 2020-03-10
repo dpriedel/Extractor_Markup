@@ -441,9 +441,8 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
                 ;
     }
 
-    auto row = trxn.exec1(check_for_existing_content_cmd);
+	auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
     trxn.commit();
-	auto have_data = row[0].as<int>();
 
     if (have_data != 0 && ! replace_DB_content_ && ! form_type.ends_with("_A"))
     {
@@ -453,7 +452,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
         return false;
     }
 
-    // at this point, we need to check whether we have an ammended return
+    // at this point, we need to check whether we have an amended return
     // and if so, is there data from a previous amended return.
     // we do that by checking for an amended_date_filed value in the DB
     // then, is our current amended_date_filed newer.
