@@ -975,49 +975,99 @@ bool StockholdersEquity::ValidateContent ()
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
         const std::string& schema_name)
 {
+    auto form_type = SEC_fields.at("form_type");
+    EM::sv base_form_type{form_type};
+    if (base_form_type.ends_with("_A"))
+    {
+        base_form_type.remove_suffix(2);
+    }
+
     // start stuffing the database.
     // we only get here if we are going to add/replace data.
+    // but now that we are doing amended forms too, there are
+    // some wrinkles
 
-    pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::work trxn{cnxn};
+    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
+    pqxx::work trxn{c};
+
+    // when checking for existing data, we don't filter on source
+    // since that may have changed (especially if we are processing an
+    // amended form)
 
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
+        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
-			trxn.esc(SEC_fields.at("form_type")),
+            trxn.esc(base_form_type.data(), base_form_type.size()),
 			trxn.esc(SEC_fields.at("quarter_ending")),
             schema_name)
 			;
-    auto row = trxn.exec1(check_for_existing_content_cmd);
-	auto have_data = row[0].as<int>();
+	auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
+
+    pqxx::row saved_original_data;
 
     if (have_data != 0)
     {
+        if (form_type.ends_with("_A"))
+        {
+            auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name FROM {3}.sec_filing_id WHERE"
+                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
+                    trxn.esc(SEC_fields.at("cik")),
+                    trxn.esc(base_form_type.data(), base_form_type.size()),
+                    trxn.esc(SEC_fields.at("quarter_ending")),
+                    schema_name)
+                    ;
+            saved_original_data = trxn.exec1(save_original_data_cmd);
+        }
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = 'HTML'",
+            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(SEC_fields.at("form_type")),
+                trxn.esc(base_form_type.data(), base_form_type.size()),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
         trxn.exec(filing_ID_cmd);
     }
 
+    std::string original_date_filed;
+    std::string original_file_name;
+    std::string amended_date_filed;
+    std::string amended_file_name;
+
+    if (form_type.ends_with("_A"))
+    {
+        amended_date_filed = SEC_fields.at("date_filed");
+        amended_file_name =  SEC_fields.at("file_name");
+
+        if (! saved_original_data.empty())
+        {
+            original_date_filed = saved_original_data["date_filed"].as<std::string>();
+            original_file_name = saved_original_data["file_name"].as<std::string>();
+        }
+    }
+    else
+    {
+        original_date_filed = SEC_fields.at("date_filed");
+        original_file_name = SEC_fields.at("file_name");
+    }
+
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
-        " shares_outstanding, data_source)"
-		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{10}') RETURNING filing_ID",
+        " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
+		" VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}', {6}, '{7}', '{8}', '{10}', {11}, {12}) RETURNING filing_ID",
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
-		trxn.esc(SEC_fields.at("file_name")),
-        "",
+		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
+        "NULL",
 		trxn.esc(SEC_fields.at("sic")),
-		trxn.esc(SEC_fields.at("form_type")),
-		trxn.esc(SEC_fields.at("date_filed")),
+        trxn.esc(base_form_type.data(), base_form_type.size()),
+		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
 		trxn.esc(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,
         schema_name,
-        "HTML")
+        "HTML",
+        amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
+        amended_date_filed.empty() ? "NULL" : trxn.quote(amended_date_filed)
+        )
 		;
     // std::cout << filing_ID_cmd << '\n';
     auto res = trxn.exec(filing_ID_cmd);
@@ -1108,8 +1158,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
                 trxn.esc(fields.at("quarter_ending")),
                 trxn.esc(schema_name))
                 ;
-        auto row = trxn.exec1(check_for_existing_content_cmd);
-        auto have_data = row[0].as<int>();
+	    auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
 
         if (have_data)
         {
