@@ -95,7 +95,7 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
 
-CFG_LIB := -lpthread -ltbb \
+CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
 		-lboost_regex-mt-x64 \
