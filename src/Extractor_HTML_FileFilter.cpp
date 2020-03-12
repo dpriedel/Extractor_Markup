@@ -88,11 +88,11 @@ const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|bill
  *  Description:  
  * =====================================================================================
  */
-std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections)
+std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections, EM::FileName document_name)
 {
     std::vector<HtmlInfo> results;
 
-    HTML_FromFile htmls{document_sections};
+    HTML_FromFile htmls{document_sections, document_name};
     std::copy(htmls.begin(), htmls.end(), std::back_inserter(results));
 
     return results;
@@ -170,7 +170,7 @@ EM::AnchorContent FindFinancialContentTopLevelAnchor (EM::HTMLContent financial_
  *  Description:  
  * =====================================================================================
  */
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections)
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections, EM::FileName document_name)
 {
     // sometimes we don't have a top level anchor but we do have
     // anchors for individual statements.
@@ -219,7 +219,7 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
 
     });
 
-    HTML_FromFile htmls{document_sections};
+    HTML_FromFile htmls{document_sections, document_name};
 
     auto financial_content = ranges::find_if(htmls, look_for_top_level);
 
@@ -489,7 +489,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
  *  Description:  
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms)
+FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms, EM::FileName document_name)
 {
     // we use a 2-phase scan.
     // first, try to find based on anchors.
@@ -498,7 +498,7 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
     FinancialStatements financial_statements;
     FinancialDocumentFilter document_filter{forms};
 
-    HTML_FromFile htmls{document_sections};
+    HTML_FromFile htmls{document_sections, document_name};
 
     auto financial_content = ranges::find_if(htmls, document_filter);
     if (financial_content != htmls.end())
@@ -853,7 +853,7 @@ void FinancialStatements::FindSharesOutstanding(const SharesOutstanding& so, EM:
  *  Description:  
  * =====================================================================================
  */
-MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSection>& document_sections)
+MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSection>& document_sections, EM::FileName document_name)
 {
     static const boost::regex table{R"***(<table)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -861,7 +861,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSe
     MultDataList results;
     for (auto document : document_sections)
     {
-        auto html = FindHTML(document);
+        auto html = FindHTML(document, document_name);
         if (! html.get().empty())
         {
             if (boost::regex_search(html.get().begin(), html.get().end(), table))
@@ -1141,7 +1141,7 @@ int UpdateOutstandingShares (const SharesOutstanding& so, const EM::DocumentSect
     int entries_updated{0};
 
     FinancialDocumentFilter document_filter{forms};
-    HTML_FromFile htmls{&document_sections};
+    HTML_FromFile htmls{&document_sections, file_name};
 
     auto financial_content = std::find_if(std::begin(htmls), std::end(htmls), document_filter);
     if (financial_content != htmls.end())

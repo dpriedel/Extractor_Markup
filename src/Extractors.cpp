@@ -749,7 +749,7 @@ void FinancialStatements_data::UseExtractor(const fs::path& file_name, EM::sv fi
     // we locate the HTML document in the file which contains the financial statements.
     // we then convert that to text and save the output.
 
-    auto financial_statements = FindAndExtractFinancialStatements(so_, file_content, {form_});
+    auto financial_statements = FindAndExtractFinancialStatements(so_, file_content, {form_}, file_name);
 
     auto output_file_name = FindFileName(output_directory, financial_statements.html_, regex_fname);
     output_file_name.replace_extension(".txt");

@@ -45,21 +45,21 @@
  *--------------------------------------------------------------------------------------
  */
 
-HTML_FromFile::HTML_FromFile (EM::DocumentSectionList const * document_sections)
-    : document_sections_{document_sections}
+HTML_FromFile::HTML_FromFile (EM::DocumentSectionList const * document_sections, EM::FileName document_name)
+    : document_sections_{document_sections}, document_name_{document_name}
 {
 }  /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
 
 
 HTML_FromFile::iterator HTML_FromFile::begin ()
 {
-    iterator it{document_sections_};
+    iterator it{document_sections_, document_name_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
 HTML_FromFile::const_iterator HTML_FromFile::begin () const
 {
-    const_iterator it{document_sections_};
+    const_iterator it{document_sections_, document_name_};
     return it;
 }		/* -----  end of method HTML_FromFile::begin  ----- */
 
@@ -80,16 +80,16 @@ HTML_FromFile::const_iterator HTML_FromFile::end () const
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTML_FromFile::html_itor::html_itor (EM::DocumentSectionList const* document_sections) 
-    : document_sections_{document_sections}
+HTML_FromFile::html_itor::html_itor (EM::DocumentSectionList const* document_sections, EM::FileName document_name) 
+    : document_sections_{document_sections}, document_name_{document_name}
 {
     for (++current_doc_; current_doc_ < document_sections_->size(); ++current_doc_)
     {
-        html_info_.html_ = FindHTML((*document_sections_)[current_doc_]);
+        html_info_.html_ = FindHTML((*document_sections_)[current_doc_], document_name_);
         if (! html_info_.html_.get().empty())
         {
             html_info_.document_ = (*document_sections_)[current_doc_];
-            html_info_.file_name_ = FindFileName((*document_sections_)[current_doc_]);
+            html_info_.file_name_ = FindFileName((*document_sections_)[current_doc_], document_name_);
             html_info_.file_type_ = FindFileType((*document_sections_)[current_doc_]);
             return;
         }
@@ -101,11 +101,11 @@ HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++ ()
 {
     for (++current_doc_; current_doc_ < document_sections_->size(); ++current_doc_)
     {
-        html_info_.html_ = FindHTML((*document_sections_)[current_doc_]);
+        html_info_.html_ = FindHTML((*document_sections_)[current_doc_], document_name_);
         if (! html_info_.html_.get().empty())
         {
             html_info_.document_ = (*document_sections_)[current_doc_];
-            html_info_.file_name_ = FindFileName((*document_sections_)[current_doc_]);
+            html_info_.file_name_ = FindFileName((*document_sections_)[current_doc_], document_name_);
             html_info_.file_type_ = FindFileType((*document_sections_)[current_doc_]);
             return *this;
         }

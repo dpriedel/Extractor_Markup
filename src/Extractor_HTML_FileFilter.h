@@ -207,7 +207,7 @@ std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
 EM::AnchorContent FindFinancialContentTopLevelAnchor (EM::HTMLContent financial_content, const AnchorData& anchors);
 
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections);
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors (EM::DocumentSectionList const * document_sections, EM::FileName document_name);
 
 AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anchor, const AnchorsFromHTML& anchors);
 
@@ -215,7 +215,7 @@ MultDataList FindDollarMultipliers(const AnchorList& financial_anchors);
 
 //std::vector<EM::sv> LocateFinancialTables(const MultDataList& multiplier_data);
 
-std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections);
+std::vector<HtmlInfo> Find_HTML_Documents (EM::DocumentSectionList const * document_sections, EM::FileName document_name);
 
 bool BalanceSheetFilter(EM::sv table);
 
@@ -229,7 +229,7 @@ bool ApplyStatementFilter(const std::vector<const boost::regex*>& regexs, EM::sv
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms);
+FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding& so, EM::DocumentSectionList const * document_sections, const std::vector<std::string>& forms, EM::FileName document_name);
 
 FinancialStatements ExtractFinancialStatements(EM::HTMLContent financial_content);
 
@@ -282,7 +282,7 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
     return stmt_type;
 }
 
-MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSection>& document_sections);
+MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSection>& document_sections, EM::FileName document_name);
 
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
         const std::string& schema_name);

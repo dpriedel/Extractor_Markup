@@ -276,11 +276,11 @@ bool FormIsInFileName(const std::vector<std::string>& form_types, EM::FileName f
 
 EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content);
 
-EM::FileName FindFileName(EM::DocumentSection document);
+EM::FileName FindFileName(EM::DocumentSection document, EM::FileName document_name);
 
 EM::FileType FindFileType(EM::DocumentSection document);
 
-EM::HTMLContent FindHTML(EM::DocumentSection document);
+EM::HTMLContent FindHTML(EM::DocumentSection document, EM::FileName document_name);
 
 // let's use some function objects for our filters.
 

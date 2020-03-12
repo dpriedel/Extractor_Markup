@@ -568,7 +568,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
     if (data_source_ == "BOTH" || data_source_ == "XBRL")
     {
         FileHasXBRL filter1;
-        use_file = filter1(EM::SEC_Header_fields{}, sections);
+        use_file = filter1(SEC_fields, sections);
         if (use_file)
         {
             auto x = forms_processed->fetch_add(1);
@@ -587,7 +587,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
     if (data_source_ == "BOTH" || data_source_ == "HTML")
     {
         FileHasHTML filter1{form_list_};
-        use_file = filter1(EM::SEC_Header_fields{}, sections);
+        use_file = filter1(SEC_fields, sections);
         if (use_file)
         {
             auto x = forms_processed->fetch_add(1);
@@ -645,10 +645,10 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_fi
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
         const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
 {
-    auto labels_document = LocateLabelDocument(document_sections);
+    auto labels_document = LocateLabelDocument(document_sections, input_file_name);
     auto labels_xml = ParseXMLContent(labels_document);
 
-    auto instance_document = LocateInstanceDocument(document_sections);
+    auto instance_document = LocateInstanceDocument(document_sections, input_file_name);
     auto instance_xml = ParseXMLContent(instance_document);
 
     auto filing_data = ExtractFilingData(instance_xml);
@@ -683,7 +683,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent 
         return {0, 0, 1};
     }
 
-    auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_);
+    auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_, input_file_name);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ",
         input_file_name.get()).c_str());
 
@@ -728,7 +728,7 @@ bool ExtractorApp::ExportHtmlFromSingleFile (const EM::DocumentSectionList& sect
             return false;
         });
 
-    HTML_FromFile htmls{&sections};
+    HTML_FromFile htmls{&sections, file_name};
 
     auto financial_content = ranges::find_if(htmls, regex_document_filter);
     if (financial_content == htmls.end())
@@ -911,10 +911,10 @@ bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& document_sections)
 {
-    auto labels_document = LocateLabelDocument(document_sections);
+    auto labels_document = LocateLabelDocument(document_sections, file_name);
     auto labels_xml = ParseXMLContent(labels_document);
 
-    auto instance_document = LocateInstanceDocument(document_sections);
+    auto instance_document = LocateInstanceDocument(document_sections, file_name);
     auto instance_xml = ParseXMLContent(instance_document);
 
     auto filing_data = ExtractFilingData(instance_xml);
@@ -940,7 +940,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM:
         return ExportHtmlFromSingleFile(sections, file_name, sec_header);
     }
 
-    auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_);
+    auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_, file_name);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());

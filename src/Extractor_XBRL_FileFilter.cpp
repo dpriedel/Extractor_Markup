@@ -77,11 +77,11 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     return default_result;
 }
 
-EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections)
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
 {
     for (const auto& document : document_sections)
     {
-        auto file_name = FindFileName(document);
+        auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
         if (file_type.get().ends_with(".INS") && file_name.get().extension() == ".xml")
         {
@@ -91,11 +91,11 @@ EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_s
     return EM::XBRLContent{};
 }
 
-EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections)
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
 {
     for (const auto& document : document_sections)
     {
-        auto file_name = FindFileName(document);
+        auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
         if (file_type.get().ends_with(".LAB") && file_name.get().extension() == ".xml")
         {

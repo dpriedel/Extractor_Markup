@@ -72,7 +72,7 @@ public:
     /* ====================  LIFECYCLE     ======================================= */
 
     HTML_FromFile() = default;
-    explicit HTML_FromFile (EM::DocumentSectionList const * document_sections);                /* constructor */
+    explicit HTML_FromFile (EM::DocumentSectionList const * document_sections, EM::FileName document_name);                /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -98,6 +98,7 @@ private:
     /* ====================  DATA MEMBERS  ======================================= */
 
     EM::DocumentSectionList const * document_sections_;
+    EM::FileName document_name_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
 
@@ -120,7 +121,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
 
     html_itor() = default;
-    explicit html_itor(EM::DocumentSectionList const* document_sections);
+    explicit html_itor(EM::DocumentSectionList const* document_sections, EM::FileName document_name);
 
     // ====================  ACCESSORS     ======================================= 
 
@@ -150,6 +151,7 @@ private:
     int current_doc_ = -1;
 
     EM::DocumentSectionList const * document_sections_;
+    EM::FileName document_name_;
 
     mutable HtmlInfo html_info_;
 

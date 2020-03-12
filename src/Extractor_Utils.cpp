@@ -236,7 +236,7 @@ EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content)
  *  Description:  
  * =====================================================================================
  */
-EM::FileName FindFileName(EM::DocumentSection document)
+EM::FileName FindFileName(EM::DocumentSection document, EM::FileName document_name)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
@@ -246,7 +246,7 @@ EM::FileName FindFileName(EM::DocumentSection document)
         EM::FileName file_name{std::string(matches[1].first, matches[1].length())};
         return file_name;
     }
-    throw ExtractorException("Can't find file name in document.\n");
+    throw ExtractorException(catenate("Can't find file name in document: ", document_name.get()));
 }		/* -----  end of function FindFileName  ----- */
 
 /* 
@@ -275,9 +275,9 @@ EM::FileType FindFileType(EM::DocumentSection document)
  * =====================================================================================
  */
 
-EM::HTMLContent FindHTML (EM::DocumentSection document)
+EM::HTMLContent FindHTML (EM::DocumentSection document, EM::FileName document_name)
 {
-    auto file_name = FindFileName(document);
+    auto file_name = FindFileName(document, document_name);
     if (file_name.get().extension() == ".htm")
     {
         // now, we just need to drop the extraneous XML surrounding the data we need.
@@ -342,9 +342,10 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::
 {
     // need to do a little more detailed check.
 
+    EM::FileName document_name(SEC_fields.at("file_name"));
     for (auto document : document_sections)
     {
-        auto file_name = FindFileName(document);
+        auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
         if (file_type.get().ends_with(".INS") && file_name.get().extension() == ".xml")
         {
@@ -364,15 +365,16 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
 {
     // need to do a little more detailed check.
 
+    EM::FileName document_name(header_fields.at("file_name"));
     for (auto document : document_sections)
     {
-        auto file_name = FindFileName(document);
+        auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
 
         if (file_name.get().extension() == ".htm"
                 && ranges::find(form_list_, file_type.get()) != ranges::end(form_list_))
         {
-            auto content = FindHTML(document);
+            auto content = FindHTML(document, file_name);
             if (! content.get().empty())
             {
                 return true;
