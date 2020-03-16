@@ -947,7 +947,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM:
     return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed, ActivityList* active_forms)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -973,14 +973,38 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, st
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
-    if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
+    auto locking_id = catenate(SEC_fields.at("cik"), '_', SEC_fields.at("quarter_ending"));
+
+    // give it 10 tries...
+    
+    int n = 0;
+    while (true)
     {
-        LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
-    }
-    else
-    {
-        spdlog::info(catenate("Skipping file: ", file_name.get()));
-        ++skipped_counter;
+        if (active_forms->AddEntry(locking_id))
+        {
+            if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
+            {
+                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
+            }
+            else
+            {
+                spdlog::info(catenate("Skipping file: ", file_name.get(), " Failed to meet criteria."));
+                ++skipped_counter;
+            }
+            active_forms->RemoveEntry(locking_id);
+            break;
+        }
+        else
+        {
+            ++n;
+            if (n >= 10)
+            {
+                spdlog::info(catenate("Skipping file: ", file_name.get(), " Unable to get lock."));
+                ++skipped_counter;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{20});
+        }
     }
 
     return {success_counter, skipped_counter, error_counter};
@@ -1020,6 +1044,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
     std::vector<std::future<std::tuple<int, int, int>>> tasks;
     tasks.reserve(max_at_a_time_);
 
+    // use this to manage potential concurrent access when processing amended forms.
+
+    ActivityList active_forms;
+
     // prime the pump...
 
     size_t current_file{0};
@@ -1028,7 +1056,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         // queue up our tasks up to the limit.
 
         tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed));
+        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &active_forms));
     }
 
     int continue_here{0};
@@ -1133,7 +1161,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         if (current_file < list_of_files_to_process_.size())
         {
             tasks[ready_task] = std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed);
+                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &active_forms);
             continue_here = (ready_task + 1) % max_at_a_time_;
             ready_task = -1;
         }

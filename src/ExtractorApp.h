@@ -63,6 +63,7 @@ namespace po = boost::program_options;
 #include "Extractor.h"
 #include "Extractor_Utils.h"
 #include "SharesOutstanding.h"
+#include "ActivityList.h"
 
 class ExtractorApp
 {
@@ -126,7 +127,7 @@ protected:
     std::tuple<int, int, int> LoadFilesFromListToDB();
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed);
+    std::tuple<int, int, int> LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed, ActivityList* active_forms);
 
 		// ====================  DATA MEMBERS  =======================================
 
