@@ -426,6 +426,11 @@ bool ExtractorApp::CheckArgs ()
 
     BuildFilterList();
 
+    // make sure we don't have too many threads allocated.
+    // this can happen mainly in testing but also, in general, with a short file list
+
+    max_at_a_time_ = std::min<int>(max_at_a_time_, list_of_files_to_process_.size());
+
     if (export_XLS_files_)
     {
         BOOST_ASSERT_MSG(! SS_export_directory_.get().empty(), "Must specify XLS export directory.");
