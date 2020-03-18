@@ -997,7 +997,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
 			trxn.esc(SEC_fields.at("cik")),
-            trxn.esc(base_form_type.data(), base_form_type.size()),
+            trxn.esc(base_form_type),
 			trxn.esc(SEC_fields.at("quarter_ending")),
             schema_name)
 			;
@@ -1012,7 +1012,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
             auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name FROM {3}.sec_filing_id WHERE"
                 " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                     trxn.esc(SEC_fields.at("cik")),
-                    trxn.esc(base_form_type.data(), base_form_type.size()),
+                    trxn.esc(base_form_type),
                     trxn.esc(SEC_fields.at("quarter_ending")),
                     schema_name)
                     ;
@@ -1021,7 +1021,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type.data(), base_form_type.size()),
+                trxn.esc(base_form_type),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
@@ -1040,8 +1040,14 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
         if (! saved_original_data.empty())
         {
-            original_date_filed = saved_original_data["date_filed"].as<std::string>();
-            original_file_name = saved_original_data["file_name"].as<std::string>();
+            if (! saved_original_data["date_filed"].is_null())
+            {
+                original_date_filed = saved_original_data["date_filed"].view();
+            }
+            if (! saved_original_data["file_name"].is_null())
+            {
+                original_file_name = saved_original_data["file_name"].view();
+            }
         }
     }
     else
@@ -1059,7 +1065,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
         "NULL",
 		trxn.esc(SEC_fields.at("sic")),
-        trxn.esc(base_form_type.data(), base_form_type.size()),
+        trxn.esc(base_form_type),
 		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
 		trxn.esc(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,

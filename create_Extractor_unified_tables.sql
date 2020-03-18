@@ -33,7 +33,6 @@ CREATE TABLE unified_extracts.sec_filing_id
 
 ALTER TABLE unified_extracts.sec_filing_id OWNER TO extractor_pg;
 
-
 DROP TABLE IF EXISTS unified_extracts.sec_bal_sheet_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_stmt_of_ops_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_cash_flows_data ;
@@ -58,9 +57,11 @@ CREATE TRIGGER tsv_update
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', label);
 
-DROP INDEX IF EXISTS idx_bal_sheet ;
+DROP INDEX IF EXISTS idx_bal_sheet_val ;
+CREATE INDEX idx_bal_sheet_val ON unified_extracts.sec_bal_sheet_data USING GIN (tsv);
 
-CREATE INDEX idx_bal_sheet ON unified_extracts.sec_bal_sheet_data USING GIN (tsv);
+DROP INDEX IF EXISTS idx_bal_sheet ;
+CREATE INDEX idx_bal_sheet ON unified_extracts.sec_bal_sheet_data (filing_ID);
 
 CREATE TABLE unified_extracts.sec_stmt_of_ops_data
 (
@@ -81,9 +82,11 @@ CREATE TRIGGER tsv_update
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', label);
 
-DROP INDEX IF EXISTS idx_stmt_of_ops ;
+DROP INDEX IF EXISTS idx_stmt_of_ops_val ;
+CREATE INDEX idx_stmt_of_ops_val ON unified_extracts.sec_stmt_of_ops_data USING GIN (tsv);
 
-CREATE INDEX idx_stmt_of_ops ON unified_extracts.sec_stmt_of_ops_data USING GIN (tsv);
+DROP INDEX IF EXISTS idx_stmt_of_ops ;
+CREATE INDEX idx_stmt_of_ops ON unified_extracts.sec_stmt_of_ops_data (filing_ID);
 
 CREATE TABLE unified_extracts.sec_cash_flows_data
 (
@@ -104,9 +107,11 @@ CREATE TRIGGER tsv_update
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', label);
 
-DROP INDEX IF EXISTS idx_cash_flows ;
+DROP INDEX IF EXISTS idx_cash_flows_val ;
+CREATE INDEX idx_cash_flows_val ON unified_extracts.sec_cash_flows_data USING GIN (tsv);
 
-CREATE INDEX idx_cash_flows ON unified_extracts.sec_cash_flows_data USING GIN (tsv);
+DROP INDEX IF EXISTS idx_cash_flows ;
+CREATE INDEX idx_cash_flows ON unified_extracts.sec_cash_flows_data (filing_ID);
 
 CREATE TABLE unified_extracts.sec_xbrl_data
 (
@@ -133,6 +138,8 @@ CREATE TRIGGER tsv_update
 	EXECUTE PROCEDURE
 		tsvector_update_trigger(tsv, 'pg_catalog.english', label);
 
-DROP INDEX IF EXISTS idx_field_label ;
+DROP INDEX IF EXISTS idx_xbrl_data_val ;
+CREATE INDEX idx_xbrl_data_val ON unified_extracts.sec_xbrl_data USING GIN (tsv);
 
-CREATE INDEX idx_field_label ON unified_extracts.sec_xbrl_data USING GIN (tsv);
+DROP INDEX IF EXISTS idx_xbrl_data ;
+CREATE INDEX idx_xbrl_data ON unified_extracts.sec_xbrl_data (filing_ID);

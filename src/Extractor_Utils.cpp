@@ -426,7 +426,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
         check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type.data(), base_form_type.size()),
+                trxn.esc(base_form_type),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_prefix_)
                 ;
@@ -436,7 +436,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
         check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = '{4}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type.data(), base_form_type.size()),
+                trxn.esc(base_form_type),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_prefix_,
                 mode_)
@@ -464,7 +464,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
         check_for_existing_content_cmd = fmt::format("SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                 trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type.data(), base_form_type.size()),
+                trxn.esc(base_form_type),
                 trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_prefix_)
                 ;
@@ -483,11 +483,10 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
 
         auto stored_amended_date = StringToDateYMD("%F", row[0].as<std::string>());
         auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-        if (date_filed > stored_amended_date)
+        if (date_filed <= stored_amended_date)
         {
-            return true;
+            return false;
         }
-        return false;
     }
 
     return true;
