@@ -604,7 +604,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         }
         else
         {
-            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_));
+            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_, (data_source_ == "BOTH" ? " and FileHasXBRL" : "")));
         }
     }
 
@@ -1096,13 +1096,12 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             spdlog::error(catenate("Query was: ", e.query()));
             counters = AddTs(counters, {0, 0, 1});
 
-//            // OK, let's remember our first time here.
+            // OK, let's remember our first time here.
 
             if (! ep)
             {
                 ep = std::current_exception();
             }
-//            break;
         }
         catch (std::exception& e)
         {
@@ -1111,13 +1110,12 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
 
-//            // OK, let's remember our first time here.
+            // OK, let's remember our first time here.
 
             if (! ep)
             {
                 ep = std::current_exception();
             }
-//            break;
         }
         catch (...)
         {
@@ -1135,7 +1133,6 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             break;
         }
 
-//        if (ep || ExtractorApp::had_signal_)
         if (ExtractorApp::had_signal_)
         {
             break;
