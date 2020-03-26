@@ -1,12 +1,13 @@
+
 -- automate our connection
 
--- dbext:profile=edgar_extracts_DBI
+-- dbext:profile=sec_extracts
 
 select 1;
 
 -- how many entries in our table
 
-select count(*) from live_extracts.edgar_filing_id ;
+select * from live_unified_extracts.sec_filing_id limit 5 ;
 select count(*) from live_extracts.edgar_filing_data ;
 
 select count(*) from xbrl_extracts.edgar_filing_id ;
@@ -46,7 +47,15 @@ select * from live_extracts.edgar_filing_data limit 5;
 
 select filing_id, user_label, xbrl_value from live_extracts.edgar_filing_data limit 5;
 
-select filing_id, label, value from unified_extracts.sec_xbrl_data where tsv @@ phraseto_tsquery('total & revenue')  and period_end between '2012-01-01' and '2015-12-31'order by filing_id, period_end asc  limit 15;
+-- total revenue - XBRL
+
+select t1.filing_id, t1.label, t1.value, t1.period_end, t2.company_name, t2.period_ending from live_unified_extracts.sec_xbrl_data as t1 inner join live_unified_extracts.sec_filing_id as t2 on t1.filing_ID = t2.filing_ID and t1.period_end = t2.period_ending where t1.tsv @@ phraseto_tsquery('total & revenue') and t1.context_ID like '%YTD' and t1.period_end between '2015-01-01' and '2019-12-31'order by t2.cik, t2.period_ending asc  limit 150;
+
+-- total revenue - HTML
+
+select t1.filing_id, t1.label, t1.value, t2.company_name, t2.period_ending from live_unified_extracts.sec_stmt_of_ops_data as t1 inner join live_unified_extracts.sec_filing_id as t2 on t1.filing_ID = t2.filing_ID where t1.tsv @@ phraseto_tsquery('total & revenue') and t2.period_ending between '2015-01-01' and '2019-12-31'order by t2.cik, t2.period_ending asc  limit 150;
+
+
 
 select count(*) from live_extracts.edgar_filing_data where tsv @@ phraseto_tsquery('revenue') and period_begin = period_end  and period_end between '2010-01-01' and '2017-12-31' ;
 

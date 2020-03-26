@@ -48,3 +48,32 @@ test.py
 # things here we are not using now and may never use
 
 maybe_later*/*
+ASentimentAnalysisApproachtoPredictingStockReturns.html
+RulesOfThumbForBuildingANeuralNetwork.mhtml
+XDG_CACHE_HOME/
+YUM_bad_balsheet.html
+bd-extractor/
+cant_parse_shares.txt
+changed_shares.txt
+date.g4
+edgar_forms.list
+exported_10Ks.txt
+extract_main.h
+extractor_markup.code-workspace
+file_list_2020-03-11.txt
+files_cant_find_html.txt
+html_test_files.list
+locking_problem_files.lst
+new_file_list.txt
+new_files-2020-03-24.txt
+old_new_file_list.txt
+problems_10-K.list
+pywebarchive/
+regexs.txt
+sample_view.cpp
+sanitizer-thread-suppressions.txt
+scratch.sql
+segfault_on_rerun.txt
+short_file_list.txt
+testlist
+unprocessed_10-Ks.list
