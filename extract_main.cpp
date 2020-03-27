@@ -35,30 +35,18 @@
 	/* You should have received a copy of the GNU General Public License */
 	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <algorithm>
-#include <atomic>
-#include <fstream>
+#include <filesystem>
 #include <iostream>
-//#include <regex>
+
 #include <boost/program_options.hpp>
 #include <boost/regex.hpp>
-#include <filesystem>
 
 #include "spdlog/spdlog.h"
-
-// gumbo-query
-
-#include "gq/Document.h"
-#include "gq/Node.h"
-#include "gq/Selection.h"
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
 
-#include "pstreams/pstream.h"
-
 #include "Extractor.h"
-#include "Extractor_XBRL.h"
 #include "Extractors.h"
 
 using namespace std::string_literals;
@@ -67,8 +55,8 @@ po::positional_options_description	Positional;			//	old style options
 po::options_description				NewOptions;			//	new style options (with identifiers)
 po::variables_map					VariableMap;
 
-fs::path output_directory;
-fs::path input_file_name;
+EM::FileName output_directory;
+EM::FileName input_file_name;
 std::string form_type;
 
 
@@ -88,10 +76,9 @@ int main(int argc, const char* argv[])
         ParseProgramOptions(argc, argv);
         CheckArgs();
 
-        std::ifstream input_file{input_file_name};
-
-        const std::string file_content{std::istreambuf_iterator<char>{input_file}, std::istreambuf_iterator<char>{}};
-        input_file.close();
+        const std::string file_content_text = LoadDataFileForUse(input_file_name);
+        EM::FileContent file_content(file_content_text);
+        const auto sections = LocateDocumentSections(file_content);
 
         std::atomic<int> files_processed{0};
 
@@ -128,13 +115,13 @@ int main(int argc, const char* argv[])
         }
         // let's see if we got a count...
 
-        for (const auto& e : the_filters)
-        {
-            if (auto f = std::get_if<DocumentCounter>(&e))
-            {
-                std::cout << "Found: " << f->document_counter << " document blocks.\n";
-            }
-        }
+//        for (const auto& e : the_filters)
+//        {
+//            if (auto f = std::get_if<DocumentCounter>(&e))
+//            {
+//                std::cout << "Found: " << f->document_counter << " document blocks.\n";
+//            }
+//        }
 
         // let's try a range to find all the 'DOCUMENT' sections of the file.
 
@@ -160,7 +147,7 @@ void SetupProgramOptions ()
 		/* ("end-date",	po::value<bg::date>(&this->end_date_), "retrieve files with dates less than or equal to") */
 		("form",	po::value<std::string>(&form_type)->required(),	"name of form type[s] we are processing")
 		/* ("ticker",	po::value<std::string>(&this->ticker_),	"ticker to lookup and filter form downloads") */
-		("file,f",				po::value<fs::path>(&input_file_name)->required(),	"name of file containing data to be processed.")
+		("file,f",				po::value<EM::FileName>(&input_file_name)->required(),	"name of file containing data to be processed.")
 		/* ("mode,m",				po::value<std::string>(),
          * "mode: either 'load' new data or 'update' existing data. Default is 'load'") */
 		/* ("output,o",			po::value<std::string>(),	"output file name") */
@@ -170,7 +157,7 @@ void SetupProgramOptions ()
 		/* ("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'") */
 //		("form-dir",		po::value<fs::path>(&input_directory),	"directory of form files to be processed")
 //		("list-file",		po::value<fs::path>(&file_list),	"path to file with list of files to process.")
-		("output-dir",		po::value<fs::path>(&output_directory)->required(),	"top level directory to save outputs to")
+		("output-dir",		po::value<EM::FileName>(&output_directory)->required(),	"top level directory to save outputs to")
 //		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1),
 //            "maximum number of files to extract. Default of -1 means no limit.")
 //		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true),
@@ -200,15 +187,19 @@ void ParseProgramOptions(int argc, const char* argv[])
  */
 void CheckArgs ()
 {
-    if (! fs::exists(input_file_name) || fs::file_size(input_file_name) == 0)
+    auto input_file_name_val = input_file_name.get();
+
+    if (! fs::exists(input_file_name_val) || fs::file_size(input_file_name_val) == 0)
     {
-        throw std::runtime_error(catenate("Unable to find input file:", input_file_name.string(), " or file is empty."));
+        throw std::runtime_error(catenate("Unable to find input file:", input_file_name_val, " or file is empty."));
     }
 
-    if (fs::exists(output_directory))
+    auto output_directory_val = output_directory.get();
+
+    if (fs::exists(output_directory_val))
     {
-        fs::remove_all(output_directory);
+        fs::remove_all(output_directory_val);
     }
-    fs::create_directories(output_directory);
+    fs::create_directories(output_directory_val);
 
 }		/* -----  end of function CheckArgs  ----- */

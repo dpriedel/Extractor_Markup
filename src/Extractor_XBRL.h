@@ -50,7 +50,7 @@ namespace fs = std::filesystem;
 
 // determine whether or not we want to process this file
 
-std::optional<EM::SEC_Header_fields> FilterFiles(EM::sv file_content, EM::sv form_type, const int MAX_FILES, std::atomic<int>& files_processed);
+std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES, std::atomic<int>& files_processed);
 
 void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields);
 void ParseTheXML_Labels(EM::sv document, const EM::SEC_Header_fields& fields);

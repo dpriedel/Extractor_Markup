@@ -203,32 +203,24 @@ void ParseTheXML_Labels(const EM::sv document, const EM::SEC_Header_fields& fiel
 
     std::cout << "\n ****** \n";
 }
-std::optional<EM::SEC_Header_fields> FilterFiles(EM::sv file_content, EM::sv form_type,
+std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type,
     const int MAX_FILES, std::atomic<int>& files_processed)
 {
-    boost::cmatch results;
-    bool found_it = boost::regex_search(file_content.begin(), file_content.end(), results, regex_SEC_header);
+    SEC_Header file_header;
+    file_header.UseData(file_content);
+    file_header.ExtractHeaderFields();
+    auto header_fields = file_header.GetFields();
 
-    if (found_it)
+    if (header_fields["form_type"] != form_type)
     {
-    	const EM::sv SEC_header_content(results[0].first, results[0].length());
-        SEC_Header file_header;
-        file_header.UseData(SEC_header_content);
-        file_header.ExtractHeaderFields();
-        auto header_fields = file_header.GetFields();
-
-        if (header_fields["form_type"] != form_type)
-        {
-            return std::nullopt;
-        }
-        auto x = files_processed.fetch_add(1);
-        if (MAX_FILES > 0 && x > MAX_FILES)
-        {
-            throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
-        }
-        return std::optional{header_fields};
+        return std::nullopt;
     }
-    return std::nullopt;
+    auto x = files_processed.fetch_add(1);
+    if (MAX_FILES > 0 && x > MAX_FILES)
+    {
+        throw std::range_error("Exceeded file limit: " + std::to_string(MAX_FILES) + '\n');
+    }
+    return std::optional{header_fields};
 }
 
 void WriteDataToFile(const fs::path& output_file_name, EM::sv document)
