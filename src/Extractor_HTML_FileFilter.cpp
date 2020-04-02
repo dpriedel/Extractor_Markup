@@ -1092,10 +1092,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
     {
         ++counter;
-        inserter1 << std::make_tuple(
+        inserter1.stream_fields(
             filing_ID,
-            trxn.esc(label),
-            trxn.esc(value)
+            label,
+            value
             );
     }
 
@@ -1107,10 +1107,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
     {
         ++counter;
-        inserter2 << std::make_tuple(
+        inserter2.stream_fields(
             filing_ID,
-            trxn.esc(label),
-            trxn.esc(value)
+            label,
+            value
             );
     }
 
@@ -1122,10 +1122,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
     {
         ++counter;
-        inserter3 << std::make_tuple(
+        inserter3.stream_fields(
             filing_ID,
-            trxn.esc(label),
-            trxn.esc(value)
+            label,
+            value
             );
     }
 
