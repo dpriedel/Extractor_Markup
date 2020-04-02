@@ -78,7 +78,7 @@ int main(int argc, const char* argv[])
 
         const std::string file_content_text = LoadDataFileForUse(input_file_name);
         EM::FileContent file_content(file_content_text);
-        const auto sections = LocateDocumentSections(file_content);
+//        const auto sections = LocateDocumentSections(file_content);
 
         std::atomic<int> files_processed{0};
 

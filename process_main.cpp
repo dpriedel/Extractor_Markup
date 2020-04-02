@@ -50,7 +50,6 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 #include <boost/program_options.hpp>
-#include <boost/regex.hpp>
 
 namespace po = boost::program_options;
 
@@ -58,25 +57,21 @@ namespace po = boost::program_options;
 
 #include "Extractor.h"
 #include "Extractor_Utils.h"
-#include "Extractor_XBRL.h"
+//#include "Extractor_XBRL.h"
 #include "Extractors.h"
-
-const boost::regex regex_doc{R"***(<DOCUMENT>.*?</DOCUMENT>)***"};
-
 
 void SetupProgramOptions();
 void ParseProgramOptions(int argc, const char* argv[]);
 void CheckArgs();
-std::vector<std::string> MakeListOfFilesToProcess(const fs::path& input_directory, const fs::path& file_list,
-        bool file_name_has_form, const std::string& form_type);
+std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list, bool file_name_has_form, const std::string& form_type);
 
 po::positional_options_description	Positional;			//	old style options
 po::options_description				NewOptions;			//	new style options (with identifiers)
 po::variables_map					VariableMap;
 
-fs::path input_directory;
-fs::path output_directory;
-fs::path file_list;
+EM::FileName input_directory;
+EM::FileName output_directory;
+EM::FileName file_list;
 std::string form_type;
 int MAX_FILES{-1};
 bool file_name_has_form{false};
@@ -128,10 +123,12 @@ int main(int argc, const char* argv[])
 
         std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
 
-        auto scan_file([&the_filters, &files_processed](const auto& file_path)
+        auto scan_file([&the_filters, &files_processed](const auto& input_file_name)
         {
-            spdlog::info(catenate("Processing file: ", file_path));
-            const std::string file_content = LoadDataFileForUse(file_path.c_str());
+            spdlog::info(catenate("Processing file: ", input_file_name));
+            const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
+            EM::FileContent file_content(file_content_text);
+
             try
             {
                 auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
@@ -142,8 +139,8 @@ int main(int argc, const char* argv[])
                     {
                         try
                         {
-                            std::visit([&file_path, file_content, &use_file](auto &&x)
-                                {x.UseExtractor(file_path, file_content, output_directory, use_file.value());}, e);
+                            std::visit([&input_file_name, file_content, &use_file](auto &&x)
+                                {x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory, use_file.value());}, e);
                         }
                         catch(std::exception& ex)
                         {
@@ -165,9 +162,9 @@ int main(int argc, const char* argv[])
 
         for (const auto& e : the_filters)
         {
-            if (auto f = std::get_if<Count_SS>(&e))
+            if (auto f = std::get_if<Count_XLS>(&e))
             {
-                std::cout << "Found: " << f->SS_counter << " spread sheets.\n";
+                std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
             }
         }
 
@@ -198,9 +195,9 @@ void SetupProgramOptions ()
 		/* ("boxsize,b",			po::value<DprDecimal::DDecimal<16>>(),	"box step size. 'n', 'm.n'") */
 		/* ("reversal,r",			po::value<int>(),			"reversal size in number of boxes. Default is 1") */
 		/* ("scale",				po::value<std::string>(),	"'arithmetic', 'log'. Default is 'arithmetic'") */
-		("form-dir",		po::value<fs::path>(&input_directory),	"directory of form files to be processed")
-		("list-file",		po::value<fs::path>(&file_list),	"path to file with list of files to process.")
-		("output-dir",		po::value<fs::path>(&output_directory)->required(),	"top level directory to save outputs to")
+		("form-dir",		po::value<EM::FileName>(&input_directory),	"directory of form files to be processed")
+		("list-file",		po::value<EM::FileName>(&file_list),	"path to file with list of files to process.")
+		("output-dir",		po::value<EM::FileName>(&output_directory)->required(),	"top level directory to save outputs to")
 		("max-files", 		po::value<int>(&MAX_FILES)->default_value(-1),
             "maximum number of files to extract. Default of -1 means no limit.")
 		("path-has-form",	po::value<bool>(&file_name_has_form)->default_value(false)->implicit_value(true),
@@ -230,31 +227,37 @@ void ParseProgramOptions(int argc, const char* argv[])
  */
 void CheckArgs ()
 {
-    if (! input_directory.empty() && ! fs::exists(input_directory))
+    auto input_directory_val = input_directory.get();
+
+    if (! input_directory_val.empty() && ! fs::exists(input_directory_val))
     {
         throw std::runtime_error("Input directory is missing.\n");
     }
 
-    if (! file_list.empty() && ! fs::exists(file_list))
+    auto file_list_val = file_list.get();
+
+    if (! file_list_val.empty() && ! fs::exists(file_list_val))
     {
         throw std::runtime_error("List file is missing.\n");
     }
 
-    if (input_directory.empty() && file_list.empty())
+    if (input_directory_val.empty() && file_list_val.empty())
     {
         throw std::runtime_error("You must specify either a directory to process or a list of files to process.");
     }
 
-    if (! input_directory.empty() && !file_list.empty())
+    if (! input_directory_val.empty() && !file_list_val.empty())
     {
         throw std::runtime_error("You must specify EITHER a directory to process or a list of files to process -- not both.");
     }
 
-    if (fs::exists(output_directory))
+    auto output_directory_val = output_directory.get();
+
+    if (fs::exists(output_directory_val))
     {
-        fs::remove_all(output_directory);
+        fs::remove_all(output_directory_val);
     }
-    fs::create_directories(output_directory);
+    fs::create_directories(output_directory_val);
 
 }		/* -----  end of function CheckArgs  ----- */
 
@@ -267,12 +270,12 @@ void CheckArgs ()
  *  Description:  
  * =====================================================================================
  */
-std::vector<std::string> MakeListOfFilesToProcess (const fs::path& input_directory, const fs::path& file_list,
+std::vector<std::string> MakeListOfFilesToProcess (EM::FileName input_directory, EM::FileName file_list,
         bool file_name_has_form, const std::string& form_type)
 {
     std::vector<std::string> list_of_files_to_process;
 
-    if (! input_directory.empty())
+    if (! input_directory.get().empty())
     {
         auto add_file_to_list([&list_of_files_to_process, file_name_has_form, form_type](const auto& dir_ent)
         {
@@ -292,11 +295,11 @@ std::vector<std::string> MakeListOfFilesToProcess (const fs::path& input_directo
             }
         });
 
-        std::for_each(fs::recursive_directory_iterator(input_directory), fs::recursive_directory_iterator(), add_file_to_list);
+        std::for_each(fs::recursive_directory_iterator(input_directory.get()), fs::recursive_directory_iterator(), add_file_to_list);
     }
     else
     {
-        std::ifstream input_file{file_list};
+        std::ifstream input_file{file_list.get()};
 
         // Tell the stream to use our facet, so only '\n' is treated as a space.
 

@@ -41,16 +41,10 @@ SDIR1 := .
 SRCS1 := $(SDIR1)/process_main.cpp
 
 SDIR2 := ./src
-SRCS2 := $(SDIR2)/Extractor_XBRL.cpp \
-		$(SDIR2)/Extractors.cpp \
+
+SRCS2 := $(SDIR2)/Extractors.cpp \
 		$(SDIR2)/SEC_Header.cpp \
-		$(SDIR2)/Extractor_HTML_FileFilter.cpp \
-		$(SDIR2)/Extractor_XBRL_FileFilter.cpp \
-		$(SDIR2)/Extractor_Utils.cpp \
-		$(SDIR2)/HTML_FromFile.cpp \
-		$(SDIR2)/AnchorsFromHTML.cpp \
-		$(SDIR2)/TablesFromFile.cpp \
-		$(DIR2)/SharesOutstanding.cpp
+		$(SDIR2)/Extractor_Utils.cpp 
 #
 #SDIR3h := ../ExtractEDGARData/src
 #SDIR3 := ../ExtractEDGARData/src
@@ -70,7 +64,6 @@ OUTDIR=ProcessDebug
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \

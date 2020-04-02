@@ -63,7 +63,6 @@ OUTDIR=ExtractDebug
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
-		-lboost_date_time-mt-x64 \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
