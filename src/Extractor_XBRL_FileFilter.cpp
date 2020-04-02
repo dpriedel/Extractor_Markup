@@ -570,16 +570,16 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-        inserter1 << std::make_tuple(
-            trxn.esc(filing_ID),
-            trxn.esc(label),
-            trxn.esc(FindOrDefault(label_fields, label, "Missing Value")),
-            trxn.esc(value),
-            trxn.esc(context_ID),
-            trxn.esc(context_fields.at(context_ID).begin),
-            trxn.esc(context_fields.at(context_ID).end),
-            trxn.esc(units),
-            trxn.esc(decimals))
+        inserter1.stream_fields(
+            filing_ID,
+            label,
+            FindOrDefault(label_fields, label, "Missing Value"),
+            value,
+            context_ID,
+            context_fields.at(context_ID).begin,
+            context_fields.at(context_ID).end,
+            units,
+            decimals)
             ;
     }
 
