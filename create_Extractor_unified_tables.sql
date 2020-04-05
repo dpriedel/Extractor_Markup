@@ -33,6 +33,9 @@ CREATE TABLE unified_extracts.sec_filing_id
 
 ALTER TABLE unified_extracts.sec_filing_id OWNER TO extractor_pg;
 
+DROP INDEX IF EXISTS idx_period_ending ;
+CREATE INDEX idx_period_ending ON unified_extracts.sec_filing_id (period_ending);
+
 DROP TABLE IF EXISTS unified_extracts.sec_bal_sheet_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_stmt_of_ops_data ;
 DROP TABLE IF EXISTS unified_extracts.sec_cash_flows_data ;
@@ -143,3 +146,7 @@ CREATE INDEX idx_xbrl_data_val ON unified_extracts.sec_xbrl_data USING GIN (tsv)
 
 DROP INDEX IF EXISTS idx_xbrl_data ;
 CREATE INDEX idx_xbrl_data ON unified_extracts.sec_xbrl_data (filing_ID);
+
+DROP INDEX IF EXISTS idx_xbrl_period_end ;
+CREATE INDEX idx_xbrl_period_end ON unified_extracts.sec_xbrl_data (period_end);
+
