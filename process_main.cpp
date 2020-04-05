@@ -227,14 +227,14 @@ void ParseProgramOptions(int argc, const char* argv[])
  */
 void CheckArgs ()
 {
-    auto input_directory_val = input_directory.get();
+    decltype(auto) input_directory_val = input_directory.get();
 
     if (! input_directory_val.empty() && ! fs::exists(input_directory_val))
     {
         throw std::runtime_error("Input directory is missing.\n");
     }
 
-    auto file_list_val = file_list.get();
+    decltype(auto) file_list_val = file_list.get();
 
     if (! file_list_val.empty() && ! fs::exists(file_list_val))
     {
@@ -251,7 +251,7 @@ void CheckArgs ()
         throw std::runtime_error("You must specify EITHER a directory to process or a list of files to process -- not both.");
     }
 
-    auto output_directory_val = output_directory.get();
+    decltype(auto) output_directory_val = output_directory.get();
 
     if (fs::exists(output_directory_val))
     {
