@@ -66,13 +66,17 @@ decltype(auto) MONTH_NAMES = std::experimental::make_array("", "January", "Febru
 const std::string::size_type START_WITH{1000000};
 
 // special case utility function to wrap map lookup for field names
-// returns a defualt value if not found.
+// returns a default value if not found OR value is empty.
 
 const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::string& key, const std::string& default_result)
 {
     if (labels.contains(key))
     {
-        return labels.at(key);
+        decltype(auto) val = labels.at(key);
+        if (! val.empty())
+        {
+            return labels.at(key);
+        }
     }
     return default_result;
 }
@@ -169,7 +173,10 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
             second_level_node.attribute("contextRef").value(), second_level_node.attribute("unitRef").value(),
             second_level_node.attribute("decimals").value(), second_level_node.child_value()};
 
-        result.push_back(std::move(fields));
+        if (! (fields.value.empty() || fields.units.empty()))
+        {
+            result.push_back(std::move(fields));
+        }
     }
 
     return result;
