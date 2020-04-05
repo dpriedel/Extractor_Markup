@@ -63,6 +63,7 @@
 #include <range/v3/iterator/insert_iterators.hpp>
 
 #include <range/v3/view/cache1.hpp>
+#include <range/v3/range/conversion.hpp>
 
 #include "fmt/core.h"
 #include "spdlog/spdlog.h"
