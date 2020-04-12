@@ -38,6 +38,7 @@
 #ifndef EXTRACTORS_
 #define EXTRACTORS_
 
+#include <cstddef>
 #include <variant>
 #include <vector>
 
@@ -56,7 +57,10 @@ struct XLS_data
 {
     explicit XLS_data(const po::variables_map& args);
     void UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName output_directory, const EM::SEC_Header_fields& fields);
-    void ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content);
+    std::vector<char> ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content);
+    std::vector<char> ConvertDataToString(EM::sv content);
+
+    EM::Extractor_Values ExtractDataFromXLS(std::vector<char> report);
 
     ConvertInputHierarchyToOutputHierarchy hierarchy_converter_;
 };

@@ -71,6 +71,7 @@ CFG_LIB := -lpthread \
 		-lgq \
 		-lfmt \
 		-L/usr/lib \
+		-lxlsxio_read \
 		-lpugixml \
 		-lpqxx -lpq
 

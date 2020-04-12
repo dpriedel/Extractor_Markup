@@ -44,6 +44,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include <xlsxio_read.h>
 
 #include "SEC_Header.h"
 
@@ -151,12 +152,22 @@ void XLS_data::UseExtractor(EM::FileName file_name, EM::FileContent file_content
                 throw std::runtime_error("Can't find end of spread sheet in document.\n");
             }
 
-            ConvertDataAndWriteToDisk(EM::FileName{output_path_name}, document);
+//            auto result = ConvertDataAndWriteToDisk(EM::FileName{output_path_name}, document);
+            auto result = ConvertDataToString(document);
+                std::cout << "doc size: " << result.size() << '\n';
+
+            std::ofstream output("/tmp/test.xlsx");
+            output.write(result.data(), result.size());
+            output.close();
+
+            auto sheet_data = ExtractDataFromXLS(result);
+
+            std::cout << '\n';
         }
     }
 }
 
-void XLS_data::ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content)
+std::vector<char> XLS_data::ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content)
 {
 	// we write our table out to a temp file and then call uudecode on it.
     //
@@ -227,19 +238,19 @@ void XLS_data::ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv c
 	redi::ipstream in(catenate("uudecode -o ", output_file_name.get().string(), ' ', temp_file_name.string()));
 	// redi::ipstream in("html2text -b 0 --ignore-emphasis --ignore-images --ignore-links " + temp_file_name.string());
 
-	std::string str1;
+	std::vector<char> str1;
 
     // we use a buffer and the readsome function so that we will get any
     // embedded return characters (which would be stripped off if we did
     // readline.
 
-    std::array<char, 1024> buf{'\0'};
+    std::array<char, 1024> buf;
     std::streamsize bytes_read;
     while (! in.eof())
     {
         while ((bytes_read = in.out().readsome(buf.data(), buf.max_size())) > 0)
         {
-            str1.append(buf.data(), bytes_read);
+            str1.insert(str1.end(), buf.data(), buf.data() + bytes_read);
         }
     }
 
@@ -250,7 +261,113 @@ void XLS_data::ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv c
     // I know I could this in 1 call but...
 
     fs::remove(temp_file_name.remove_filename());
+    return str1;
 }
+std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
+{
+	// we write our XLS file to the std::in of the decoder
+    // and read the decoder's std::out into a charater vector.
+    // No temp files involved.
+
+	redi::pstream out_in("uudecode -o /dev/stdout ", redi::pstreams::pstdin|redi::pstreams::pstdout|redi::pstreams::pstderr);
+    BOOST_ASSERT_MSG(out_in.is_open(), "Failed to open subprocess.");
+
+    // it seems it's possible to have uuencoded data with 'short' lines
+    // so, we need to be sure each line is 61 bytes long.
+
+    auto lines = split_string<EM::sv>(content, '\n');
+    for (auto line : lines)
+    {
+        out_in.write(line.data(), line.size());
+        if (line == "end")
+        {
+            out_in.put('\n');
+            break;
+        }
+        for (int i = line.size(); i < 61; ++i)
+        {
+            out_in.put(' ');
+        }
+        out_in.put('\n');
+    }
+    //	write eod marker
+
+    out_in << redi::peof;
+
+	std::vector<char> result;
+
+    // we use a buffer and the readsome function so that we will get any
+    // embedded return characters (which would be stripped off if we did
+    // readline.
+
+    std::array<char, 1024> buf{'\0'};
+    std::streamsize bytes_read;
+
+    bool finished[2] = {false, false};
+
+    // we need to check for errors too
+
+    std::string error_msg;
+
+    while (! finished[0] || ! finished[1])
+    {
+        if (!finished[1])
+        {
+            while ((bytes_read = out_in.out().readsome(buf.data(), buf.max_size())) > 0)
+            {
+                result.insert(result.end(), buf.data(), buf.data() + bytes_read);
+            }
+            if (out_in.eof())
+            {
+                finished[1] = true;
+                if (!finished[0])
+                    out_in.clear();
+            }
+        }
+        if (!finished[0])
+        {
+            while ((bytes_read = out_in.err().readsome(buf.data(), buf.max_size())) > 0)
+            {
+                error_msg.append(buf.data(), bytes_read);
+            }
+            if (out_in.eof())
+            {
+                finished[0] = true;
+                if (!finished[1])
+                    out_in.clear();
+            }
+        }
+    }
+
+    auto return_code = out_in.close();
+
+    BOOST_ASSERT_MSG(return_code == 0, catenate("Problem decoding file: ", error_msg).c_str());
+    return result;
+}
+
+EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
+{
+    //open memory buffer for reading
+
+    xlsxioreader xlsxioread = xlsxioread_open_memory (report.data(), report.size(), 0);
+    BOOST_ASSERT_MSG(xlsxioread != nullptr, "Problem reading decoded XLSX data.");
+
+    //list available sheets
+    xlsxioreadersheetlist sheetlist;
+    const char* sheetname;
+    printf("Available sheets:\n");
+    if ((sheetlist = xlsxioread_sheetlist_open(xlsxioread)) != NULL) {
+      while ((sheetname = xlsxioread_sheetlist_next(sheetlist)) != NULL) {
+        printf(" - %s\n", sheetname);
+      }
+      xlsxioread_sheetlist_close(sheetlist);
+    }
+
+    //clean up
+    xlsxioread_close(xlsxioread);
+
+    return {};
+}		// -----  end of method XLS_data::ExtractDataFromXLS  ----- 
 
 void Count_XLS::UseExtractor(EM::FileName file_name, EM::FileContent file_content,  EM::FileName, const EM::SEC_Header_fields& fields)
 {

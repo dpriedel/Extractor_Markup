@@ -72,6 +72,7 @@ CFG_LIB := -lpthread -ltbb \
 		-lgq \
 		-lfmt \
 		-L/usr/lib \
+		-lxlsxio_read \
 		-lpugixml \
 		-lpq -lpqxx
 
@@ -109,6 +110,7 @@ CFG_LIB := -lpthread -ltbb \
 		-lgq \
 		-lfmt \
 		-L/usr/lib \
+		-lxlsxio_read \
 		-lpugixml \
 		-lpq -lpqxx
 
