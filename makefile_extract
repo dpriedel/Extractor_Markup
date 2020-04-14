@@ -70,8 +70,10 @@ CFG_LIB := -lpthread \
 		-lgumbo \
 		-lgq \
 		-lfmt \
-		-L/usr/lib \
 		-lxlsxio_read \
+		-L/usr/lib \
+		-lexpat \
+		-lzip \
 		-lpugixml \
 		-lpqxx -lpq
 

@@ -356,11 +356,35 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
     xlsxioreadersheetlist sheetlist;
     const char* sheetname;
     printf("Available sheets:\n");
-    if ((sheetlist = xlsxioread_sheetlist_open(xlsxioread)) != NULL) {
-      while ((sheetname = xlsxioread_sheetlist_next(sheetlist)) != NULL) {
-        printf(" - %s\n", sheetname);
-      }
-      xlsxioread_sheetlist_close(sheetlist);
+    if ((sheetlist = xlsxioread_sheetlist_open(xlsxioread)) != nullptr)
+    {
+        while ((sheetname = xlsxioread_sheetlist_next(sheetlist)) != nullptr)
+        {
+            printf(" - %s\n", sheetname);
+            xlsxioreadersheet next_sheet = xlsxioread_sheet_open(xlsxioread, sheetname, 0);
+            if (next_sheet == nullptr)
+            {
+                std::cout << "can't open sheet: " << sheetname << '\n';
+                continue;
+            }
+
+            while (xlsxioread_sheet_next_row(next_sheet))
+            {
+                while(true)
+                {
+                    XLSXIOCHAR* next_cell = xlsxioread_sheet_next_cell(next_sheet);
+                    if ( next_cell == nullptr)
+                    {
+                        break;
+                    }
+                    std::cout << next_cell << '\t';
+                    free(next_cell);
+                }
+                std::cout << '\n';
+            }
+            xlsxioread_sheet_close(next_sheet);
+        }
+        xlsxioread_sheetlist_close(sheetlist);
     }
 
     //clean up
