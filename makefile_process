@@ -133,6 +133,9 @@ all: $(OUTFILE)
 $(OUTDIR)/%.o : %.cpp
 	$(COMPILE)
 
+$(OUTDIR)/%.o : .cxx
+	$(COMPILE)
+
 $(OUTFILE): $(OUTDIR) $(OBJS1) $(OBJS2) # $(OBJS3)
 	$(LINK)
 

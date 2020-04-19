@@ -40,6 +40,8 @@
 #include <iostream>
 #include <string>
 
+#include <range/v3/algorithm/for_each.hpp>
+
 #include <boost/regex.hpp>
 
 #include "spdlog/spdlog.h"
@@ -47,6 +49,7 @@
 #include <xlsxio_read.h>
 
 #include "SEC_Header.h"
+#include "XLS_Data.h"
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
@@ -294,8 +297,6 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
 
     out_in << redi::peof;
 
-	std::vector<char> result;
-
     // we use a buffer and the readsome function so that we will get any
     // embedded return characters (which would be stripped off if we did
     // readline.
@@ -306,6 +307,8 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
     bool finished[2] = {false, false};
 
     // we need to check for errors too
+
+	std::vector<char> result;
 
     std::string error_msg;
 
@@ -349,46 +352,50 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
 {
     //open memory buffer for reading
 
-    xlsxioreader xlsxioread = xlsxioread_open_memory (report.data(), report.size(), 0);
-    BOOST_ASSERT_MSG(xlsxioread != nullptr, "Problem reading decoded XLSX data.");
+//    xlsxioreader xlsxioread = xlsxioread_open_memory (report.data(), report.size(), 0);
+//    BOOST_ASSERT_MSG(xlsxioread != nullptr, "Problem reading decoded XLSX data.");
+//
+//    //list available sheets
+//    xlsxioreadersheetlist sheetlist;
+//    const char* sheetname;
+//    printf("Available sheets:\n");
+//    if ((sheetlist = xlsxioread_sheetlist_open(xlsxioread)) != nullptr)
+//    {
+//        while ((sheetname = xlsxioread_sheetlist_next(sheetlist)) != nullptr)
+//        {
+//            printf(" - %s\n", sheetname);
+//            xlsxioreadersheet next_sheet = xlsxioread_sheet_open(xlsxioread, sheetname, 0);
+//            if (next_sheet == nullptr)
+//            {
+//                std::cout << "can't open sheet: " << sheetname << '\n';
+//                continue;
+//            }
+//
+//            while (xlsxioread_sheet_next_row(next_sheet))
+//            {
+//                while(true)
+//                {
+//                    XLSXIOCHAR* next_cell = xlsxioread_sheet_next_cell(next_sheet);
+//                    if ( next_cell == nullptr)
+//                    {
+//                        break;
+//                    }
+//                    std::cout << next_cell << '\t';
+//                    free(next_cell);
+//                }
+//                std::cout << '\n';
+//            }
+//            xlsxioread_sheet_close(next_sheet);
+//        }
+//        xlsxioread_sheetlist_close(sheetlist);
+//    }
+//
+//    //clean up
+//    xlsxioread_close(xlsxioread);
 
-    //list available sheets
-    xlsxioreadersheetlist sheetlist;
-    const char* sheetname;
-    printf("Available sheets:\n");
-    if ((sheetlist = xlsxioread_sheetlist_open(xlsxioread)) != nullptr)
-    {
-        while ((sheetname = xlsxioread_sheetlist_next(sheetlist)) != nullptr)
-        {
-            printf(" - %s\n", sheetname);
-            xlsxioreadersheet next_sheet = xlsxioread_sheet_open(xlsxioread, sheetname, 0);
-            if (next_sheet == nullptr)
-            {
-                std::cout << "can't open sheet: " << sheetname << '\n';
-                continue;
-            }
+   XLS_File xls_file{std::move(report)};
 
-            while (xlsxioread_sheet_next_row(next_sheet))
-            {
-                while(true)
-                {
-                    XLSXIOCHAR* next_cell = xlsxioread_sheet_next_cell(next_sheet);
-                    if ( next_cell == nullptr)
-                    {
-                        break;
-                    }
-                    std::cout << next_cell << '\t';
-                    free(next_cell);
-                }
-                std::cout << '\n';
-            }
-            xlsxioread_sheet_close(next_sheet);
-        }
-        xlsxioread_sheetlist_close(sheetlist);
-    }
-
-    //clean up
-    xlsxioread_close(xlsxioread);
+   ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetName() << '\n'; });
 
     return {};
 }		// -----  end of method XLS_data::ExtractDataFromXLS  ----- 

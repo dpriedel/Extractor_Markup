@@ -246,6 +246,29 @@
             "-I/extra/boost/boost-1.72_gcc-9",
             "-march=native",
             "-o",
+            "Debug/XLS_Data.o",
+            "src/XLS_Data.cpp"
+        ],
+        "directory": "/home/dpriedel/projects/github/Extractor_Markup",
+        "file": "src/XLS_Data.cpp"
+    },
+    {
+        "arguments": [
+            "/extra/gcc/gcc-9/bin/g++",
+            "-c",
+            "-x",
+            "c++",
+            "-O0",
+            "-g3",
+            "-std=c++2a",
+            "-DBOOST_ENABLE_ASSERT_HANDLER",
+            "-D_DEBUG",
+            "-DSPDLOG_FMT_EXTERNAL",
+            "-fPIC",
+            "-I./src",
+            "-I/extra/boost/boost-1.72_gcc-9",
+            "-march=native",
+            "-o",
             "Debug/SharesOutstanding.o",
             "src/SharesOutstanding.cpp"
         ],
