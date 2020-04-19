@@ -62,53 +62,46 @@
 
 #include "Extractor.h"
 
-namespace mp11 = boost::mp11;
-
-//namespace bg = boost::gregorian;
-
 namespace fs = std::filesystem;
 
 using namespace std::string_literals;
 
-
-
 // some code to help with putting together error messages,
 
-// suport for concatenation of string-like things
+// we want to look for things which can be appended to a std::string
+// let's try some concepts
 
-template<typename T>
+template <typename T>
+concept can_be_appended_to_string = requires(T t)
+{
+    std::declval<std::string>().append(t);
+};
+
+template <typename T>
+concept has_to_string = requires(T t)
+{
+    t.to_string();
+};
+
+// suport for concatenation of string-like things
+// let's use some concepts
+
+template<can_be_appended_to_string T>
 void append_to_string(std::string& s, const T& t)
 {
-    using text_types_list = mp11::mp_list<std::string, std::string_view, const char*, char>;
+    s +=t;
+}
 
-    // look for things which are 'string like' so we can just append them.
+template<has_to_string T>
+void append_to_string(std::string& s, const T& t)
+{
+    s +=t.to_string();
+}
 
-    if constexpr(std::is_same_v<mp11::mp_set_contains<text_types_list, std::remove_cv_t<T>>, mp11::mp_true>)
-    {
-        s += t;
-    }
-    else if constexpr(std::is_convertible_v<T, const char*>)
-    {
-        s +=t;
-    }
-    else if constexpr(std::is_arithmetic_v<T>)
-    {
-        // it's a number so convert it.
-
-        s += std::to_string(t);
-    }
-    else if constexpr(std::is_same_v<T, fs::path>)
-    {
-        // it's a number so convert it.
-
-        s += t.string();
-    }
-    else
-    {
-        // we don't know what to do with it.
-
-        throw std::invalid_argument("wrong type for 'catenate' function: "s + typeid(t).name());
-    }
+template<typename T> requires(std::is_arithmetic_v<T>)
+void append_to_string(std::string& s, const T& t)
+{
+    s+= std::to_string(t);
 }
 
 // now, a function to concatenate a bunch of string-like things.
