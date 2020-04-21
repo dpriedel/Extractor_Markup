@@ -41,6 +41,7 @@
 #include <string>
 
 #include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/view/filter.hpp>
 
 #include <boost/regex.hpp>
 
@@ -396,6 +397,19 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
    XLS_File xls_file{std::move(report)};
 
    ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetName() << '\n'; });
+
+   auto bal_sheets = ranges::views::filter([] (const auto& x) {return x.GetSheetName() == "Balance Sheets"s; } );
+   ranges::for_each(xls_file | bal_sheets, [](const auto& x) { std::cout << "found bal sheet" << '\n'; });
+
+   for (const auto& sheet : xls_file)
+   {
+        std::cout << sheet.GetSheetName() << '\n'; 
+
+        for (const auto& row : sheet)
+        {
+            std::cout << row;
+        }
+   }
 
     return {};
 }		// -----  end of method XLS_data::ExtractDataFromXLS  ----- 

@@ -169,6 +169,12 @@ namespace Extractor
 	using Extractor_Labels = std::map<std::string, std::string>;
 	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
 
+    using XLS_Label = UniqType<std::string, struct XLS_LabelTag>;
+    using XLS_Value = UniqType<std::string, struct XLS_ValueTag>;
+    using XLS_Entry = std::pair<XLS_Label, XLS_Value>;
+    using XLS_Values = std::vector<XLS_Entry>;
+
+
     // we don't want to have naked string_views all over the place so
     // lets' add a little type safety based on ideas from fluentcpp
 
@@ -203,6 +209,11 @@ std::istream& operator>>(std::istream& is, EM::UniqType<T, Uniqueifier>& a_type)
     is >> temp;
     a_type = temp;
     return is;
+}
+
+inline bool operator==(const EM::XLS_Entry& lhs, const EM::XLS_Entry& rhs)
+{
+    return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
 }
 
 #endif /* end of include guard: EXTRACTOR_H_ */
