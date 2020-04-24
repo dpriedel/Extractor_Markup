@@ -1093,7 +1093,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
     {
         ++counter;
-        inserter1.stream_fields(
+        inserter1.write_values(
             filing_ID,
             label,
             value
@@ -1108,7 +1108,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
     {
         ++counter;
-        inserter2.stream_fields(
+        inserter2.write_values(
             filing_ID,
             label,
             value
@@ -1123,7 +1123,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
     {
         ++counter;
-        inserter3.stream_fields(
+        inserter3.write_values(
             filing_ID,
             label,
             value
