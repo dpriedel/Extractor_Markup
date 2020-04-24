@@ -44,6 +44,7 @@
 #include <iostream>
 
 #include "fmt/core.h"
+#include "pstreams/pstream.h"
 #include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
@@ -109,6 +110,44 @@ EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sect
     return EM::XBRLContent{};
 }
 
+// ===  FUNCTION  ======================================================================
+//         Name:  LocateXLSDocument
+//  Description:  find FinancialReport document if it exists
+// =====================================================================================
+EM::XLSContent LocateXLSDocument (const EM::DocumentSectionList& document_sections, EM::FileName document_name)
+{
+    for (const auto& document : document_sections)
+    {
+        auto file_name = FindFileName(document, document_name);
+        if (file_name.get().extension() == ".xlsx")
+        {
+            auto doc = document.get();
+
+            // now, we just need to drop the extraneous XML surrounding the data we need.
+            // which is a little different from what we do for the other document types.
+
+            auto x = doc.find(R"***(<TEXT>)***");
+            // skip 1 more lines.
+
+            x = doc.find('\n', x + 1);
+
+            doc.remove_prefix(x);
+
+            auto ss_end_loc = doc.rfind(R"***(</TEXT>)***");
+            if (ss_end_loc != EM::sv::npos)
+            {
+                doc.remove_suffix(doc.length() - ss_end_loc);
+            }
+            else
+            {
+                throw std::runtime_error("Can't find end of spread sheet in document.\n");
+            }
+            return EM::XLSContent{doc};
+        }
+    }
+    return {};
+}		// -----  end of function LocateXLSDocument  -----
+
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 {
     auto top_level_node = instance_xml.first_child();           //  should be <xbrl> node.
@@ -126,6 +165,92 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
     return EM::FilingData{trading_symbol, period_end_date, context_ID,
         shares_outstanding.empty() ? "-1" : std::string{shares_outstanding}};
 }
+
+// ===  FUNCTION  ======================================================================
+//         Name:  ExtractXLSData
+//  Description:  need to uudecode the data we found in the file.
+// =====================================================================================
+    std::vector<char> ExtractXLSData (EM::XLSContent xls_content)
+{
+	// we write our XLS file to the std::in of the decoder
+    // and read the decoder's std::out into a charater vector.
+    // No temp files involved.
+
+	redi::pstream out_in("uudecode -o /dev/stdout ", redi::pstreams::pstdin|redi::pstreams::pstdout|redi::pstreams::pstderr);
+    BOOST_ASSERT_MSG(out_in.is_open(), "Failed to open subprocess.");
+
+    // it seems it's possible to have uuencoded data with 'short' lines
+    // so, we need to be sure each line is 61 bytes long.
+
+    auto lines = split_string<EM::sv>(xls_content.get(), '\n');
+    for (auto line : lines)
+    {
+        out_in.write(line.data(), line.size());
+        if (line == "end")
+        {
+            out_in.put('\n');
+            break;
+        }
+        for (int i = line.size(); i < 61; ++i)
+        {
+            out_in.put(' ');
+        }
+        out_in.put('\n');
+    }
+    //	write eod marker
+
+    out_in << redi::peof;
+
+    // we use a buffer and the readsome function so that we will get any
+    // embedded return characters (which would be stripped off if we did
+    // readline.
+
+    std::array<char, 1024> buf{'\0'};
+    std::streamsize bytes_read;
+
+    bool finished[2] = {false, false};
+
+    // we need to check for errors too
+
+	std::vector<char> result;
+
+    std::string error_msg;
+
+    while (! finished[0] || ! finished[1])
+    {
+        if (!finished[1])
+        {
+            while ((bytes_read = out_in.out().readsome(buf.data(), buf.max_size())) > 0)
+            {
+                result.insert(result.end(), buf.data(), buf.data() + bytes_read);
+            }
+            if (out_in.eof())
+            {
+                finished[1] = true;
+                if (!finished[0])
+                    out_in.clear();
+            }
+        }
+        if (!finished[0])
+        {
+            while ((bytes_read = out_in.err().readsome(buf.data(), buf.max_size())) > 0)
+            {
+                error_msg.append(buf.data(), bytes_read);
+            }
+            if (out_in.eof())
+            {
+                finished[0] = true;
+                if (!finished[1])
+                    out_in.clear();
+            }
+        }
+    }
+
+    auto return_code = out_in.close();
+
+    BOOST_ASSERT_MSG(return_code == 0, catenate("Problem decoding file: ", error_msg).c_str());
+    return result;
+}		// -----  end of function ExtractXLSData  -----
 
 std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
 
@@ -577,7 +702,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     for (const auto&[label, context_ID, units, decimals, value]: gaap_fields)
     {
         ++counter;
-        inserter1.stream_fields(
+        inserter1.write_values(
             filing_ID,
             label,
             FindOrDefault(label_fields, label, "Missing Value"),

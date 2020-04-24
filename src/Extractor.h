@@ -181,6 +181,7 @@ namespace Extractor
     using FileContent = UniqType<sv, struct FileContentTag>;
     using DocumentSection = UniqType<sv, struct DocumentSectionTag>;
     using XBRLContent = UniqType<sv, struct XBRLContentTag>;
+    using XLSContent = UniqType<sv, struct XLSContentTag>;
     using HTMLContent = UniqType<sv, struct HTMLContentTag>;
     using FileName = UniqType<path, struct FileNameTag>;
     using FileType = UniqType<sv, struct FileTypeTag>;

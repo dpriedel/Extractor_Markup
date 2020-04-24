@@ -49,7 +49,11 @@ EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_s
 
 EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
 
+EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
+
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
+
+std::vector<char> ExtractXLSData(EM::XLSContent xls_content);
 
 std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
