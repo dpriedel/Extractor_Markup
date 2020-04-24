@@ -44,6 +44,7 @@ SDIR2 := ./src
 
 SRCS2 := $(SDIR2)/Extractors.cpp \
 		$(SDIR2)/SEC_Header.cpp \
+		$(SDIR2)/XLS_Data.cpp \
 		$(SDIR2)/Extractor_Utils.cpp 
 #
 #SDIR3h := ../ExtractEDGARData/src
