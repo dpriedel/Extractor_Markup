@@ -336,7 +336,7 @@ bool ExtractorApp::CheckArgs ()
             in.rdbuf()->pubseekpos(0);
             in >> date::parse("%Y-%b-%d", tp);
         }
-        BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse end date: ", end_date_).c_str());
+        BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse end date: ", stop_date_).c_str());
         end_date_ = tp;
         BOOST_ASSERT_MSG(end_date_.ok(), catenate("Invalid end date: ", stop_date_).c_str());
     }
