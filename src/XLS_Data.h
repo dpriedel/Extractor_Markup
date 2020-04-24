@@ -24,7 +24,7 @@
 
 #include <xlsxio_read.h>
 
-//#include "Extractor.h"
+#include "Extractor.h"
 
 class XLS_Sheet;
 class XLS_Row;
@@ -78,7 +78,7 @@ protected:
 
 private:
 
-    friend class sheet_itor;
+//    friend class sheet_itor;
 
     // ====================  METHODS       ======================================= 
 
@@ -122,9 +122,9 @@ public:
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return sheet_name_ == nullptr; }
+    [[nodiscard]] bool empty() const { return sheet_name_.empty(); }
 
-    const char* GetSheetName() const { return sheet_name_ ; }
+    const EM::sv GetSheetName() const { return sheet_name_ ; }
 
     // ====================  MUTATORS      ======================================= 
 
@@ -152,7 +152,7 @@ private:
 
     xlsxioreader xlsxioread_ = nullptr;
     xlsxioreadersheet  current_sheet_ = nullptr;
-    const char* sheet_name_ = nullptr;
+    EM::sv sheet_name_;
 
 }; // -----  end of class XLS_Sheet  ----- 
 

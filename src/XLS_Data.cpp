@@ -134,6 +134,18 @@ XLS_File::sheet_itor::sheet_itor (const sheet_itor& rhs)
         return;
     }
 
+    // need to match position or rhs.
+
+    const char* next_sheet = nullptr;
+    do
+    {
+        next_sheet = xlsxioread_sheetlist_next(sheet_list_);
+        if (strcmp(next_sheet, sheet_name_) == 0)
+        {
+            break;
+        }
+    } while (next_sheet != nullptr);
+
     current_sheet_ = {xlsxioread_, sheet_name_};
 
 }  // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  ----- 
@@ -198,6 +210,18 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator = (const sheet_itor& rhs)
             return *this;
         }
 
+        // need to match position or rhs.
+
+        const char* next_sheet = nullptr;
+        do
+        {
+            next_sheet = xlsxioread_sheetlist_next(sheet_list_);
+            if (strcmp(next_sheet, sheet_name_) == 0)
+            {
+                break;
+            }
+        } while (next_sheet != nullptr);
+
         current_sheet_ = {xlsxioread_, sheet_name_};
     }
     return *this;
@@ -249,11 +273,15 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator++ ()
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const char* sheet_name)
-    : xlsxioread_{xlsxioread}, sheet_name_{sheet_name}
+    : xlsxioread_{xlsxioread}
 {
-    if (xlsxioread_ != nullptr && sheet_name_ != nullptr)
+    if (xlsxioread_ != nullptr && sheet_name != nullptr)
     {
-        current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_, 0);
+        current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name, 0);
+        if (current_sheet_ != nullptr)
+        {
+            sheet_name_ = sheet_name;
+        }
     }
     
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
@@ -266,9 +294,9 @@ XLS_Sheet::XLS_Sheet (const XLS_Sheet& rhs)
         xlsxioread_sheet_close(current_sheet_);
         current_sheet_ = nullptr;
     }
-    if (xlsxioread_ != nullptr && sheet_name_ != nullptr)
+    if (xlsxioread_ != nullptr && ! sheet_name_.empty())
     {
-        current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_, 0);
+        current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_.data(), 0);
     }
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
@@ -285,7 +313,7 @@ XLS_Sheet::XLS_Sheet (XLS_Sheet&& rhs)
 
     rhs.xlsxioread_ = nullptr;
     rhs.current_sheet_ = nullptr;
-    rhs.sheet_name_ = nullptr;
+    rhs.sheet_name_ = {};
 
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
@@ -311,9 +339,9 @@ XLS_Sheet& XLS_Sheet::operator = (const XLS_Sheet& rhs)
         xlsxioread_ = rhs.xlsxioread_;
         sheet_name_ = rhs.sheet_name_;
 
-        if (xlsxioread_ != nullptr && sheet_name_ != nullptr)
+        if (xlsxioread_ != nullptr && ! sheet_name_.empty())
         {
-            current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_, 0);
+            current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_.data(), 0);
         }
     }
     return *this;
@@ -334,7 +362,7 @@ XLS_Sheet& XLS_Sheet::operator = (XLS_Sheet&& rhs)
         current_sheet_ = rhs.current_sheet_;
 
         rhs.xlsxioread_ = nullptr;
-        rhs.sheet_name_ = nullptr;
+        rhs.sheet_name_ = {};
         rhs.current_sheet_ = nullptr;
 
 
