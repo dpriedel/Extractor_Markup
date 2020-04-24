@@ -242,9 +242,9 @@ public:
 public:
     // ====================  LIFECYCLE     ======================================= 
     row_itor () = default;                             // constructor 
-    row_itor (xlsxioreadersheet current_sheet);       // constructor 
+    row_itor (xlsxioreadersheet sheet_reader);       // constructor 
 
-    row_itor(const row_itor& rhs) = delete;
+    row_itor(const row_itor& rhs);
     row_itor(row_itor&& rhs) noexcept;
 
     ~row_itor() = default;
@@ -254,16 +254,16 @@ public:
     // ====================  MUTATORS      ======================================= 
 
     row_itor& operator++();
-//    row_itor operator++(int) { row_itor retval = *this; ++(*this); return retval; }
+    row_itor operator++(int) { row_itor retval = *this; ++(*this); return retval; }
 
     // ====================  OPERATORS     ======================================= 
 
-    row_itor& operator = (const row_itor& rhs) = delete;
+    row_itor& operator = (const row_itor& rhs);
     row_itor& operator = (row_itor&& rhs) noexcept ;
 
     bool operator==(const row_itor& rhs) const
         { 
-            return current_sheet_ == rhs.current_sheet_
+            return sheet_reader_ == rhs.sheet_reader_
                 && current_row_ == rhs.current_row_;
         }
     bool operator!=(const row_itor& rhs) const { return !(*this == rhs); }
@@ -281,7 +281,7 @@ private:
 
     // ====================  DATA MEMBERS  ======================================= 
 
-    xlsxioreadersheet current_sheet_ = nullptr;
+    xlsxioreadersheet sheet_reader_ = nullptr;
     
     mutable std::string current_row_;
 

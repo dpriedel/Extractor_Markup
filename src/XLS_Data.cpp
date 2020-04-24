@@ -403,8 +403,8 @@ XLS_Sheet::row_itor XLS_Sheet::end () const
 //      Method:  XLS_Sheet::row_itor
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-XLS_Sheet::row_itor::row_itor (xlsxioreadersheet current_sheet)
-    : current_sheet_{current_sheet}
+XLS_Sheet::row_itor::row_itor (xlsxioreadersheet sheet_reader)
+    : sheet_reader_{sheet_reader}
 {
     // we need to read the fist 2 cells from the row.
     // if we don't get 2 cells, go to the next row.
@@ -418,16 +418,16 @@ XLS_Sheet::row_itor::row_itor (xlsxioreadersheet current_sheet)
 
     std::string row;
 
-    if (current_sheet_ != nullptr)
+    if (sheet_reader_ != nullptr)
     {
         bool done = false;
 
-        while (! done && xlsxioread_sheet_next_row(current_sheet_))
+        while (! done && xlsxioread_sheet_next_row(sheet_reader_))
         {
             while (true)
             {
                 std::unique_ptr<XLSXIOCHAR, std::function<void(XLSXIOCHAR*)>> next_cell =
-                    {xlsxioread_sheet_next_cell(current_sheet_), cell_deleter};
+                    {xlsxioread_sheet_next_cell(sheet_reader_), cell_deleter};
                 if (! next_cell)
                 {
                     done = true;
@@ -442,22 +442,38 @@ XLS_Sheet::row_itor::row_itor (xlsxioreadersheet current_sheet)
     }
 }  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
 
-XLS_Sheet::row_itor::row_itor (row_itor&& rhs) noexcept
-    : current_sheet_{rhs.current_sheet_}, current_row_{rhs.current_row_}
+XLS_Sheet::row_itor::row_itor (const row_itor& rhs)
+    : sheet_reader_{rhs.sheet_reader_}, current_row_{rhs.current_row_}
 {
-    rhs.current_sheet_ = nullptr;
+
+}  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
+
+XLS_Sheet::row_itor::row_itor (row_itor&& rhs) noexcept
+    : sheet_reader_{rhs.sheet_reader_}, current_row_{rhs.current_row_}
+{
+    rhs.sheet_reader_ = nullptr;
     rhs.current_row_ = {};
 
 }  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
+
+XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(const row_itor& rhs) 
+{
+    if (&rhs != this)
+    {
+        sheet_reader_ = rhs.sheet_reader_;
+        current_row_ = rhs.current_row_;
+    }
+    return *this;
+}
 
 XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(row_itor&& rhs) noexcept
 {
     if (&rhs != this)
     {
-        current_sheet_ = rhs.current_sheet_;
+        sheet_reader_ = rhs.sheet_reader_;
         current_row_ = rhs.current_row_;
 
-        rhs.current_sheet_ = nullptr;
+        rhs.sheet_reader_ = nullptr;
         rhs.current_row_ = {};
     }
     return *this;
@@ -471,16 +487,16 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
 
     std::string row;
 
-    if (current_sheet_ != nullptr)
+    if (sheet_reader_ != nullptr)
     {
         bool done = false;
 
-        while (! done && xlsxioread_sheet_next_row(current_sheet_))
+        while (! done && xlsxioread_sheet_next_row(sheet_reader_))
         {
             while (true)
             {
                 std::unique_ptr<XLSXIOCHAR, std::function<void(XLSXIOCHAR*)>> next_cell =
-                    {xlsxioread_sheet_next_cell(current_sheet_), cell_deleter};
+                    {xlsxioread_sheet_next_cell(sheet_reader_), cell_deleter};
                 if (! next_cell)
                 {
                     done = true;
@@ -497,7 +513,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
         }
         else
         {
-            current_sheet_ = nullptr;
+            sheet_reader_ = nullptr;
             current_row_.clear();
         }
     }
