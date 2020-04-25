@@ -78,8 +78,6 @@ protected:
 
 private:
 
-//    friend class sheet_itor;
-
     // ====================  METHODS       ======================================= 
 
     // ====================  DATA MEMBERS  ======================================= 
@@ -262,10 +260,10 @@ public:
     row_itor& operator = (row_itor&& rhs) noexcept ;
 
     bool operator==(const row_itor& rhs) const
-        { 
-            return sheet_reader_ == rhs.sheet_reader_
-                && current_row_ == rhs.current_row_;
-        }
+    { 
+        return sheet_reader_ == rhs.sheet_reader_
+            && current_row_ == rhs.current_row_;
+    }
     bool operator!=(const row_itor& rhs) const { return !(*this == rhs); }
 
     reference operator*() const { return current_row_; }

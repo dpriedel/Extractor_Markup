@@ -14,13 +14,12 @@
 //
 // =====================================================================================
 
-#include <boost/regex.hpp>
+#include <cstring>
 
 #include "XLS_Data.h"
 
 #include "Extractor_Utils.h"
 
-const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
 
 //--------------------------------------------------------------------------------------
 //       Class:  XLS_File
@@ -28,8 +27,10 @@ const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 XLS_File::XLS_File (XLS_File&& rhs) noexcept
+    : content_{rhs.content_}, xlsxioread_{rhs.xlsxioread_}
 {
-    content_ = rhs.content_;
+    rhs.content_ = {};
+    rhs.xlsxioread_ = nullptr;
 
 }  // -----  end of method XLS_File::XLS_File  (constructor)  ----- 
 
@@ -106,6 +107,7 @@ XLS_File::sheet_itor::sheet_itor (xlsxioreader xlsxioread)
     sheet_name_ = xlsxioread_sheetlist_next(sheet_list_);
     if (sheet_name_ == nullptr)
     {
+        // end of sheets
         xlsxioread_sheetlist_close(sheet_list_);
         sheet_list_ = nullptr;
         return;
@@ -134,7 +136,7 @@ XLS_File::sheet_itor::sheet_itor (const sheet_itor& rhs)
         return;
     }
 
-    // need to match position or rhs.
+    // need to match position of rhs.
 
     const char* next_sheet = nullptr;
     do
@@ -406,20 +408,20 @@ XLS_Sheet::row_itor XLS_Sheet::end () const
 XLS_Sheet::row_itor::row_itor (xlsxioreadersheet sheet_reader)
     : sheet_reader_{sheet_reader}
 {
-    // we need to read the fist 2 cells from the row.
-    // if we don't get 2 cells, go to the next row.
-    // we're not skipping empty cells either.
-    // we'll collect the first 2 cells, stick em together with tabs
-    // then run them through a filter which looks for label/value.
+    // we collect all the cells, if any, in a row and
+    // put them in a tab delimited string.
+
+    // we might as well use a smart pointer here. it's
+    // possible we could run into some kind of error processing
+    // the cells.
 
     // let's build this just once
-
     auto cell_deleter = [](XLSXIOCHAR* cell) { free(cell); };
-
-    std::string row;
 
     if (sheet_reader_ != nullptr)
     {
+        std::string row;
+
         bool done = false;
 
         while (! done && xlsxioread_sheet_next_row(sheet_reader_))
@@ -485,10 +487,10 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
 
     auto cell_deleter = [](XLSXIOCHAR* cell) { free(cell); };
 
-    std::string row;
-
     if (sheet_reader_ != nullptr)
     {
+        std::string row;
+
         bool done = false;
 
         while (! done && xlsxioread_sheet_next_row(sheet_reader_))
