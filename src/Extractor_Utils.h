@@ -67,7 +67,6 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 // some code to help with putting together error messages,
-
 // we want to look for things which can be appended to a std::string
 // let's try some concepts
 
@@ -78,30 +77,59 @@ concept can_be_appended_to_string = requires(T t)
 };
 
 template <typename T>
-concept has_to_string = requires(T t)
+concept has_string = requires(T t)
 {
-    t.to_string();
+    t.string();
 };
 
 // suport for concatenation of string-like things
 // let's use some concepts
 
-template<can_be_appended_to_string T>
+//template<can_be_appended_to_string T>
+//void append_to_string(std::string& s, const T& t)
+//{
+//    s +=t;
+//}
+//
+//template<has_string T>
+//void append_to_string(std::string& s, const T& t)
+//{
+//    s +=t.to_string();
+//}
+//
+//template<typename T> requires(std::is_arithmetic_v<T>)
+//void append_to_string(std::string& s, const T& t)
+//{
+//    s+= std::to_string(t);
+//}
+//
+template<typename T>
 void append_to_string(std::string& s, const T& t)
 {
-    s +=t;
-}
+    // look for things which are 'string like' so we can just append them.
 
-template<has_to_string T>
-void append_to_string(std::string& s, const T& t)
-{
-    s +=t.to_string();
-}
+    if constexpr(can_be_appended_to_string<T>)
+    {
+        s += t;
+    }
+    else if constexpr(std::is_arithmetic_v<T>)
+    {
+        // it's a number so convert it.
 
-template<typename T> requires(std::is_arithmetic_v<T>)
-void append_to_string(std::string& s, const T& t)
-{
-    s+= std::to_string(t);
+        s += std::to_string(t);
+    }
+    else if constexpr(has_string<T>)
+    {
+        // it can look like a string
+
+        s += t.string();
+    }
+    else
+    {
+        // we don't know what to do with it.
+
+        throw std::invalid_argument("wrong type for 'catenate' function: "s + typeid(t).name());
+    }
 }
 
 // now, a function to concatenate a bunch of string-like things.
