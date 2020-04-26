@@ -276,6 +276,12 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
 	redi::pstream out_in("uudecode -o /dev/stdout ", redi::pstreams::pstdin|redi::pstreams::pstdout|redi::pstreams::pstderr);
     BOOST_ASSERT_MSG(out_in.is_open(), "Failed to open subprocess.");
 
+    std::array<char, 4096> buf{'\0'};
+    std::streamsize bytes_read;
+
+	std::vector<char> result;
+    std::string error_msg;
+
     // it seems it's possible to have uuencoded data with 'short' lines
     // so, we need to be sure each line is 61 bytes long.
 
@@ -293,6 +299,24 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
             out_in.put(' ');
         }
         out_in.put('\n');
+
+        // for short files, we can write all the lines
+        // and then go read the conversion output
+        // BUT for longer files, we may need to read
+        // output along the way to avoid deadlocks...
+        // write won't complete until conversion output
+        // is read.
+        do 
+        {
+            bytes_read = out_in.out().readsome(buf.data(), buf.max_size());
+            result.insert(result.end(), buf.data(), buf.data() + bytes_read);
+        } while (bytes_read != 0);
+
+        do
+        {
+            bytes_read = out_in.err().readsome(buf.data(), buf.max_size());
+            error_msg.append(buf.data(), bytes_read);
+        } while (bytes_read != 0);
     }
     //	write eod marker
 
@@ -302,16 +326,7 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
     // embedded return characters (which would be stripped off if we did
     // readline.
 
-    std::array<char, 1024> buf{'\0'};
-    std::streamsize bytes_read;
-
     bool finished[2] = {false, false};
-
-    // we need to check for errors too
-
-	std::vector<char> result;
-
-    std::string error_msg;
 
     while (! finished[0] || ! finished[1])
     {
