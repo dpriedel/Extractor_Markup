@@ -63,6 +63,8 @@ public:
 
     [[nodiscard]] bool empty() const { return content_.empty(); }
 
+    std::vector<std::string> GetSheetNames(void) const;
+
     // ====================  MUTATORS      ======================================= 
 
     // ====================  OPERATORS     ======================================= 
@@ -106,7 +108,7 @@ public:
     // ====================  LIFECYCLE     ======================================= 
 
     XLS_Sheet () = default;                             // constructor 
-    XLS_Sheet(xlsxioreader xlsxioread, const char* sheet_name);
+    XLS_Sheet(xlsxioreader xlsxioread, const XLSXIOCHAR* sheet_name);
     
     XLS_Sheet(const XLS_Sheet& rhs);
     XLS_Sheet(XLS_Sheet&& rhs);
@@ -123,6 +125,7 @@ public:
     [[nodiscard]] bool empty() const { return sheet_name_.empty(); }
 
     const EM::sv GetSheetName() const { return sheet_name_ ; }
+    const std::string& GetSheetNameFromInside() const;
 
     // ====================  MUTATORS      ======================================= 
 
@@ -150,6 +153,8 @@ private:
 
     xlsxioreader xlsxioread_ = nullptr;
     xlsxioreadersheet  current_sheet_ = nullptr;
+
+    mutable std::string extended_sheet_name_;
     EM::sv sheet_name_;
 
 }; // -----  end of class XLS_Sheet  ----- 
@@ -216,7 +221,7 @@ private:
 
     xlsxioreader xlsxioread_ = nullptr;
     xlsxioreadersheetlist sheet_list_ = nullptr;
-    const char* sheet_name_ = nullptr;
+    const XLSXIOCHAR* sheet_name_ = nullptr;
 
     mutable XLS_Sheet current_sheet_;
 

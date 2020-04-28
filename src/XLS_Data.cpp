@@ -84,6 +84,27 @@ XLS_File::const_iterator XLS_File::end () const
 
 }		// -----  end of method XLS_File::end  ----- 
 
+std::vector<std::string> XLS_File::GetSheetNames(void) const
+{
+    std::vector<std::string> results;
+
+    if (xlsxioread_ != nullptr)
+    {
+        auto list_closer = [](xlsxioreadersheetlist sheet_list) { xlsxioread_sheetlist_close(sheet_list); };
+
+        std::unique_ptr<xlsxio_read_sheetlist_struct, std::function<void(xlsxioreadersheetlist)>> temp_list =
+            {xlsxioread_sheetlist_open(xlsxioread_), list_closer};
+        if (temp_list)
+        {
+            const XLSXIOCHAR* tempname = nullptr;
+            while ((tempname = xlsxioread_sheetlist_next(temp_list.get())) != nullptr)
+            {
+                results.emplace_back(std::string{tempname});
+            }
+        }
+    }
+    return results;
+}		// -----  end of method XLS_File::GetSheetNames  ----- 
 
 
 //--------------------------------------------------------------------------------------
@@ -138,7 +159,7 @@ XLS_File::sheet_itor::sheet_itor (const sheet_itor& rhs)
 
     // need to match position of rhs.
 
-    const char* next_sheet = nullptr;
+    const XLSXIOCHAR* next_sheet = nullptr;
     do
     {
         next_sheet = xlsxioread_sheetlist_next(sheet_list_);
@@ -214,7 +235,7 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator = (const sheet_itor& rhs)
 
         // need to match position or rhs.
 
-        const char* next_sheet = nullptr;
+        const XLSXIOCHAR* next_sheet = nullptr;
         do
         {
             next_sheet = xlsxioread_sheetlist_next(sheet_list_);
@@ -274,7 +295,7 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator++ ()
 //      Method:  XLS_Sheet
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const char* sheet_name)
+XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const XLSXIOCHAR* sheet_name)
     : xlsxioread_{xlsxioread}
 {
     if (xlsxioread_ != nullptr && sheet_name != nullptr)
@@ -289,7 +310,7 @@ XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const char* sheet_name)
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
 XLS_Sheet::XLS_Sheet (const XLS_Sheet& rhs)
-    : xlsxioread_{rhs.xlsxioread_}, sheet_name_{rhs.sheet_name_}
+    : xlsxioread_{rhs.xlsxioread_}, extended_sheet_name_{rhs.extended_sheet_name_}, sheet_name_{rhs.sheet_name_}
 {
     if (current_sheet_ != nullptr)
     {
@@ -312,9 +333,11 @@ XLS_Sheet::XLS_Sheet (XLS_Sheet&& rhs)
     }
 
     current_sheet_ = rhs.current_sheet_;
+    extended_sheet_name_ = rhs.extended_sheet_name_;
 
     rhs.xlsxioread_ = nullptr;
     rhs.current_sheet_ = nullptr;
+    rhs.extended_sheet_name_ = {};
     rhs.sheet_name_ = {};
 
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
@@ -339,6 +362,7 @@ XLS_Sheet& XLS_Sheet::operator = (const XLS_Sheet& rhs)
         }
 
         xlsxioread_ = rhs.xlsxioread_;
+        extended_sheet_name_ = rhs.extended_sheet_name_;
         sheet_name_ = rhs.sheet_name_;
 
         if (xlsxioread_ != nullptr && ! sheet_name_.empty())
@@ -360,17 +384,54 @@ XLS_Sheet& XLS_Sheet::operator = (XLS_Sheet&& rhs)
         }
 
         xlsxioread_ = rhs.xlsxioread_;
+        extended_sheet_name_ = rhs.extended_sheet_name_;
         sheet_name_ = rhs.sheet_name_;
         current_sheet_ = rhs.current_sheet_;
 
         rhs.xlsxioread_ = nullptr;
         rhs.sheet_name_ = {};
+        rhs.extended_sheet_name_ = {};
         rhs.current_sheet_ = nullptr;
 
 
     }
     return *this;
 }		// -----  end of method XLS_Sheet::operator =  ----- 
+
+const std::string& XLS_Sheet::GetSheetNameFromInside () const
+{
+    // we need to go and read the cells from our sheet
+    // and get the content of the first cell.
+
+    if (! extended_sheet_name_.empty())
+    {
+        // use cached result
+
+        return extended_sheet_name_;
+    }
+
+    auto sheet_closer = [](xlsxioreadersheet sheet_reader) { xlsxioread_sheet_close(sheet_reader); };
+
+    if (current_sheet_ != nullptr)
+    {
+        std::unique_ptr<xlsxio_read_sheet_struct, std::function<void(xlsxioreadersheet)>> temp_sheet =
+            {xlsxioread_sheet_open(xlsxioread_, sheet_name_.data(), 0), sheet_closer};
+        if (temp_sheet)
+        {
+            row_itor itor{temp_sheet.get()};
+            if (itor != row_itor{})
+            {
+                // tab delimited content
+                std::string first_row = *itor;
+                if (! first_row.empty())
+                {
+                    extended_sheet_name_ = first_row.substr(0, first_row.find('\t'));
+                }
+            }
+        }
+    }
+    return extended_sheet_name_;
+}		// -----  end of method XLS_Sheet::GetSheetNameFromInside  ----- 
 
 XLS_Sheet::row_itor XLS_Sheet::begin ()
 {
