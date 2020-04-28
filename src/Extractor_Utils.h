@@ -110,19 +110,23 @@ void append_to_string(std::string& s, const T& t)
 
     if constexpr(can_be_appended_to_string<T>)
     {
+        s.append(t);
+    }
+    else if constexpr(std::is_same_v<T, char>)
+    {
         s += t;
     }
     else if constexpr(std::is_arithmetic_v<T>)
     {
         // it's a number so convert it.
 
-        s += std::to_string(t);
+        s.append(std::to_string(t));
     }
     else if constexpr(has_string<T>)
     {
         // it can look like a string
 
-        s += t.string();
+        s.append(t.string());
     }
     else
     {
