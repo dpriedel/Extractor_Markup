@@ -150,7 +150,7 @@ private:
     
     int current_doc_ = -1;
 
-    EM::DocumentSectionList const * document_sections_;
+    EM::DocumentSectionList const * document_sections_ = nullptr;
     EM::FileName document_name_;
 
     mutable HtmlInfo html_info_;

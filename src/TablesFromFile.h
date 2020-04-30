@@ -200,7 +200,7 @@ private:
     boost::cregex_token_iterator doc_;
     boost::cregex_token_iterator end_;
 
-    TablesFromHTML const * tables_;
+    TablesFromHTML const * tables_ = nullptr;
     EM::HTMLContent html_;
     
     mutable TableData table_data_;
