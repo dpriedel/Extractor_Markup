@@ -70,7 +70,7 @@ public:
     // ====================  OPERATORS     ======================================= 
 
     XLS_File& operator =(const XLS_File& rhs) = delete;
-    XLS_File& operator =(XLS_File&& rhs);
+    XLS_File& operator =(XLS_File&& rhs) noexcept;
 
 
 protected:
@@ -111,7 +111,7 @@ public:
     XLS_Sheet(xlsxioreader xlsxioread, const XLSXIOCHAR* sheet_name);
     
     XLS_Sheet(const XLS_Sheet& rhs);
-    XLS_Sheet(XLS_Sheet&& rhs);
+    XLS_Sheet(XLS_Sheet&& rhs) noexcept;
 
     ~XLS_Sheet();
 
@@ -182,7 +182,7 @@ public:
     sheet_itor (xlsxioreader xlsxioread);
 
     sheet_itor (const sheet_itor& rhs);
-    sheet_itor (sheet_itor&& rhs);
+    sheet_itor (sheet_itor&& rhs) noexcept;
 
     ~sheet_itor ();
 
