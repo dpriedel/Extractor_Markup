@@ -124,7 +124,7 @@ public:
 
     [[nodiscard]] bool empty() const { return sheet_name_.empty(); }
 
-    const EM::sv GetSheetName() const { return sheet_name_ ; }
+    const std::string& GetSheetName() const { return sheet_name_ ; }
     const std::string& GetSheetNameFromInside() const;
 
     // ====================  MUTATORS      ======================================= 
@@ -155,7 +155,7 @@ private:
     xlsxioreadersheet  current_sheet_ = nullptr;
 
     mutable std::string extended_sheet_name_;
-    EM::sv sheet_name_;
+    mutable std::string sheet_name_;
 
 }; // -----  end of class XLS_Sheet  ----- 
 

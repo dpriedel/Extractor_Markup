@@ -14,7 +14,10 @@
 //
 // =====================================================================================
 
+#include <cctype>
 #include <cstring>
+
+#include <range/v3/action/transform.hpp>
 
 #include "XLS_Data.h"
 
@@ -117,6 +120,7 @@ std::vector<std::string> XLS_File::GetSheetNames(void) const
             while ((tempname = xlsxioread_sheetlist_next(temp_list.get())) != nullptr)
             {
                 results.emplace_back(std::string{tempname});
+                results.back() |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
             }
         }
     }
@@ -320,6 +324,7 @@ XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const XLSXIOCHAR* sheet_name)
         if (current_sheet_ != nullptr)
         {
             sheet_name_ = sheet_name;
+            sheet_name_ |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
         }
     }
     
@@ -439,6 +444,7 @@ const std::string& XLS_Sheet::GetSheetNameFromInside () const
                 if (! first_row.empty())
                 {
                     extended_sheet_name_ = first_row.substr(0, first_row.find('\t'));
+                    extended_sheet_name_ |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
                 }
             }
         }
@@ -596,4 +602,3 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
     return *this;
 }		// -----  end of method XLS_Sheet::row_itor::operator++  ----- 
 
-//}		// -----  end of function CleanLabel  -----
