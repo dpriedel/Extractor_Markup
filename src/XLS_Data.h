@@ -20,6 +20,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <xlsxio_read.h>
@@ -64,6 +65,9 @@ public:
     [[nodiscard]] bool empty() const { return content_.empty(); }
 
     std::vector<std::string> GetSheetNames(void) const;
+
+    std::optional<XLS_Sheet> FindSheetByName(EM::sv sheet_name) const;
+    std::optional<XLS_Sheet> FindSheetByInternalName(EM::sv sheet_name) const;
 
     // ====================  MUTATORS      ======================================= 
 

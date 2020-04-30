@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include <range/v3/action/transform.hpp>
+#include <range/v3/algorithm/find_if.hpp>
 
 #include "XLS_Data.h"
 
@@ -308,6 +309,27 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator++ ()
     return *this;
 }		// -----  end of method XLS_File::sheet_itor::operator++  ----- 
 
+std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
+{
+    if (! sheet_name.empty() && xlsxioread_ != nullptr)
+    {
+        return std::make_optional(XLS_Sheet{xlsxioread_, sheet_name.data()});
+    }
+    return {};
+}		// -----  end of method XLS_File::FindSheetByName  ----- 
+
+std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) const
+{
+    if (! sheet_name.empty() && xlsxioread_ != nullptr)
+    {
+        auto pos = ranges::find_if(*this, [sheet_name](const auto& x) { return x.GetSheetNameFromInside() == sheet_name; });
+        if (pos != this->end())
+        {
+            return {*pos};
+        }
+    }
+    return {};
+}		// -----  end of method XLS_File::FindSheetByName  ----- 
 
 
 //--------------------------------------------------------------------------------------
