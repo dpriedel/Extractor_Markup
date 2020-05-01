@@ -42,6 +42,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/filter.hpp>
+#include <range/v3/algorithm/find.hpp>
 
 #include <boost/regex.hpp>
 
@@ -411,20 +412,39 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
 
    XLS_File xls_file{std::move(report)};
 
-   ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetName() << '\n'; });
+   auto sheet_names = xls_file.GetSheetNames();
+   ranges::for_each(sheet_names, [](const auto& x) { std::cout << x << '\n'; } );
 
-   auto bal_sheets = ranges::views::filter([] (const auto& x) {return x.GetSheetName() == "Balance Sheets"s; } );
-   ranges::for_each(xls_file | bal_sheets, [](const auto& x) { std::cout << "found bal sheet" << '\n'; });
+   // let's look for our necessary sheets
 
-   for (const auto& sheet : xls_file)
-   {
-        std::cout << sheet.GetSheetName() << '\n'; 
+   bool found_bal_sheet = xls_file.FindSheetByName("balance sheets").has_value();
+   std::cout << "SN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
+   bool found_stmt_of_ofs = xls_file.FindSheetByName("statements of operations").has_value();
+   std::cout << "SN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
+   bool found_cash_flows = xls_file.FindSheetByName("statements of cash flows").has_value();
+   std::cout << "SN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
 
-        for (const auto& row : sheet)
-        {
-            std::cout << row;
-        }
-   }
+   std::cout << "\n\n";
+   ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetNameFromInside() << '\n'; });
+   std::cout << "\n\n";
+
+   found_bal_sheet = xls_file.FindSheetByInternalName("balance sheets").has_value();
+   std::cout << "ISN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
+   found_stmt_of_ofs = xls_file.FindSheetByInternalName("statements of operations").has_value();
+   std::cout << "ISN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
+   found_cash_flows = xls_file.FindSheetByInternalName("statements of cash flows").has_value();
+   std::cout << "ISN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
+
+
+//   for (const auto& sheet : xls_file)
+//   {
+//        std::cout << sheet.GetSheetName() << '\n'; 
+//
+//        for (const auto& row : sheet)
+//        {
+//            std::cout << row;
+//        }
+//   }
 
     return {};
 }		// -----  end of method XLS_data::ExtractDataFromXLS  ----- 
