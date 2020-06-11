@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.73_gcc-9
-GCCDIR := /extra/gcc/gcc-9
+BOOSTDIR := /extra/boost/boost-1.73_gcc-10
+GCCDIR := /extra/gcc/gcc-10
 CPP := $(GCCDIR)/bin/g++
 
 # If no configuration is specified, "Debug" will be used
@@ -61,6 +61,8 @@ ifeq "$(CFG)" "Debug"
 
 OUTDIR=ExtractDebug
 
+# use libzip NOT libminizip
+#
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \

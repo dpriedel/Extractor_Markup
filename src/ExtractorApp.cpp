@@ -457,7 +457,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
 
-    // coult be a million files so use list of string_views
+    // could be a million files so use list of string_views
 
     list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, '\n');
 
