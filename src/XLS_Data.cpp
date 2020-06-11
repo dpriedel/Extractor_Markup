@@ -315,7 +315,7 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
     {
         return std::make_optional(XLS_Sheet{xlsxioread_, sheet_name.data()});
     }
-    return {};
+    return std::nullopt;
 }		// -----  end of method XLS_File::FindSheetByName  ----- 
 
 std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) const
@@ -328,7 +328,7 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) c
             return {*pos};
         }
     }
-    return {};
+    return std::nullopt;
 }		// -----  end of method XLS_File::FindSheetByName  ----- 
 
 

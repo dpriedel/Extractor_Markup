@@ -240,7 +240,7 @@ class XLS_Sheet::row_itor
 {
 public:
 
-    using iterator_category = std::input_iterator_tag;
+    using iterator_category = std::forward_iterator_tag;
     using value_type = std::string;
     using difference_type = ptrdiff_t;
     using pointer = std::string *;
