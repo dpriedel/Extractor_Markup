@@ -316,6 +316,13 @@ struct FileHasXBRL
     const std::string filter_name_{"FileHasXBRL"};
 };
 
+struct FileHasXLS
+{
+    bool operator()(const EM::SEC_Header_fields&, const EM::DocumentSectionList& document_sections) const ;
+
+    const std::string filter_name_{"FileHasXLS"};
+};
+
 struct FileHasHTML
 {
     explicit FileHasHTML(const std::vector<std::string>& form_list)

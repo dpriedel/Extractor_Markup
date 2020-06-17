@@ -181,7 +181,7 @@ void ExtractorApp::ConfigureLogging()
 
     // we are running before 'CheckArgs' so we need to do a little editiing ourselves.
 
-    std::map<std::string, spdlog::level::level_enum> levels
+    const std::map<std::string, spdlog::level::level_enum> levels
     {
         {"none", spdlog::level::off},
         {"error", spdlog::level::err},
@@ -204,14 +204,7 @@ bool ExtractorApp::Startup()
 	try
 	{	
 		SetupProgramOptions();
-        if (tokens_.empty())
-        {
-            ParseProgramOptions();
-        }
-        else
-        {
-            ParseProgramOptions(tokens_);
-        }
+        ParseProgramOptions(tokens_);
         ConfigureLogging();
 		result = CheckArgs ();
 	}
@@ -279,28 +272,28 @@ void ExtractorApp::SetupProgramOptions ()
 		;
 }		/* -----  end of method ExtractorApp::SetupProgramOptions  ----- */
 
-void ExtractorApp::ParseProgramOptions ()
-{
-	auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
-	po::store(options, mVariableMap);
-	if (this->mArgc == 1 ||	mVariableMap.count("help") == 1)
-	{
-		std::cout << *mNewOptions << "\n";
-		throw std::runtime_error("\nExiting after 'help'.");
-	}
-	po::notify(mVariableMap);    
-
-}		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
-
 void ExtractorApp::ParseProgramOptions (const std::vector<std::string>& tokens)
 {
-	auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
-	po::store(options, mVariableMap);
-	if (mVariableMap.count("help") == 1)
-	{
-		std::cout << *mNewOptions << "\n";
-		throw std::runtime_error("\nExiting after 'help'.");
-	}
+    if (tokens.empty())
+    {
+	    auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
+        po::store(options, mVariableMap);
+        if (this->mArgc == 1 ||	mVariableMap.count("help") == 1)
+        {
+            std::cout << *mNewOptions << "\n";
+            throw std::runtime_error("\nExiting after 'help'.");
+        }
+    }
+    else
+    {
+        auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
+        po::store(options, mVariableMap);
+        if (mVariableMap.count("help") == 1)
+        {
+            std::cout << *mNewOptions << "\n";
+            throw std::runtime_error("\nExiting after 'help'.");
+        }
+    }
 	po::notify(mVariableMap);    
 }		/* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
 
@@ -576,12 +569,29 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
         use_file = filter1(SEC_fields, sections);
         if (use_file)
         {
-            auto x = forms_processed->fetch_add(1);
-            if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+            // OK, now let's look for the Financial Report spreadsheet.
+            // We'll use that if available.
+
+            FileHasXLS filter1a;
+            use_file = filter1a(SEC_fields, sections);
+            if (use_file)
             {
-                throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+                auto x = forms_processed->fetch_add(1);
+                if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+                {
+                    throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+                }
+                return FileMode{FileMode::e_XLS};
             }
-            return FileMode{FileMode::e_XBRL};
+            else
+            {
+                auto x = forms_processed->fetch_add(1);
+                if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
+                {
+                    throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
+                }
+                return FileMode{FileMode::e_XBRL};
+            }
         }
         else if (data_source_ == "XBRL")
         {
@@ -628,6 +638,10 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_fi
         auto use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
         BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
 
+        if (use_file.value() == FileMode::e_XLS)
+        {
+            return LoadSingleFileToDB_XLS(file_content, document_sections, SEC_data.GetHeader(), SEC_fields, input_file_name);
+        }
         if (use_file.value() == FileMode::e_XBRL)
         {
             return LoadSingleFileToDB_XBRL(file_content, document_sections, SEC_fields, input_file_name);
@@ -646,6 +660,28 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_fi
     }
 
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
+
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
+        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+{
+    //TODO: check for and handle exporting spreadsheets
+    //
+//    auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_, input_file_name);
+//    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ",
+//        input_file_name.get()).c_str());
+//
+//    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
+//        input_file_name.get()).c_str());
+//
+////        did_load = true;
+//    bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+//    if (did_load)
+//    {
+//        return {1, 0, 0};
+//    }
+//    return {0, 1, 0};
+    return {0, 0, 0};
+}		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XLS  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
         const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
@@ -906,12 +942,29 @@ bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_
 {
     spdlog::info(catenate("Loading contents from file: ", file_name.get()));
 
+    if (file_mode == FileMode::e_XLS)
+    {
+        return LoadFileFromFolderToDB_XLS(file_name, SEC_fields, sections, sec_header);
+    }
     if (file_mode == FileMode::e_XBRL)
     {
         return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, sections);
     }
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, sections, sec_header);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
+
+bool ExtractorApp::LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
+        const EM::DocumentSectionList& sections, EM::sv sec_header)
+{
+    //TODO: check for and handle exporting spreadsheets.
+
+//    auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_, file_name);
+//    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
+//
+//    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+//    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    return false;
+}		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& document_sections)

@@ -355,6 +355,22 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::
     return false;
 }		/* -----  end of method FileHasXBRL::operator()  ----- */
 
+bool FileHasXLS::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
+{
+    // need to do a little more detailed check.
+
+    EM::FileName document_name(SEC_fields.at("file_name"));
+    for (auto document : document_sections)
+    {
+        auto file_name = FindFileName(document, document_name);
+        if (file_name.get().extension() == ".xlsx")
+        {
+            return true;
+        }
+    }
+    return false;
+}		/* -----  end of method FileHasXBRL::operator()  ----- */
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  FileHasHTML::operator()

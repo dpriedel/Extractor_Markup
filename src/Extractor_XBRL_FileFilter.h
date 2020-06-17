@@ -40,10 +40,88 @@
 #include <tuple>
 #include <vector>
 
+#include <range/v3/view/concat.hpp>
+
 #include "gq/Node.h"
 #include <pugixml.hpp>
 
+#include "Extractor_Utils.h"
 #include "Extractor.h"
+#include "XLS_Data.h"
+
+// Extracting the desired content from each financial statement section
+// will likely differ for each so let's encapsulate the code.
+
+struct XLS_BalanceSheet
+{
+    XLS_Sheet balance_sheet_;
+    EM::Extractor_Values values_;
+    bool is_valid_;
+
+    [[nodiscard]] inline bool empty() const { return balance_sheet_.empty(); }
+
+    bool ValidateContent();
+};
+
+struct XLS_StatementOfOperations
+{
+    XLS_Sheet statement_of_operations_;
+    EM::Extractor_Values values_;
+    bool is_valid_;
+
+    [[nodiscard]] inline bool empty() const { return statement_of_operations_.empty(); }
+
+    bool ValidateContent();
+};
+
+struct XLS_CashFlows
+{
+    XLS_Sheet cash_flows_;
+    EM::Extractor_Values values_;
+    bool is_valid_;
+
+    [[nodiscard]] inline bool empty() const { return cash_flows_.empty(); }
+
+    bool ValidateContent();
+};
+
+struct XLS_StockholdersEquity
+{
+    XLS_Sheet stockholders_equity_;
+    EM::Extractor_Values values_;
+    bool is_valid_;
+
+    [[nodiscard]] inline bool empty() const { return stockholders_equity_.empty(); }
+
+    bool ValidateContent();
+};
+
+struct XLS_FinancialStatements
+{
+    XLS_BalanceSheet balance_sheet_;
+    XLS_StatementOfOperations statement_of_operations_;
+    XLS_CashFlows cash_flows_;
+    XLS_StockholdersEquity stockholders_equity_;
+    long int outstanding_shares_ = -1;
+
+    [[nodiscard]] bool has_data() const
+    {
+//        return NotAllEmpty(balance_sheet_, statement_of_operations_, cash_flows_, stockholders_equity_);
+        return AllNotEmpty(balance_sheet_, statement_of_operations_, cash_flows_);
+    }
+
+    void PrepareTableContent();
+    bool ValidateContent();
+    void FindAndStoreMultipliers();
+//    void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent html);
+
+    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
+            balance_sheet_.values_,
+            statement_of_operations_.values_,
+            cash_flows_.values_); }
+};
+
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name);
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
 

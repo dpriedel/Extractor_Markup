@@ -93,12 +93,11 @@ public:
 
 protected:
 
-    enum class FileMode { e_HTML,  e_XBRL };
+    enum class FileMode { e_HTML,  e_XBRL, e_XLS};
 
 	//	Setup for parsing program options.
 
 	void	SetupProgramOptions();
-	void 	ParseProgramOptions();
 	void 	ParseProgramOptions(const std::vector<std::string>& tokens);
 
     void    ConfigureLogging();
@@ -114,14 +113,15 @@ protected:
     bool LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
             EM::sv sec_header, FileMode file_mode);
     bool LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections); 
-    bool LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
-            EM::sv sec_header);
+    bool LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
+    bool LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
     bool ExportHtmlFromSingleFile(const EM::DocumentSectionList& sections, EM::FileName file_name, EM::sv sec_header); 
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
         int& error_counter, EM::FileName file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(EM::FileName input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XLS(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
     std::tuple<int, int, int> LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
     std::tuple<int, int, int> ProcessDirectory();
     std::tuple<int, int, int> LoadFilesFromListToDB();

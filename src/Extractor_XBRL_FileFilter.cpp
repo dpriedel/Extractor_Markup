@@ -82,6 +82,15 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
     return default_result;
 }
 
+// ===  FUNCTION  ======================================================================
+//         Name:  FindAndExtractXLSContent
+//  Description:  find needed XLS content 
+// =====================================================================================
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name)
+{
+    return {};
+}
+
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
 {
     for (const auto& document : document_sections)
