@@ -283,12 +283,11 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator = (sheet_itor&& rhs)
         xlsxioread_ = rhs.xlsxioread_;
         sheet_list_ = rhs.sheet_list_;
         sheet_name_ = rhs.sheet_name_;
-        current_sheet_ = rhs.current_sheet_;
+        current_sheet_ = std::move(rhs.current_sheet_);
 
         rhs.xlsxioread_ = nullptr;
         rhs.sheet_list_ = nullptr;
         rhs.sheet_name_ = nullptr;
-        rhs.current_sheet_ = {};
     }
     return *this;
 }		// -----  end of method XLS_File::sheet_itor::operator =  ----- 
@@ -367,7 +366,7 @@ XLS_Sheet::XLS_Sheet (const XLS_Sheet& rhs)
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
 XLS_Sheet::XLS_Sheet (XLS_Sheet&& rhs) noexcept
-    : xlsxioread_{rhs.xlsxioread_}, extended_sheet_name_{std::move(rhs.extended_sheet_name_)}, sheet_name_{rhs.sheet_name_}
+    : xlsxioread_{rhs.xlsxioread_}, extended_sheet_name_{std::move(rhs.extended_sheet_name_)}, sheet_name_{std::move(rhs.sheet_name_)}
 {
     if (current_sheet_ != nullptr)
     {
@@ -379,7 +378,6 @@ XLS_Sheet::XLS_Sheet (XLS_Sheet&& rhs) noexcept
 
     rhs.xlsxioread_ = nullptr;
     rhs.current_sheet_ = nullptr;
-    rhs.sheet_name_ = {};
 
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
@@ -426,11 +424,10 @@ XLS_Sheet& XLS_Sheet::operator = (XLS_Sheet&& rhs)
 
         xlsxioread_ = rhs.xlsxioread_;
         extended_sheet_name_ = std::move(rhs.extended_sheet_name_);
-        sheet_name_ = rhs.sheet_name_;
+        sheet_name_ = std::move(rhs.sheet_name_);
         current_sheet_ = rhs.current_sheet_;
 
         rhs.xlsxioread_ = nullptr;
-        rhs.sheet_name_ = {};
         rhs.current_sheet_ = nullptr;
 
 
@@ -553,10 +550,9 @@ XLS_Sheet::row_itor::row_itor (const row_itor& rhs)
 }  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
 
 XLS_Sheet::row_itor::row_itor (row_itor&& rhs) noexcept
-    : sheet_reader_{rhs.sheet_reader_}, current_row_{rhs.current_row_}
+    : sheet_reader_{rhs.sheet_reader_}, current_row_{std::move(rhs.current_row_)}
 {
     rhs.sheet_reader_ = nullptr;
-    rhs.current_row_ = {};
 
 }  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
 
@@ -575,10 +571,9 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(row_itor&& rhs) noexcept
     if (&rhs != this)
     {
         sheet_reader_ = rhs.sheet_reader_;
-        current_row_ = rhs.current_row_;
+        current_row_ = std::move(rhs.current_row_);
 
         rhs.sheet_reader_ = nullptr;
-        rhs.current_row_ = {};
     }
     return *this;
 }
