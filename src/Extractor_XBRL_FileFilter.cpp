@@ -43,6 +43,8 @@
 #include <experimental/array>
 #include <iostream>
 
+#include <range/v3/algorithm/find_if.hpp>
+
 #include "fmt/core.h"
 #include "pstreams/pstream.h"
 #include "spdlog/spdlog.h"
@@ -88,7 +90,32 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
 // =====================================================================================
 XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name)
 {
-    return {};
+    XLS_FinancialStatements financial_statements;
+
+    auto xls_content = LocateXLSDocument(document_sections, document_name);
+    auto xls_data = ExtractXLSData(xls_content);
+
+    XLS_File xls_file{std::move(xls_data)};
+
+    auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { return (x.GetSheetNameFromInside().find("balance sheets") != std::string::npos); } );
+    if (bal_sheets != ranges::end(xls_file))
+    {
+        financial_statements.balance_sheet_.balance_sheet_ = *bal_sheets;
+    }
+
+    auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of operations") != std::string::npos; } );
+    if (stmt_of_ops != ranges::end(xls_file))
+    {
+        financial_statements.statement_of_operations_.statement_of_operations_ = *stmt_of_ops;
+    }
+
+    auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of cash flows") != std::string::npos; } );
+    if (cash_flows != ranges::end(xls_file))
+    {
+        financial_statements.cash_flows_.cash_flows_ = *cash_flows;
+    }
+
+    return financial_statements;
 }
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
