@@ -43,7 +43,20 @@
 #include <experimental/array>
 #include <iostream>
 
+#include <range/v3/action/remove_if.hpp>
+#include <range/v3/action/transform.hpp>
+#include <range/v3/algorithm/any_of.hpp>
+#include <range/v3/algorithm/count_if.hpp>
+#include <range/v3/algorithm/equal.hpp>
+#include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/find_if.hpp>
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/algorithm/transform.hpp>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/cache1.hpp>
+#include <range/v3/view/filter.hpp>
+
+#include <boost/regex.hpp>
 
 #include "fmt/core.h"
 #include "pstreams/pstream.h"
@@ -68,6 +81,11 @@ decltype(auto) MONTH_NAMES = std::experimental::make_array("", "January", "Febru
 
 const std::string::size_type START_WITH{1000000};
 
+const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
+    boost::regex_constants::normal | boost::regex_constants::icase};
+    
 // special case utility function to wrap map lookup for field names
 // returns a default value if not found OR value is empty.
 
@@ -101,22 +119,114 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
     if (bal_sheets != ranges::end(xls_file))
     {
         financial_statements.balance_sheet_.balance_sheet_ = *bal_sheets;
+        financial_statements.balance_sheet_.values_ = CollectXLSValues(financial_statements.balance_sheet_.balance_sheet_);
     }
 
     auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of operations") != std::string::npos; } );
     if (stmt_of_ops != ranges::end(xls_file))
     {
         financial_statements.statement_of_operations_.statement_of_operations_ = *stmt_of_ops;
+        financial_statements.statement_of_operations_.values_ = CollectXLSValues(financial_statements.statement_of_operations_.statement_of_operations_);
     }
 
     auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of cash flows") != std::string::npos; } );
     if (cash_flows != ranges::end(xls_file))
     {
         financial_statements.cash_flows_.cash_flows_ = *cash_flows;
+        financial_statements.cash_flows_.values_ = CollectXLSValues(financial_statements.cash_flows_.cash_flows_);
     }
 
     return financial_statements;
 }
+
+// ===  FUNCTION  ======================================================================
+//         Name:  ExtractXLSFilingData
+//  Description:  collect values from spreadsheet 
+// =====================================================================================
+EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet)
+{
+    // we're looking for lable/value pairs in the first 2 cells of each row.
+    // value must be numeric.
+
+    EM::XLS_Values values;
+
+
+    return values;
+}
+
+EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
+{
+    // for now, we're doing just a quick and dirty...
+    // look for a label followed by a number in the same line
+    //
+    // NOTE the use of 'cache1' below.  This is ** REQUIRED ** to get correct behavior.  without it,
+    // some items are dropped, some are duplicated.
+
+    boost::smatch match_values;
+
+    EM::XLS_Values values = sheet 
+        | ranges::views::filter([&match_values](const auto& a_row) { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value); })
+        | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
+        | ranges::views::cache1
+        | ranges::to<EM::XLS_Values>();
+
+
+//    // now, for all values except 'per share', apply the multiplier.
+//    // for now, keep parens to indicate negative numbers.
+//    // TODO: figure out if this should be replaced with negative sign.
+//
+//    ranges::for_each(values
+//            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
+//            [&multiplier](auto& x)
+//            {
+//                if (x.second.back() == ')')
+//                {
+//                    x.second.resize(x.second.size() - 1);
+//                }
+//                x.second += multiplier;
+//                if (x.second[0] == '(')
+//                {
+//                    x.second += ')';
+//                }
+//            });
+//
+//    // lastly, clean up the labels a little.
+//    // one more thing...
+//    // it's possible that cleaning a label field could have caused it to becomre empty
+//
+//    values = std::move(values)
+//        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first); return x; } )
+//        | ranges::actions::remove_if([](auto& x) { return x.first.empty(); });
+//
+    return values;
+}		/* -----  end of method CollectStatementValues  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  CleanLabel
+//  Description:  
+// =====================================================================================
+
+std::string CleanLabel (const std::string& label)
+{
+    static const std::string delete_this{""};
+    static const std::string single_space{" "};
+    static const boost::regex regex_punctuation{R"***([[:punct:]])***"};
+    static const boost::regex regex_leading_space{R"***(^[[:space:]]+)***"};
+    static const boost::regex regex_trailing_space{R"***([[:space:]]{1,}$)***"};
+    static const boost::regex regex_double_space{R"***([[:space:]]{2,})***"};
+
+    std::string cleaned_label = boost::regex_replace(label, regex_punctuation, single_space);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_leading_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_trailing_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_double_space, single_space);
+
+    // lastly, lowercase
+
+    ranges::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
+
+    return cleaned_label;
+}		// -----  end of function CleanLabel  -----
+
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
 {

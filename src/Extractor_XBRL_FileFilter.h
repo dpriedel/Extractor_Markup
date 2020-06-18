@@ -55,7 +55,7 @@
 struct XLS_BalanceSheet
 {
     XLS_Sheet balance_sheet_;
-    EM::Extractor_Values values_;
+    EM::XLS_Values values_;
     bool is_valid_;
 
     [[nodiscard]] inline bool empty() const { return balance_sheet_.empty(); }
@@ -66,7 +66,7 @@ struct XLS_BalanceSheet
 struct XLS_StatementOfOperations
 {
     XLS_Sheet statement_of_operations_;
-    EM::Extractor_Values values_;
+    EM::XLS_Values values_;
     bool is_valid_;
 
     [[nodiscard]] inline bool empty() const { return statement_of_operations_.empty(); }
@@ -77,7 +77,7 @@ struct XLS_StatementOfOperations
 struct XLS_CashFlows
 {
     XLS_Sheet cash_flows_;
-    EM::Extractor_Values values_;
+    EM::XLS_Values values_;
     bool is_valid_;
 
     [[nodiscard]] inline bool empty() const { return cash_flows_.empty(); }
@@ -88,7 +88,7 @@ struct XLS_CashFlows
 struct XLS_StockholdersEquity
 {
     XLS_Sheet stockholders_equity_;
-    EM::Extractor_Values values_;
+    EM::XLS_Values values_;
     bool is_valid_;
 
     [[nodiscard]] inline bool empty() const { return stockholders_equity_.empty(); }
@@ -122,6 +122,10 @@ struct XLS_FinancialStatements
 };
 
 XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name);
+
+EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet);
+
+EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet);
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
 
