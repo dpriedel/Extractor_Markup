@@ -354,11 +354,6 @@ XLS_Sheet::XLS_Sheet (xlsxioreader xlsxioread, const XLSXIOCHAR* sheet_name)
 XLS_Sheet::XLS_Sheet (const XLS_Sheet& rhs)
     : xlsxioread_{rhs.xlsxioread_}, extended_sheet_name_{rhs.extended_sheet_name_}, sheet_name_{rhs.sheet_name_}
 {
-    if (current_sheet_ != nullptr)
-    {
-        xlsxioread_sheet_close(current_sheet_);
-        current_sheet_ = nullptr;
-    }
     if (xlsxioread_ != nullptr && ! sheet_name_.empty())
     {
         current_sheet_ = xlsxioread_sheet_open(xlsxioread_, sheet_name_.data(), 0);
@@ -368,12 +363,6 @@ XLS_Sheet::XLS_Sheet (const XLS_Sheet& rhs)
 XLS_Sheet::XLS_Sheet (XLS_Sheet&& rhs) noexcept
     : xlsxioread_{rhs.xlsxioread_}, extended_sheet_name_{std::move(rhs.extended_sheet_name_)}, sheet_name_{std::move(rhs.sheet_name_)}
 {
-    if (current_sheet_ != nullptr)
-    {
-        xlsxioread_sheet_close(current_sheet_);
-        current_sheet_ = nullptr;
-    }
-
     current_sheet_ = rhs.current_sheet_;
 
     rhs.xlsxioread_ = nullptr;
