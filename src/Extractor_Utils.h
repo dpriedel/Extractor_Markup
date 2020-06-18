@@ -139,13 +139,13 @@ void append_to_string(std::string& s, const T& t)
 // now, a function to concatenate a bunch of string-like things.
 
 template<typename... Ts>
-std::string catenate(Ts&&... ts)
+std::string catenate(const Ts&... ts)
 {
     // let's use fold a expression
     // (comma operator is cool...)
 
     std::string x;
-    ( ... , append_to_string(x, std::forward<Ts>(ts)) );
+    ( ... , append_to_string(x, ts) );
     return x;
 }
 
@@ -276,13 +276,13 @@ inline std::vector<T> split_string(EM::sv string_data, char delim)
 // utility function
 
 template<typename ...Ts>
-auto NotAllEmpty(Ts ...ts)
+auto NotAllEmpty(const Ts& ...ts)
 {
     return ((! ts.empty()) || ...);
 }
 
 template<typename ...Ts>
-auto AllNotEmpty(Ts ...ts)
+auto AllNotEmpty(const Ts& ...ts)
 {
     return ((! ts.empty()) && ...);
 }
