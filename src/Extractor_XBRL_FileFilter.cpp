@@ -316,7 +316,7 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 //         Name:  ExtractXLSData
 //  Description:  need to uudecode the data we found in the file.
 // =====================================================================================
-    std::vector<char> ExtractXLSData (EM::XLSContent xls_content)
+std::vector<char> ExtractXLSData (EM::XLSContent xls_content)
 {
 	// we write our XLS file to the std::in of the decoder
     // and read the decoder's std::out into a charater vector.
