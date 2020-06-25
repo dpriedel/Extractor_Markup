@@ -175,8 +175,6 @@ private:
     // ====================  DATA MEMBERS  ======================================= 
 
     const std::vector<char>* content_ = nullptr;
-//    xlsxioreader xlsxioread_ = nullptr;
-//    xlsxioreadersheet  current_sheet_ = nullptr;
 
     mutable std::string extended_sheet_name_;
     mutable std::string sheet_name_lc_;

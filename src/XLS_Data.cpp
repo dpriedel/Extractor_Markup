@@ -102,7 +102,7 @@ XLS_File& XLS_File::operator= (XLS_File&& rhs) noexcept
     return *this;
 }		// -----  end of method XLS_File::operator=  ----- 
 
-std::vector<std::string> XLS_File::GetSheetNames(void) const
+std::vector<std::string> XLS_File::GetSheetNames() const
 {
     if (content_.empty())
     {
@@ -134,13 +134,14 @@ std::vector<std::string> XLS_File::GetSheetNames(void) const
     return results;
 }		// -----  end of method XLS_File::GetSheetNames  ----- 
 
-// NOTE: may need to lower case the sheet name for next 2 functions.
-//
 std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
 {
+    std::string looking_for{sheet_name};
+    looking_for |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+
     if (! sheet_name.empty())
     {
-        auto pos = ranges::find_if(*this, [sheet_name] (auto& x) { return x.GetSheetName() == sheet_name; });
+        auto pos = ranges::find_if(*this, [looking_for] (auto& x) { return x.GetSheetName() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
@@ -151,9 +152,12 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
 
 std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) const
 {
+    std::string looking_for{sheet_name};
+    looking_for |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+
     if (! sheet_name.empty())
     {
-        auto pos = ranges::find_if(*this, [sheet_name] (auto& x) { return x.GetSheetNameFromInside() == sheet_name; });
+        auto pos = ranges::find_if(*this, [looking_for] (auto& x) { return x.GetSheetNameFromInside() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
@@ -227,30 +231,10 @@ XLS_File::sheet_itor::sheet_itor (const sheet_itor& rhs)
 
     // need to match position of rhs.
 
-    while (true)
+    while (current_sheet_ != rhs.current_sheet_)
     {
-        sheet_name_ = xlsxioread_sheetlist_next(sheet_list_);
-        if (sheet_name_ == nullptr)
-        {
-            break;
-        }
-        if (strcmp(sheet_name_, rhs.sheet_name_) == 0)
-        {
-            break;
-        }
-    };
-
-    if (sheet_name_ == nullptr)
-    {
-        // end of sheets
-        xlsxioread_sheetlist_close(sheet_list_);
-        sheet_list_ = nullptr;
-        xlsxioread_close(xlsxioread_);
-        xlsxioread_ = nullptr;
-        return;
+        this->operator ++();
     }
-
-    current_sheet_ = {content_, sheet_name_};
 
 }  // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  ----- 
 
@@ -518,6 +502,7 @@ XLS_Sheet::row_itor::row_itor (const std::vector<char>* content, const std::stri
 {
     if (content == nullptr || sheet_name.empty())
     {
+        content_ = nullptr;
         sheet_name_mc_ = {};
         return;
     }
@@ -540,40 +525,8 @@ XLS_Sheet::row_itor::row_itor (const std::vector<char>* content, const std::stri
         return;
     }
 
-    // we collect all the cells, if any, in a row and
-    // put them in a tab delimited string.
+    this->operator++();
 
-    auto got_row = xlsxioread_sheet_next_row(current_sheet_);
-    if (! got_row)
-    {
-        xlsxioread_sheet_close(current_sheet_);
-        current_sheet_ = nullptr;
-        xlsxioread_close(xlsxioread_);
-        xlsxioread_ = nullptr;
-        content_ = nullptr;
-        sheet_name_mc_ = {};
-        return;
-    }
-
-    // we might as well use a smart pointer here. it's
-    // possible we could run into some kind of error processing
-    // the cells.
-
-    // let's build this just once
-    auto cell_deleter = [](XLSXIOCHAR* cell) { free(cell); };
-
-    while (true)
-    {
-        std::unique_ptr<XLSXIOCHAR, std::function<void(XLSXIOCHAR*)>> next_cell =
-            {xlsxioread_sheet_next_cell(current_sheet_), cell_deleter};
-        if (! next_cell)
-        {
-            break;
-        }
-        current_row_ += next_cell.get();
-        current_row_ += '\t';
-    }
-    current_row_ += '\n';
 }  // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  ----- 
 
 XLS_Sheet::row_itor::row_itor (const row_itor& rhs)
@@ -694,6 +647,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
         xlsxioread_close(xlsxioread_);
         xlsxioread_ = nullptr;
         content_ = nullptr;
+        current_row_.clear();
         sheet_name_mc_ = {};
         return *this;
     }
@@ -701,7 +655,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++ ()
     current_row_.clear();
 
     // let's build this just once
-    auto cell_deleter = [](XLSXIOCHAR* cell) { free(cell); };
+    auto cell_deleter = [](XLSXIOCHAR* cell) { if (cell) free(cell); };
 
     while (true)
     {
