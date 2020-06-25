@@ -55,6 +55,7 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/cache1.hpp>
 #include <range/v3/view/filter.hpp>
+#include <range/v3/view/drop.hpp>
 
 #include <boost/regex.hpp>
 
@@ -118,22 +119,19 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
     auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { return (x.GetSheetNameFromInside().find("balance sheets") != std::string::npos); } );
     if (bal_sheets != ranges::end(xls_file))
     {
-        financial_statements.balance_sheet_.balance_sheet_ = *bal_sheets;
-        financial_statements.balance_sheet_.values_ = CollectXLSValues(financial_statements.balance_sheet_.balance_sheet_);
+        financial_statements.balance_sheet_.values_ = CollectXLSValues(*bal_sheets);
     }
 
     auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of operations") != std::string::npos; } );
     if (stmt_of_ops != ranges::end(xls_file))
     {
-        financial_statements.statement_of_operations_.statement_of_operations_ = *stmt_of_ops;
-        financial_statements.statement_of_operations_.values_ = CollectXLSValues(financial_statements.statement_of_operations_.statement_of_operations_);
+        financial_statements.statement_of_operations_.values_ = CollectXLSValues(*stmt_of_ops);
     }
 
     auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { return x.GetSheetNameFromInside().find("statements of cash flows") != std::string::npos; } );
     if (cash_flows != ranges::end(xls_file))
     {
-        financial_statements.cash_flows_.cash_flows_ = *cash_flows;
-        financial_statements.cash_flows_.values_ = CollectXLSValues(financial_statements.cash_flows_.cash_flows_);
+        financial_statements.cash_flows_.values_ = CollectXLSValues(*cash_flows);
     }
 
     return financial_statements;
@@ -165,6 +163,7 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     boost::smatch match_values;
 
     EM::XLS_Values values = sheet 
+        | ranges::views::drop(1)                // first row contains sheet name
         | ranges::views::filter([&match_values](const auto& a_row) { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value); })
         | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
         | ranges::views::cache1
@@ -190,42 +189,16 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
 //                }
 //            });
 //
-//    // lastly, clean up the labels a little.
-//    // one more thing...
-//    // it's possible that cleaning a label field could have caused it to becomre empty
-//
-//    values = std::move(values)
-//        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first); return x; } )
-//        | ranges::actions::remove_if([](auto& x) { return x.first.empty(); });
-//
+    // lastly, clean up the labels a little.
+    // one more thing...
+    // it's possible that cleaning a label field could have caused it to becomre empty
+
+    values = std::move(values)
+        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first.get()); return x; } )
+        | ranges::actions::remove_if([](auto& x) { return x.first.get().empty(); });
+
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
-
-// ===  FUNCTION  ======================================================================
-//         Name:  CleanLabel
-//  Description:  
-// =====================================================================================
-
-std::string CleanLabel (const std::string& label)
-{
-    static const std::string delete_this{""};
-    static const std::string single_space{" "};
-    static const boost::regex regex_punctuation{R"***([[:punct:]])***"};
-    static const boost::regex regex_leading_space{R"***(^[[:space:]]+)***"};
-    static const boost::regex regex_trailing_space{R"***([[:space:]]{1,}$)***"};
-    static const boost::regex regex_double_space{R"***([[:space:]]{2,})***"};
-
-    std::string cleaned_label = boost::regex_replace(label, regex_punctuation, single_space);
-    cleaned_label = boost::regex_replace(cleaned_label, regex_leading_space, delete_this);
-    cleaned_label = boost::regex_replace(cleaned_label, regex_trailing_space, delete_this);
-    cleaned_label = boost::regex_replace(cleaned_label, regex_double_space, single_space);
-
-    // lastly, lowercase
-
-    ranges::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
-
-    return cleaned_label;
-}		// -----  end of function CleanLabel  -----
 
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)

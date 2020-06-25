@@ -307,6 +307,8 @@ EM::FileType FindFileType(EM::DocumentSection document);
 
 EM::HTMLContent FindHTML(EM::DocumentSection document, EM::FileName document_name);
 
+std::string CleanLabel (const std::string& label);
+
 // let's use some function objects for our filters.
 
 struct FileHasXBRL

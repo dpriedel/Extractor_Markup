@@ -54,44 +54,40 @@
 
 struct XLS_BalanceSheet
 {
-    XLS_Sheet balance_sheet_;
     EM::XLS_Values values_;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return balance_sheet_.empty(); }
+    [[nodiscard]] inline bool empty() const { return values_.empty(); }
 
     bool ValidateContent();
 };
 
 struct XLS_StatementOfOperations
 {
-    XLS_Sheet statement_of_operations_;
     EM::XLS_Values values_;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return statement_of_operations_.empty(); }
+    [[nodiscard]] inline bool empty() const { return values_.empty(); }
 
     bool ValidateContent();
 };
 
 struct XLS_CashFlows
 {
-    XLS_Sheet cash_flows_;
     EM::XLS_Values values_;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return cash_flows_.empty(); }
+    [[nodiscard]] inline bool empty() const { return values_.empty(); }
 
     bool ValidateContent();
 };
 
 struct XLS_StockholdersEquity
 {
-    XLS_Sheet stockholders_equity_;
     EM::XLS_Values values_;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return stockholders_equity_.empty(); }
+    [[nodiscard]] inline bool empty() const { return values_.empty(); }
 
     bool ValidateContent();
 };

@@ -540,6 +540,33 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator() (EM::FileName source
 
 }		// -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
 
+// ===  FUNCTION  ======================================================================
+//         Name:  CleanLabel
+//  Description:  
+// =====================================================================================
+
+std::string CleanLabel (const std::string& label)
+{
+    static const std::string delete_this{""};
+    static const std::string single_space{" "};
+    static const boost::regex regex_punctuation{R"***([[:punct:]])***"};
+    static const boost::regex regex_leading_space{R"***(^[[:space:]]+)***"};
+    static const boost::regex regex_trailing_space{R"***([[:space:]]{1,}$)***"};
+    static const boost::regex regex_double_space{R"***([[:space:]]{2,})***"};
+
+    std::string cleaned_label = boost::regex_replace(label, regex_punctuation, single_space);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_leading_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_trailing_space, delete_this);
+    cleaned_label = boost::regex_replace(cleaned_label, regex_double_space, single_space);
+
+    // lastly, lowercase
+
+    ranges::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
+
+    return cleaned_label;
+}		// -----  end of function CleanLabel  -----
+
+
 namespace boost
 {
     // these functions are declared in the library headers but left to the user to define.
