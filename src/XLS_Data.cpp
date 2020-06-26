@@ -176,20 +176,26 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) c
 XLS_File::sheet_itor::sheet_itor (const std::vector<char>* content)
     : content_{content}
 {
+    if (content_ == nullptr)
+    {
+        return;
+    }
+
     // it's possible we won't be able to read the data in which case
     // our handle will be null.  All downstream classes should be prepared for this.
 
     xlsxioread_ = xlsxioread_open_memory (const_cast<char*>(content_->data()), content_->size(), 0);
 
-    if (xlsxioread_ != nullptr)
+    if (xlsxioread_ == nullptr)
     {
-        sheet_list_ = xlsxioread_sheetlist_open(xlsxioread_);
-        if (sheet_list_ == nullptr)
-        {
-            xlsxioread_close(xlsxioread_);
-            xlsxioread_ = nullptr;
-            return;
-        }
+        return;
+    }
+    sheet_list_ = xlsxioread_sheetlist_open(xlsxioread_);
+    if (sheet_list_ == nullptr)
+    {
+        xlsxioread_close(xlsxioread_);
+        xlsxioread_ = nullptr;
+        return;
     }
 
     sheet_name_ = xlsxioread_sheetlist_next(sheet_list_);
@@ -210,10 +216,11 @@ XLS_File::sheet_itor::sheet_itor (const std::vector<char>* content)
 XLS_File::sheet_itor::sheet_itor (const sheet_itor& rhs)
     : content_{rhs.content_}
 {
-    if (rhs.sheet_name_ == nullptr)
+    if (content_ == nullptr || rhs.sheet_name_ == nullptr)
     {
         return;
     }
+
     xlsxioread_ = xlsxioread_open_memory (const_cast<char*>(content_->data()), content_->size(), 0);
 
     if (xlsxioread_ == nullptr)
