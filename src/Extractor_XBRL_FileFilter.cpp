@@ -66,6 +66,7 @@
 #include <pqxx/pqxx>
 
 #include "SEC_Header.h"
+#include "SharesOutstanding.h"
 
 using namespace std::string_literals;
 
@@ -116,6 +117,9 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
 
     XLS_File xls_file{std::move(xls_data)};
 
+    financial_statements.outstanding_shares_ = ExtractXLSSharesOutstanding(*xls_file.begin());
+
+
     auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { return (x.GetSheetNameFromInside().find("balance sheets") != std::string::npos); } );
     if (bal_sheets != ranges::end(xls_file))
     {
@@ -152,6 +156,61 @@ EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet)
     return values;
 }
 
+// ===  FUNCTION  ======================================================================
+//         Name:  ExtractXLSSharesOutstanding
+//  Description:  find shares outstanding in worksheet
+// =====================================================================================
+int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
+{
+    const std::string nbr_of_shares = R"***(\t(\b[1-9](?:[0-9]{3,})\b)\t)***";
+    const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_share_extractor{nbr_of_shares, my_flags};
+    auto shares_row = ranges::views::transform([](unsigned char c) { return std::tolower(c); })
+        | ranges::views::filter([](const std::string& row) { return row.find("outstanding") != std::string::npos; });
+
+    std::string shares = "-1";
+
+    for(auto row : xls_sheet)
+    {
+        row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+
+        if (row.find("outstanding") == std::string::npos)
+        {
+            continue;
+        }
+        boost::smatch the_shares;
+
+        if (bool found_it = boost::regex_search(row, the_shares, regex_share_extractor); found_it)
+        {
+           shares = the_shares.str(1); 
+        }
+    }
+
+    int64_t shares_outstanding;
+
+    if (shares != "-1")
+    {
+
+        // need to replace any commas we might have.
+
+        const std::string delete_this{""};
+        const boost::regex regex_comma{R"***(,)***"};
+        shares = boost::regex_replace(shares, regex_comma, delete_this);
+
+        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
+        {
+            throw ExtractorException(catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
+        }
+    }
+    else
+    {
+        shares_outstanding = -1;
+    }
+    
+    spdlog::debug(catenate("Shares outstanding: ", shares_outstanding));
+    return shares_outstanding;
+}		// -----  end of function ExtractXLSSharesOutstanding  -----
+
 EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
 {
     // for now, we're doing just a quick and dirty...
@@ -160,35 +219,41 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     // NOTE the use of 'cache1' below.  This is ** REQUIRED ** to get correct behavior.  without it,
     // some items are dropped, some are duplicated.
 
+    // our multiplier is in the first row of the sheet.
+
+    auto row_itor = sheet.begin();
+    auto multiplier = ExtractMultiplier(*row_itor);
+
     boost::smatch match_values;
 
     EM::XLS_Values values = sheet 
-        | ranges::views::drop(1)                // first row contains sheet name
+        | ranges::views::drop(1)                // first row contains sheet name and multiplier
         | ranges::views::filter([&match_values](const auto& a_row) { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value); })
         | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
         | ranges::views::cache1
         | ranges::to<EM::XLS_Values>();
 
 
-//    // now, for all values except 'per share', apply the multiplier.
-//    // for now, keep parens to indicate negative numbers.
-//    // TODO: figure out if this should be replaced with negative sign.
-//
-//    ranges::for_each(values
-//            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
-//            [&multiplier](auto& x)
-//            {
-//                if (x.second.back() == ')')
-//                {
-//                    x.second.resize(x.second.size() - 1);
-//                }
-//                x.second += multiplier;
-//                if (x.second[0] == '(')
-//                {
-//                    x.second += ')';
-//                }
-//            });
-//
+    // now, for all values except 'per share', apply the multiplier.
+    // for now, keep parens to indicate negative numbers.
+    // TODO: figure out if this should be replaced with negative sign.
+
+    ranges::for_each(values
+            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.get().begin(), x.first.get().end(), regex_per_share); }),
+            [&multiplier](auto& x)
+            {
+                auto value = x.second.get();
+                if (value.back() == ')')
+                {
+                    value.resize(value.size() - 1);
+                }
+                value += multiplier;
+                if (value[0] == '(')
+                {
+                    value += ')';
+                }
+            });
+
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
@@ -200,6 +265,28 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
 
+
+// ===  FUNCTION  ======================================================================
+//         Name:  ExtractMultiplier
+//  Description:  find mulitplier value
+// =====================================================================================
+std::string ExtractMultiplier (std::string row)
+{
+    row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+    if (row.find("thousands"))
+    {
+        return "000";
+    }
+    else if (row.find("millions"))
+    {
+        return "000000";
+    }
+    else if (row.find("billions"))
+    {
+        return "000000000";
+    }
+    return {};
+}		// -----  end of function ExtractMultiplier  -----
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
 {

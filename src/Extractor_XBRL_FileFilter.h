@@ -133,6 +133,10 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
 std::vector<char> ExtractXLSData(EM::XLSContent xls_content);
 
+std::string ExtractMultiplier(std::string row);
+
+int64_t ExtractXLSSharesOutstanding(const XLS_Sheet& xls_sheet);
+
 std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml);
 
 EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml);
