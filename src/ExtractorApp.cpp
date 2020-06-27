@@ -666,21 +666,20 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(EM::FileContent f
 {
     //TODO: check for and handle exporting spreadsheets
     //
-//    auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_, input_file_name);
-//    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ",
-//        input_file_name.get()).c_str());
-//
-//    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
-//        input_file_name.get()).c_str());
-//
-////        did_load = true;
-//    bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
-//    if (did_load)
-//    {
-//        return {1, 0, 0};
-//    }
-//    return {0, 1, 0};
-    return {0, 0, 0};
+    auto the_tables = FindAndExtractXLSContent(document_sections, input_file_name);
+    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ",
+        input_file_name.get()).c_str());
+
+    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
+        input_file_name.get()).c_str());
+
+//        did_load = true;
+    bool did_load = LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    if (did_load)
+    {
+        return {1, 0, 0};
+    }
+    return {0, 1, 0};
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XLS  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
@@ -958,12 +957,11 @@ bool ExtractorApp::LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::
 {
     //TODO: check for and handle exporting spreadsheets.
 
-//    auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_, file_name);
-//    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
-//
-//    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
-//    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
-    return false;
+    auto the_tables = FindAndExtractXLSContent(sections, file_name);
+    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
+
+    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,

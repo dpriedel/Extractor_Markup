@@ -165,4 +165,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     const std::vector<EM::GAAP_Data>& gaap_fields, const EM::Extractor_Labels& label_fields,
     const EM::ContextPeriod& context_fields, const std::string& schema_name);
 
+bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_FinancialStatements& financial_statements, const std::string& schema_name);
+
 #endif   /* ----- #ifndef _EXTRACTOR_XBRL_FILEFILTER_INC_  ----- */
