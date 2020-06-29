@@ -55,9 +55,9 @@
 struct XLS_BalanceSheet
 {
     EM::XLS_Values values_;
-    bool is_valid_;
+    bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return values_.empty(); }
+    [[nodiscard]] inline bool empty() const { return ! found_sheet_; }
 
     bool ValidateContent();
 };
@@ -65,9 +65,9 @@ struct XLS_BalanceSheet
 struct XLS_StatementOfOperations
 {
     EM::XLS_Values values_;
-    bool is_valid_;
+    bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return values_.empty(); }
+    [[nodiscard]] inline bool empty() const { return ! found_sheet_; }
 
     bool ValidateContent();
 };
@@ -75,9 +75,9 @@ struct XLS_StatementOfOperations
 struct XLS_CashFlows
 {
     EM::XLS_Values values_;
-    bool is_valid_;
+    bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return values_.empty(); }
+    [[nodiscard]] inline bool empty() const { return ! found_sheet_; }
 
     bool ValidateContent();
 };
@@ -85,9 +85,9 @@ struct XLS_CashFlows
 struct XLS_StockholdersEquity
 {
     EM::XLS_Values values_;
-    bool is_valid_;
+    bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return values_.empty(); }
+    [[nodiscard]] inline bool empty() const { return ! found_sheet_; }
 
     bool ValidateContent();
 };

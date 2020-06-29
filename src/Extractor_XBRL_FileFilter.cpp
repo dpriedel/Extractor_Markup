@@ -111,8 +111,8 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
 XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name)
 {
     static const boost::regex regex_finance_statements_bal {R"***(balance\s+sheet|financial position)***"};
-    static const boost::regex regex_finance_statements_ops {R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***"};
-    static const boost::regex regex_finance_statements_cash {R"***((?:statement|statements)\s+?of.*?(?:cash\s*flow))***"};
+    static const boost::regex regex_finance_statements_ops {R"***((?:(?:statement|statements)\s+?of.*?(?:oper|loss|income|earning|expense))|(?:income|loss|earning statement))***"};
+    static const boost::regex regex_finance_statements_cash {R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
 
     XLS_FinancialStatements financial_statements;
 
@@ -127,18 +127,21 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
     auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } );
     if (bal_sheets != ranges::end(xls_file))
     {
+        financial_statements.balance_sheet_.found_sheet_ = true;
         financial_statements.balance_sheet_.values_ = CollectXLSValues(*bal_sheets);
     }
 
     auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } );
     if (stmt_of_ops != ranges::end(xls_file))
     {
+        financial_statements.statement_of_operations_.found_sheet_ = true;
         financial_statements.statement_of_operations_.values_ = CollectXLSValues(*stmt_of_ops);
     }
 
     auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } );
     if (cash_flows != ranges::end(xls_file))
     {
+        financial_statements.cash_flows_.found_sheet_ = true;
         financial_statements.cash_flows_.values_ = CollectXLSValues(*cash_flows);
     }
 
