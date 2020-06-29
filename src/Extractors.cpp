@@ -43,6 +43,7 @@
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/find_if.hpp>
 
 #include <boost/regex.hpp>
 
@@ -428,13 +429,26 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS (std::vector<char> report)
    ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetNameFromInside() << '\n'; });
    std::cout << "\n\n";
 
-   found_bal_sheet = xls_file.FindSheetByInternalName("balance sheets").has_value();
-   std::cout << "ISN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
-   found_stmt_of_ofs = xls_file.FindSheetByInternalName("statements of operations").has_value();
-   std::cout << "ISN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
-   found_cash_flows = xls_file.FindSheetByInternalName("statements of cash flows").has_value();
-   std::cout << "ISN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
+//   found_bal_sheet = xls_file.FindSheetByInternalName("balance sheets").has_value();
+//   std::cout << "ISN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
+//   found_stmt_of_ofs = xls_file.FindSheetByInternalName("statements of operations").has_value();
+//   std::cout << "ISN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
+//   found_cash_flows = xls_file.FindSheetByInternalName("statements of cash flows").has_value();
+//   std::cout << "ISN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
 
+    static const boost::regex regex_finance_statements_bal {R"***(balance\s+sheet|financial position)***"};
+    static const boost::regex regex_finance_statements_ops {R"***((?:(?:statement|statements)\s+?of.*?(?:oper|loss|income|earning|expense))|(?:income|loss|earning statement))***"};
+    static const boost::regex regex_finance_statements_cash {R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
+
+
+    found_bal_sheet = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } ) != ranges::end(xls_file);
+   std::cout << "ISN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
+
+    found_stmt_of_ofs = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } ) != ranges::end(xls_file);
+   std::cout << "ISN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
+
+    found_cash_flows = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } ) != ranges::end(xls_file);
+   std::cout << "ISN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
 
 //   for (const auto& sheet : xls_file)
 //   {
