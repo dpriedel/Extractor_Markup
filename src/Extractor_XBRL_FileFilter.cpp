@@ -83,7 +83,7 @@ decltype(auto) MONTH_NAMES = std::experimental::make_array("", "January", "Febru
 
 const std::string::size_type START_WITH{1000000};
 
-const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
+const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t(?:\[[^\t]+?\]\t)?\$? *([(-]? *?[.,0-9]+[)]?)[^\t]*\t)***"};
 const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
 const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
     boost::regex_constants::normal | boost::regex_constants::icase};
@@ -254,7 +254,10 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
                 {
                     value.resize(value.size() - 1);
                 }
-                value += multiplier;
+                if (! value.ends_with(multiplier))
+                {
+                    value += multiplier;
+                }
                 if (value[0] == '(')
                 {
                     value += ')';
