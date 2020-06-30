@@ -47,7 +47,6 @@
 #include "SEC_Header.h"
 #include "TablesFromFile.h"
 
-//#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 #include <range/v3/action/remove_if.hpp>
