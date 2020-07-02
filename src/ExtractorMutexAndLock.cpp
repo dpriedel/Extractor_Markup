@@ -20,7 +20,7 @@
 
 bool ExtractMutex::AddEntry (const std::string& new_entry)
 {
-    const std::lock_guard<std::mutex> lk{m_};
+    std::lock_guard<std::mutex> lk{m_};
     const auto[it, success] = active_forms_.insert(new_entry);
 
     return success;
@@ -29,7 +29,7 @@ bool ExtractMutex::AddEntry (const std::string& new_entry)
 
 void ExtractMutex::RemoveEntry (const std::string& entry)
 {
-    const std::lock_guard<std::mutex> lk{m_};
+    std::lock_guard<std::mutex> lk{m_};
 
     //TODO: decide whether to throw if entry not found.
 
