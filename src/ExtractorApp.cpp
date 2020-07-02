@@ -481,7 +481,7 @@ void ExtractorApp::BuildFilterList()
         filters_.emplace_back(FileIsWithinDateRange{begin_date_, end_date_});
     }
 
-    if (! (export_HTML_forms_ || update_shares_outstanding_))
+    if ((! export_HTML_forms_ && ! update_shares_outstanding_))
     {
         filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_, data_source_, replace_DB_content_});
     }
@@ -1141,10 +1141,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             }
             break;
         }
-        catch(const pqxx::sql_error& e)
+        catch(const pqxx::failure& e)
         {
             spdlog::error(catenate("Database error: ", e.what()));
-            spdlog::error(catenate("Query was: ", e.query()));
+//            spdlog::error(catenate("Query was: ", e.query()));
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -1170,9 +1170,9 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         }
         catch (...)
         {
-            // any problems, we'll document them and continue.
+            // any other problems, we'll document them and stop.
 
-            spdlog::error("Unknown problem with async file processing");
+            spdlog::error("Unknown problem with async file processing. Stopping...");
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's remember our first time here.
@@ -1229,6 +1229,20 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         catch(std::exception& e)
         {
             counters = AddTs(counters, {0, 0, 1});
+            if (! ep)
+            {
+                ep = std::current_exception();
+            }
+        }
+        catch (...)
+        {
+            // any other problems, we'll document them and stop.
+
+            spdlog::error("Unknown problem with async file clean-up. ");
+            counters = AddTs(counters, {0, 0, 1});
+
+            // OK, let's remember our first time here.
+
             if (! ep)
             {
                 ep = std::current_exception();
