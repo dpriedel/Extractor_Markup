@@ -169,7 +169,7 @@ EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet)
 // =====================================================================================
 int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
 {
-    const std::string nbr_of_shares = R"***(\t(\b[1-9](?:[0-9]{3,})\b)\t)***";
+    const std::string nbr_of_shares = R"***(\t(\b[1-9](?:[0-9.]{2,})\b)\t)***";
     const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_share_extractor{nbr_of_shares, my_flags};
     auto shares_row = ranges::views::transform([](unsigned char c) { return std::tolower(c); })
@@ -197,13 +197,36 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
 
     if (shares != "-1")
     {
-
+        auto row_itor = xls_sheet.begin();
+        int multiplier_skips = 1;
+        auto multiplier = ExtractMultiplier(*row_itor);
+        if (multiplier.first.empty())
+        {
+            multiplier = ExtractMultiplier(*(++row_itor));
+            if (! multiplier.first.empty())
+            {
+                multiplier_skips = 2;
+            }
+        }
         // need to replace any commas we might have.
 
         const std::string delete_this{""};
         const boost::regex regex_comma{R"***(,)***"};
         shares = boost::regex_replace(shares, regex_comma, delete_this);
 
+        if (! multiplier.first.empty())
+        {
+            if (auto pos = shares.find('.'); pos != std::string::npos)
+            {
+                auto after_decimal = shares.size() - pos;
+                shares.append(multiplier.first, after_decimal);
+                shares.erase(pos, 1);
+            }
+            else if (! shares.ends_with(multiplier.first))
+            {
+                shares += multiplier.first;
+            }
+        }
         if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
         {
             throw ExtractorException(catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
@@ -226,15 +249,24 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     // NOTE the use of 'cache1' below.  This is ** REQUIRED ** to get correct behavior.  without it,
     // some items are dropped, some are duplicated.
 
-    // our multiplier is in the first row of the sheet.
+    // our multiplier is in the first or second row of the sheet.
 
     auto row_itor = sheet.begin();
+    int multiplier_skips = 1;
     auto multiplier = ExtractMultiplier(*row_itor);
+    if (multiplier.first.empty())
+    {
+        multiplier = ExtractMultiplier(*(++row_itor));
+        if (! multiplier.first.empty())
+        {
+            multiplier_skips = 2;
+        }
+    }
 
     boost::smatch match_values;
 
     EM::XLS_Values values = sheet 
-        | ranges::views::drop(1)                // first row contains sheet name and multiplier
+        | ranges::views::drop(multiplier_skips)                // first row contains sheet name and multiplier
         | ranges::views::filter([&match_values](const auto& a_row) { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value); })
         | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
         | ranges::views::cache1
@@ -254,9 +286,15 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
                 {
                     value.resize(value.size() - 1);
                 }
-                if (! value.ends_with(multiplier))
+                if (auto pos = value.find('.'); pos != std::string::npos)
                 {
-                    value += multiplier;
+                    auto after_decimal = value.size() - pos;
+                    value.append(multiplier.first, after_decimal);
+                    value.erase(pos, 1);
+                }
+                else if (! value.ends_with(multiplier.first))
+                {
+                    value += multiplier.first;
                 }
                 if (value[0] == '(')
                 {
@@ -280,22 +318,22 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
 //         Name:  ExtractMultiplier
 //  Description:  find mulitplier value
 // =====================================================================================
-std::string ExtractMultiplier (std::string row)
+std::pair<std::string, int64_t> ExtractMultiplier (std::string row)
 {
     row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
-    if (row.find("thousands"))
+    if (row.find("thousands") != std::string::npos)
     {
-        return "000";
+        return {"000", 1000};
     }
-    else if (row.find("millions"))
+    else if (row.find("millions") != std::string::npos)
     {
-        return "000000";
+        return {"000000", 1000000};
     }
-    else if (row.find("billions"))
+    else if (row.find("billions") != std::string::npos)
     {
-        return "000000000";
+        return {"000000000", 1000000000};
     }
-    return {};
+    return {"", 1};
 }		// -----  end of function ExtractMultiplier  -----
 
 EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
