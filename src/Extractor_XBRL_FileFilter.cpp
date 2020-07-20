@@ -214,17 +214,22 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
         const boost::regex regex_comma{R"***(,)***"};
         shares = boost::regex_replace(shares, regex_comma, delete_this);
 
-        if (! multiplier.first.empty())
+        if (multiplier.second > 1)
         {
             if (auto pos = shares.find('.'); pos != std::string::npos)
             {
-                auto after_decimal = shares.size() - pos;
-                shares.append(multiplier.first, after_decimal);
+                auto after_decimal = shares.size() - pos - 1;
+                if (after_decimal > multiplier.first.size())
+                {
+                    // we'll bump the decimal point and truncate the rest
+
+                    shares.resize(pos + multiplier.first.size() + 1);
+                }
+                else
+                {
+                    shares.append(multiplier.first, after_decimal);
+                }
                 shares.erase(pos, 1);
-            }
-            else if (! shares.ends_with(multiplier.first))
-            {
-                shares += multiplier.first;
             }
         }
         if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
@@ -277,37 +282,48 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     // for now, keep parens to indicate negative numbers.
     // TODO: figure out if this should be replaced with negative sign.
 
-    ranges::for_each(values
-            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.get().begin(), x.first.get().end(), regex_per_share); }),
-            [&multiplier](auto& x)
-            {
-                auto value = x.second.get();
-                if (value.back() == ')')
+    if (multiplier.second > 1)
+    {
+        ranges::for_each(values
+                | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.get().begin(), x.first.get().end(), regex_per_share); }),
+                [&multiplier](auto& x)
                 {
-                    value.resize(value.size() - 1);
-                }
-                if (auto pos = value.find('.'); pos != std::string::npos)
-                {
-                    auto after_decimal = value.size() - pos;
-                    value.append(multiplier.first, after_decimal);
-                    value.erase(pos, 1);
-                }
-                else if (! value.ends_with(multiplier.first))
-                {
-                    value += multiplier.first;
-                }
-                if (value[0] == '(')
-                {
-                    value += ')';
-                }
-            });
+                    auto& value = x.second.get();
+                    if (value.back() == ')')
+                    {
+                        value.resize(value.size() - 1);
+                    }
+                    if (auto pos = value.find('.'); pos != std::string::npos)
+                    {
+                        auto after_decimal = value.size() - pos - 1;
+                        if (after_decimal > multiplier.first.size())
+                        {
+                            // we'll bump the decimal point and truncate the rest
 
+                            value.resize(pos + multiplier.first.size() + 1);
+                        }
+                        else
+                        {
+                            value.append(multiplier.first, after_decimal);
+                        }
+                        value.erase(pos, 1);
+                    }
+                    else if (! value.ends_with(multiplier.first))
+                    {
+                        value += multiplier.first;
+                    }
+                    if (value[0] == '(')
+                    {
+                        value += ')';
+                    }
+                });
+    }
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
     values = std::move(values)
-        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first.get()); return x; } )
+        | ranges::actions::transform([](auto& x) { x.first = CleanLabel(x.first.get()); return x; } )
         | ranges::actions::remove_if([](auto& x) { return x.first.get().empty(); });
 
     return values;
