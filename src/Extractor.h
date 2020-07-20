@@ -78,7 +78,7 @@ namespace Extractor
         // ====================  ACCESSORS     ======================================= 
 
         // not needed because we have assignment operators
-//        T& get() { return value_; }
+        T& get() { return value_; }
         const T& get() const { return value_; }
 
         // ====================  MUTATORS      ======================================= 
