@@ -61,9 +61,9 @@ namespace po = boost::program_options;
 #include "spdlog/spdlog.h"
 
 #include "Extractor.h"
+#include "ExtractorMutexAndLock.h"
 #include "Extractor_Utils.h"
 #include "SharesOutstanding.h"
-#include "ExtractorMutexAndLock.h"
 
 class ExtractorApp
 {
@@ -107,27 +107,27 @@ protected:
 
 	void BuildFilterList();
 	void BuildListOfFilesToProcess();
-    std::optional<FileMode> ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name,
+    std::optional<FileMode> ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const EM::FileName& file_name,
             const EM::DocumentSectionList& sections, std::atomic<int>* forms_processed); 
 
-    bool LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
+    bool LoadFileFromFolderToDB(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  
             EM::sv sec_header, FileMode file_mode);
-    bool LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections); 
-    bool LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
-    bool LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
-    bool ExportHtmlFromSingleFile(const EM::DocumentSectionList& sections, EM::FileName file_name, EM::sv sec_header); 
+    bool LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections); 
+    bool LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
+    bool LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& sections,  EM::sv sec_header);
+    bool ExportHtmlFromSingleFile(const EM::DocumentSectionList& sections, const EM::FileName& file_name, EM::sv sec_header); 
     void Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, EM::FileName file_name);
+        int& error_counter, const EM::FileName& file_name);
 
-    std::tuple<int, int, int> LoadSingleFileToDB(EM::FileName input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XLS(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB(const EM::FileName& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XLS(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_HTML(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections, EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name);
     std::tuple<int, int, int> ProcessDirectory();
     std::tuple<int, int, int> LoadFilesFromListToDB();
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms);
+    std::tuple<int, int, int> LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms);
 
 		// ====================  DATA MEMBERS  =======================================
 

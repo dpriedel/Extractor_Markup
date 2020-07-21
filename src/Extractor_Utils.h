@@ -192,9 +192,9 @@ inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a
 
 // seems we do this a lot too.
 
-date::year_month_day StringToDateYMD(const std::string& input_format, std::string the_date);
+date::year_month_day StringToDateYMD(const std::string& input_format, const std::string& the_date);
 
-std::string LoadDataFileForUse(EM::FileName file_name);
+std::string LoadDataFileForUse(const EM::FileName& file_name);
 
 // so we can recognize our errors if we want to do something special
 // now that we have both XBRL and HTML based extractors, we need
@@ -295,15 +295,15 @@ auto ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSec
 	return (... && (ts(SEC_fields, sections)));
 }
 
-bool FormIsInFileName(const std::vector<std::string>& form_types, EM::FileName file_name);
+bool FormIsInFileName(const std::vector<std::string>& form_types, const EM::FileName& file_name);
 
 EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content);
 
-EM::FileName FindFileName(EM::DocumentSection document, EM::FileName document_name);
+EM::FileName FindFileName(const EM::DocumentSection& document, const EM::FileName& document_name);
 
-EM::FileType FindFileType(EM::DocumentSection document);
+EM::FileType FindFileType(const EM::DocumentSection& document);
 
-EM::HTMLContent FindHTML(EM::DocumentSection document, EM::FileName document_name);
+EM::HTMLContent FindHTML(const EM::DocumentSection& document, const EM::FileName& document_name);
 
 std::string CleanLabel (const std::string& label);
 
@@ -405,13 +405,13 @@ struct ConvertInputHierarchyToOutputHierarchy
     ConvertInputHierarchyToOutputHierarchy(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
     ConvertInputHierarchyToOutputHierarchy(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
 
-    ConvertInputHierarchyToOutputHierarchy(EM::FileName source_prefix, EM::FileName destination_prefix)
+    ConvertInputHierarchyToOutputHierarchy(const EM::FileName& source_prefix, const EM::FileName& destination_prefix)
         : source_prefix_{source_prefix.get()}, destination_prefix_{destination_prefix.get()} {}
 
     ConvertInputHierarchyToOutputHierarchy& operator=(const ConvertInputHierarchyToOutputHierarchy& rhs) = default;
     ConvertInputHierarchyToOutputHierarchy& operator=(ConvertInputHierarchyToOutputHierarchy&& rhs) = default;
 
-    fs::path operator() (EM::FileName source_file_path, const std::string& destination_file_name);
+    fs::path operator() (const EM::FileName& source_file_path, const std::string& destination_file_name) const;
 
     fs::path source_prefix_;
     fs::path destination_prefix_;

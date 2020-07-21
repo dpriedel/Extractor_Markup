@@ -117,17 +117,17 @@ struct XLS_FinancialStatements
             cash_flows_.values_); }
 };
 
-XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name);
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, const EM::FileName& document_name);
 
 EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet);
 
 EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet);
 
-EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name);
 
-EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name);
 
-EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name);
+EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name);
 
 EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 

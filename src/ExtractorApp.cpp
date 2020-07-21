@@ -545,7 +545,7 @@ void ExtractorApp::Run()
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
-std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, EM::FileName file_name, const EM::DocumentSectionList& sections,
+std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const EM::FileName& file_name, const EM::DocumentSectionList& sections,
         std::atomic<int>* forms_processed)
 {
     bool use_file{true};
@@ -583,15 +583,12 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
                 }
                 return FileMode{FileMode::e_XLS};
             }
-            else
+            auto x = forms_processed->fetch_add(1);
+            if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
             {
-                auto x = forms_processed->fetch_add(1);
-                if (max_forms_to_process_ > 0 && x >= max_forms_to_process_)
-                {
-                    throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
-                }
-                return FileMode{FileMode::e_XBRL};
+                throw MaxFilesException(catenate("Exceeded file limit: ", max_forms_to_process_, '\n'));
             }
+            return FileMode{FileMode::e_XBRL};
         }
         else if (data_source_ == "XBRL")
         {
@@ -612,16 +609,13 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
             }
             return FileMode{FileMode::e_HTML};
         }
-        else
-        {
-            spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_, (data_source_ == "BOTH" ? " and FileHasXBRL" : "")));
-        }
+        spdlog::info(catenate(file_name.get(), ": File skipped because of filter: ", filter1.filter_name_, (data_source_ == "BOTH" ? " and FileHasXBRL" : "")));
     }
 
     return std::nullopt;
 }
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(const EM::FileName& input_file_name)
 {
     std::atomic<int> forms_processed{0};
     try
@@ -661,8 +655,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(EM::FileName input_fi
 
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
-        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections,
+        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name)
 {
     //TODO: check for and handle exporting spreadsheets
     //
@@ -682,8 +676,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(EM::FileContent f
     return {0, 1, 0};
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XLS  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
-        const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections,
+        const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name)
 {
     auto labels_document = LocateLabelDocument(document_sections, input_file_name);
     auto labels_xml = ParseXMLContent(labels_document);
@@ -705,8 +699,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(EM::FileContent 
     return {0, 1, 0};
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent file_content, const EM::DocumentSectionList& document_sections,
-        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, EM::FileName input_file_name)
+std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileContent& file_content, const EM::DocumentSectionList& document_sections,
+        EM::sv sec_header, const EM::SEC_Header_fields& SEC_fields, const EM::FileName& input_file_name)
 {
     if (update_shares_outstanding_)
     {
@@ -740,7 +734,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(EM::FileContent 
 }		/* -----  end of method ExtractorApp::LoadSingleFileToDB_HTML  ----- */
 
 
-bool ExtractorApp::ExportHtmlFromSingleFile (const EM::DocumentSectionList& sections, EM::FileName file_name, EM::sv sec_header)
+bool ExtractorApp::ExportHtmlFromSingleFile (const EM::DocumentSectionList& sections, const EM::FileName& file_name, EM::sv sec_header)
 {
     // reuse top level logic from financial statements.
     // we don't need to actually isolate the financial data, just be sure it's there.
@@ -846,7 +840,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 }		/* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
 
 void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success_counter, int& skipped_counter,
-        int& error_counter, EM::FileName file_name)
+        int& error_counter, const EM::FileName& file_name)
 {
     if (fs::is_regular_file(file_name.get()))
     {
@@ -936,7 +930,7 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
     return {success_counter, skipped_counter, error_counter};
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& sections, EM::sv sec_header, FileMode file_mode)
 {
     spdlog::info(catenate("Loading contents from file: ", file_name.get()));
@@ -952,7 +946,7 @@ bool ExtractorApp::LoadFileFromFolderToDB(EM::FileName file_name, const EM::SEC_
     return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, sections, sec_header);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& sections, EM::sv sec_header)
 {
     //TODO: check for and handle exporting spreadsheets.
@@ -964,7 +958,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XLS(EM::FileName file_name, const EM::
     return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& document_sections)
 {
     auto labels_document = LocateLabelDocument(document_sections, file_name);
@@ -982,7 +976,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(EM::FileName file_name, const EM:
                 schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
-bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM::SEC_Header_fields& SEC_fields,
+bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
         const EM::DocumentSectionList& sections, EM::sv sec_header)
 {
     if (update_shares_outstanding_)
@@ -1003,7 +997,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(EM::FileName file_name, const EM:
     return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(EM::FileName file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms)
 {
     int success_counter{0};
     int skipped_counter{0};

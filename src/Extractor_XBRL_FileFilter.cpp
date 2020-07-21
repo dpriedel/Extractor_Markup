@@ -108,7 +108,7 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
 //         Name:  FindAndExtractXLSContent
 //  Description:  find needed XLS content 
 // =====================================================================================
-XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, EM::FileName document_name)
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, const EM::FileName& document_name)
 {
     static const boost::regex regex_finance_statements_bal {R"***(balance\s+sheet|financial position)***"};
     static const boost::regex regex_finance_statements_ops {R"***((?:(?:statement|statements)\s+?of.*?(?:oper|loss|income|earning|expense))|(?:income|loss|earning statement))***"};
@@ -124,21 +124,21 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
     financial_statements.outstanding_shares_ = ExtractXLSSharesOutstanding(*xls_file.begin());
 
 
-    auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } );
+    auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } );
     if (bal_sheets != ranges::end(xls_file))
     {
         financial_statements.balance_sheet_.found_sheet_ = true;
         financial_statements.balance_sheet_.values_ = CollectXLSValues(*bal_sheets);
     }
 
-    auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } );
+    auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } );
     if (stmt_of_ops != ranges::end(xls_file))
     {
         financial_statements.statement_of_operations_.found_sheet_ = true;
         financial_statements.statement_of_operations_.values_ = CollectXLSValues(*stmt_of_ops);
     }
 
-    auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { auto name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } );
+    auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } );
     if (cash_flows != ranges::end(xls_file))
     {
         financial_statements.cash_flows_.found_sheet_ = true;
@@ -341,18 +341,18 @@ std::pair<std::string, int64_t> ExtractMultiplier (std::string row)
     {
         return {"000", 1000};
     }
-    else if (row.find("millions") != std::string::npos)
+    if (row.find("millions") != std::string::npos)
     {
         return {"000000", 1000000};
     }
-    else if (row.find("billions") != std::string::npos)
+    if (row.find("billions") != std::string::npos)
     {
         return {"000000000", 1000000000};
     }
     return {"", 1};
 }		// -----  end of function ExtractMultiplier  -----
 
-EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
 {
     for (const auto& document : document_sections)
     {
@@ -366,7 +366,7 @@ EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_s
     return EM::XBRLContent{};
 }
 
-EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, EM::FileName document_name)
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
 {
     for (const auto& document : document_sections)
     {
@@ -384,7 +384,7 @@ EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sect
 //         Name:  LocateXLSDocument
 //  Description:  find FinancialReport document if it exists
 // =====================================================================================
-EM::XLSContent LocateXLSDocument (const EM::DocumentSectionList& document_sections, EM::FileName document_name)
+EM::XLSContent LocateXLSDocument (const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
 {
     for (const auto& document : document_sections)
     {

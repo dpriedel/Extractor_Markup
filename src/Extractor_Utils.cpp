@@ -58,7 +58,7 @@ using namespace std::string_literals;
 
 #include "Extractor.h"
 
-date::year_month_day StringToDateYMD(const std::string& input_format, std::string the_date)
+date::year_month_day StringToDateYMD(const std::string& input_format, const std::string& the_date)
 {
     std::istringstream in{the_date};
     date::sys_days tp;
@@ -161,7 +161,7 @@ MaxFilesException::MaxFilesException(const std::string& text)
  *  Description:  
  * =====================================================================================
  */
-std::string LoadDataFileForUse (EM::FileName file_name)
+std::string LoadDataFileForUse (const EM::FileName& file_name)
 {
     std::string file_content(fs::file_size(file_name.get()), '\0');
     std::ifstream input_file{std::string{file_name.get()}, std::ios_base::in | std::ios_base::binary};
@@ -236,7 +236,7 @@ EM::DocumentSectionList LocateDocumentSections(EM::FileContent file_content)
  *  Description:  
  * =====================================================================================
  */
-EM::FileName FindFileName(EM::DocumentSection document, EM::FileName document_name)
+EM::FileName FindFileName(const EM::DocumentSection& document, const EM::FileName& document_name)
 {
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
@@ -255,7 +255,7 @@ EM::FileName FindFileName(EM::DocumentSection document, EM::FileName document_na
  *  Description:  
  * =====================================================================================
  */
-EM::FileType FindFileType(EM::DocumentSection document)
+EM::FileType FindFileType(const EM::DocumentSection& document)
 {
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
@@ -275,7 +275,7 @@ EM::FileType FindFileType(EM::DocumentSection document)
  * =====================================================================================
  */
 
-EM::HTMLContent FindHTML (EM::DocumentSection document, EM::FileName document_name)
+EM::HTMLContent FindHTML (const EM::DocumentSection& document, const EM::FileName& document_name)
 {
     auto file_name = FindFileName(document, document_name);
     if (file_name.get().extension() == ".htm")
@@ -327,7 +327,7 @@ EM::HTMLContent FindHTML (EM::DocumentSection document, EM::FileName document_na
     return EM::HTMLContent{};
 }		/* -----  end of function FindHTML  ----- */
 
-bool FormIsInFileName (const std::vector<std::string>& form_types, EM::FileName file_name)
+bool FormIsInFileName (const std::vector<std::string>& form_types, const EM::FileName& file_name)
 {
     auto check_for_form_in_name([&file_name](auto& form_type)
     {
@@ -343,7 +343,7 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::
     // need to do a little more detailed check.
 
     EM::FileName document_name(SEC_fields.at("file_name"));
-    for (auto document : document_sections)
+    for (const auto& document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
@@ -360,7 +360,7 @@ bool FileHasXLS::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::D
     // need to do a little more detailed check.
 
     EM::FileName document_name(SEC_fields.at("file_name"));
-    for (auto document : document_sections)
+    for (const auto& document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         if (file_name.get().extension() == ".xlsx")
@@ -382,7 +382,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
     // need to do a little more detailed check.
 
     EM::FileName document_name(header_fields.at("file_name"));
-    for (auto document : document_sections)
+    for (const auto& document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
@@ -515,7 +515,7 @@ bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields& SEC_fields, 
 }		/* -----  end of method FileIsWithinDateRange::operator()  ----- */
 
 
-fs::path ConvertInputHierarchyToOutputHierarchy::operator() (EM::FileName source_file_path, const std::string& destination_file_name)
+fs::path ConvertInputHierarchyToOutputHierarchy::operator() (const EM::FileName& source_file_path, const std::string& destination_file_name) const
 {
 	// want keep the directory hierarchy the same as on the source directory
 	// EXCEPT for the source directory prefix (which is given to our ctor)
