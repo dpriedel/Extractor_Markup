@@ -894,20 +894,42 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
     // for now, keep parens to indicate negative numbers.
     // TODO: figure out if this should be replaced with negative sign.
 
-    ranges::for_each(values
-            | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
-            [&multiplier](auto& x)
-            {
-                if (x.second.back() == ')')
+    if (! multiplier.empty())
+    {
+        ranges::for_each(values
+                | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
+                [&multiplier](auto& x)
                 {
-                    x.second.resize(x.second.size() - 1);
-                }
-                x.second += multiplier;
-                if (x.second[0] == '(')
-                {
-                    x.second += ')';
-                }
-            });
+                    auto& value = x.second;
+                    if (value.back() == ')')
+                    {
+                        value.resize(value.size() - 1);
+                    }
+                    if (auto pos = value.find('.'); pos != std::string::npos)
+                    {
+                        auto after_decimal = value.size() - pos - 1;
+                        if (after_decimal > multiplier.size())
+                        {
+                            // we'll bump the decimal point and truncate the rest
+
+                            value.resize(pos + multiplier.size() + 1);
+                        }
+                        else
+                        {
+                            value.append(multiplier, after_decimal);
+                        }
+                        value.erase(pos, 1);
+                    }
+                    else if (! value.ends_with(multiplier))
+                    {
+                        value += multiplier;
+                    }
+                    if (value[0] == '(')
+                    {
+                        value += ')';
+                    }
+                });
+    }
 
     // lastly, clean up the labels a little.
     // one more thing...
