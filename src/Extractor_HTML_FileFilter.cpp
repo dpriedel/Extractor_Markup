@@ -905,22 +905,7 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
                     {
                         value.resize(value.size() - 1);
                     }
-                    if (auto pos = value.find('.'); pos != std::string::npos)
-                    {
-                        auto after_decimal = value.size() - pos - 1;
-                        if (after_decimal > multiplier.size())
-                        {
-                            // we'll bump the decimal point and truncate the rest
-
-                            value.resize(pos + multiplier.size() + 1);
-                        }
-                        else
-                        {
-                            value.append(multiplier, after_decimal);
-                        }
-                        value.erase(pos, 1);
-                    }
-                    else if (! value.ends_with(multiplier))
+                    if (! value.ends_with(multiplier))
                     {
                         value += multiplier;
                     }
