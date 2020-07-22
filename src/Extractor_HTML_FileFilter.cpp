@@ -254,7 +254,7 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
         }
 
         return ranges::equal( looking_for, anchor.name_,
-                [](char a, char b) { return tolower(a) == tolower(b); });
+                [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
     });
     auto found_it = ranges::find_if(anchors, do_compare);
     if (found_it == anchors.end())
@@ -307,7 +307,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
 {
     std::string mplier;
-    ranges::transform(multiplier, ranges::back_inserter(mplier), [](auto c) { return std::tolower(c); } );
+    ranges::transform(multiplier, ranges::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); } );
 
     if (mplier == "thousands")
     {

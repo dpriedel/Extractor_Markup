@@ -367,7 +367,7 @@ bool ExtractorApp::CheckArgs ()
         // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
         // so we do the same here.
 
-        form_ |= ranges::actions::transform([](char c) { return (c == '/' ? '_' : std::toupper(c)); });
+        form_ |= ranges::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
         form_list_ = split_string<std::string>(form_, ',');
     }
 
@@ -1008,6 +1008,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_n
         if (! FormIsInFileName(form_list_, file_name))
         {
             ++skipped_counter;
+            spdlog::debug(catenate(file_name.get(), ": File skipped because path is supposed to contain form name but doesn't."));
             return {success_counter, skipped_counter, error_counter};
         }
     }
