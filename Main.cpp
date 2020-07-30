@@ -31,16 +31,21 @@
 	/* along with CollectEDGARData.  If not, see <http://www.gnu.org/licenses/>. */
 
 
-#include "ExtractorApp.h"
-
+#include <signal.h>
 #include <iostream>
-
+ 
+#include "ExtractorApp.h"
 
 int main(int argc, char** argv)
 {
 	//	help to optimize c++ stream I/O (may screw up threaded I/O though)
 
 	std::ios_base::sync_with_stdio(false);
+
+    // getting disconnected from DB can terminate the program
+    // so, let's avoid it.  (apparently, this is an OK strategy)
+    //
+    signal(SIGPIPE, SIG_IGN);
 
 	int result = 0;
 	try
