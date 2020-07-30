@@ -14,8 +14,6 @@
 //
 // =====================================================================================
 
-#include "SharesOutstanding.h"
-
 #include <algorithm>
 #include <cctype>
 #include <charconv>
@@ -38,6 +36,8 @@
 //#include <range/v3/view/split.hpp>
 //#include <range/v3/view/transform.hpp>
 //#include <range/v3/view/trim.hpp>
+
+#include "SharesOutstanding.h"
 
 
 #include "spdlog/spdlog.h"
