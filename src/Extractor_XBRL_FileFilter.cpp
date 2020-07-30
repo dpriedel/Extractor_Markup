@@ -1005,6 +1005,13 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     trxn.commit();
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  LoadDataToDB_XLS
+ *  Description:  
+ * =====================================================================================
+ */
 bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_FinancialStatements& financial_statements, const std::string& schema_name)
 {
     auto form_type = SEC_fields.at("form_type");
@@ -1166,4 +1173,5 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     trxn.commit();
 
     return true;
-}
+}		/* -----  end of function LoadDataToDB_XLS  ----- */
+
