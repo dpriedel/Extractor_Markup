@@ -953,7 +953,10 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::Extracted_Value& value, co
     {
         result[0] = '-';
     }
-    result += ".0";        // make everything look like a float
+    if (! result.find('.'))
+    {
+        result += ".0";        // make everything look like a float
+    }
     return result;
 }		// -----  end of function ApplyMultiplierAndCleanUpValue  -----
 
