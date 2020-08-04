@@ -50,6 +50,7 @@
 #include <boost/regex.hpp>
 
 #include <range/v3/action/remove_if.hpp>
+#include <range/v3/algorithm/remove_copy.hpp>
 #include <range/v3/action/transform.hpp>
 #include <range/v3/algorithm/any_of.hpp>
 #include <range/v3/algorithm/count_if.hpp>
@@ -311,15 +312,15 @@ std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
 
     if (mplier == "thousands")
     {
-        return {",000", 1000};
+        return {"000", 1000};
     }
     if (mplier == "millions")
     {
-        return {",000,000", 1'000'000};
+        return {"000000", 1'000'000};
     }
     if (mplier == "billions")
     {
-        return {",000,000,000", 1'000'000'000};
+        return {"000000000", 1'000'000'000};
     }
     if (mplier == "dollars")
     {
@@ -891,30 +892,8 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 
 
     // now, for all values except 'per share', apply the multiplier.
-    // for now, keep parens to indicate negative numbers.
-    // TODO: figure out if this should be replaced with negative sign.
 
-    if (! multiplier.empty())
-    {
-        ranges::for_each(values
-                | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.begin(), x.first.end(), regex_per_share); }),
-                [&multiplier](auto& x)
-                {
-                    auto& value = x.second;
-                    if (value.back() == ')')
-                    {
-                        value.resize(value.size() - 1);
-                    }
-                    if (! value.ends_with(multiplier))
-                    {
-                        value += multiplier;
-                    }
-                    if (value[0] == '(')
-                    {
-                        value += ')';
-                    }
-                });
-    }
+    ranges::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier); } );
 
     // lastly, clean up the labels a little.
     // one more thing...
@@ -926,6 +905,57 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
+
+// ===  FUNCTION  ======================================================================
+//         Name:  ApplyMultiplierAndCleanUpValue
+//  Description:  
+// =====================================================================================
+
+std::string ApplyMultiplierAndCleanUpValue (const EM::Extracted_Value& value, const std::string& multiplier)
+{
+    // if there is a multiplier, then apply it.
+    // allow for decimal values.
+    // replace () with leading -
+    // convert all values to floats.
+
+    std::string result;
+    ranges::remove_copy(value.second, ranges::back_inserter(result), ',');
+    if (result.ends_with(')'))
+    {
+        result.resize(result.size() - 1);
+    }
+    if (! boost::regex_search(value.first.begin(), value.first.end(), regex_per_share))
+    {
+        if (! multiplier.empty())
+        {
+            if (auto pos = result.find('.'); pos != std::string::npos)
+            {
+                auto after_decimal = result.size() - pos - 1;
+                if (after_decimal > multiplier.size())
+                {
+                    // we'll bump the decimal point and truncate the rest
+
+                    result.resize(pos + multiplier.size() + 1);
+                }
+                else
+                {
+                    result.append(multiplier, after_decimal);
+                }
+                result.erase(pos, 1);
+            }
+            if (! result.ends_with(multiplier))
+            {
+                result += multiplier;
+            }
+        }
+    }
+    if (result[0] == '(')
+    {
+        result[0] = '-';
+    }
+    result += ".0";        // make everything look like a float
+    return result;
+}		// -----  end of function ApplyMultiplierAndCleanUpValue  -----
 
 bool BalanceSheet::ValidateContent ()
 {

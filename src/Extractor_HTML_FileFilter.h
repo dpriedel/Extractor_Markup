@@ -282,6 +282,8 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
 
 MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSection>& document_sections, EM::FileName document_name);
 
+std::string ApplyMultiplierAndCleanUpValue(const EM::Extracted_Value& value, const std::string& multiplier);
+
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
         const std::string& schema_name);
 

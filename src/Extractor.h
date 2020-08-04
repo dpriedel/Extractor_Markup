@@ -167,7 +167,8 @@ namespace Extractor
 	// 	std::string user_label;
 	// };
 	using Extractor_Labels = std::map<std::string, std::string>;
-	using Extractor_Values = std::vector<std::pair<std::string, std::string>>;
+    using Extracted_Value = std::pair<std::string, std::string>;
+	using Extractor_Values = std::vector<Extracted_Value>;
 
     using XLS_Label = UniqType<std::string, struct XLS_LabelTag>;
     using XLS_Value = UniqType<std::string, struct XLS_ValueTag>;
