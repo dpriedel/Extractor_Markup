@@ -886,6 +886,8 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 
     const std::string digits{"0123456789"};
 
+    // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
+
     EM::Extractor_Values values = lines 
         | ranges::views::filter([&match_values, &digits](const auto& a_line)
                 { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) && ranges::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
