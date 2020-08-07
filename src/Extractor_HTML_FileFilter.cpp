@@ -884,8 +884,11 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
 
     boost::cmatch match_values;
 
+    const std::string digits{"0123456789"};
+
     EM::Extractor_Values values = lines 
-        | ranges::views::filter([&match_values](const auto& a_line) { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value); })
+        | ranges::views::filter([&match_values, &digits](const auto& a_line)
+                { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) && ranges::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
         | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
         | ranges::views::cache1
         | ranges::to<EM::Extractor_Values>();
@@ -943,7 +946,7 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::Extracted_Value& value, co
                 }
                 result.erase(pos, 1);
             }
-            if (! result.ends_with(multiplier))
+            else if (! result.ends_with(multiplier))
             {
                 result += multiplier;
             }
@@ -953,7 +956,7 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::Extracted_Value& value, co
     {
         result[0] = '-';
     }
-    if (! result.find('.'))
+    if (result.find('.') == std::string::npos)
     {
         result += ".0";        // make everything look like a float
     }

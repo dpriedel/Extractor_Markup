@@ -133,6 +133,8 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml);
 
 std::vector<char> ExtractXLSData(EM::XLSContent xls_content);
 
+std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry& value, const std::string& multiplier);
+
 std::pair<std::string, int64_t> ExtractMultiplier(std::string row);
 
 int64_t ExtractXLSSharesOutstanding(const XLS_Sheet& xls_sheet);

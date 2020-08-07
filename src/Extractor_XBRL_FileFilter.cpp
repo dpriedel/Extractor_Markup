@@ -51,11 +51,15 @@
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/algorithm/remove_copy.hpp>
+#include <range/v3/algorithm/remove.hpp>
 #include <range/v3/algorithm/transform.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/cache1.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/drop.hpp>
+
+#include <range/v3/iterator/insert_iterators.hpp>
 
 #include <boost/regex.hpp>
 
@@ -172,12 +176,22 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
     const std::string nbr_of_shares = R"***(\t(\b[1-9](?:[0-9.]{2,})\b)\t)***";
     const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_share_extractor{nbr_of_shares, my_flags};
-    auto shares_row = ranges::views::transform([](unsigned char c) { return std::tolower(c); })
-        | ranges::views::filter([](const std::string& row) { return row.find("outstanding") != std::string::npos; });
 
     std::string shares = "-1";
 
-    for(auto row : xls_sheet)
+    auto row_itor = xls_sheet.begin();
+    int multiplier_skips = 1;
+    auto multiplier = ExtractMultiplier(*row_itor);
+    if (multiplier.first.empty())
+    {
+        multiplier = ExtractMultiplier(*(++row_itor));
+        if (! multiplier.first.empty())
+        {
+            multiplier_skips = 2;
+        }
+    }
+
+    for(auto row : xls_sheet | ranges::views::drop(multiplier_skips))
     {
         row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
 
@@ -197,22 +211,13 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
 
     if (shares != "-1")
     {
-        auto row_itor = xls_sheet.begin();
-        int multiplier_skips = 1;
-        auto multiplier = ExtractMultiplier(*row_itor);
-        if (multiplier.first.empty())
-        {
-            multiplier = ExtractMultiplier(*(++row_itor));
-            if (! multiplier.first.empty())
-            {
-                multiplier_skips = 2;
-            }
-        }
         // need to replace any commas we might have.
 
-        const std::string delete_this{""};
-        const boost::regex regex_comma{R"***(,)***"};
-        shares = boost::regex_replace(shares, regex_comma, delete_this);
+        auto shares_no_commas = ranges::remove(shares, ',');
+        if (shares_no_commas != shares.end())
+        {
+            shares.erase(shares_no_commas);
+        }
 
         if (multiplier.second > 1)
         {
@@ -270,54 +275,22 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
 
     boost::smatch match_values;
 
+    const std::string digits{"0123456789"};
+
+    // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
+
     EM::XLS_Values values = sheet 
         | ranges::views::drop(multiplier_skips)                // first row contains sheet name and multiplier
-        | ranges::views::filter([&match_values](const auto& a_row) { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value); })
+        | ranges::views::filter([&match_values, &digits](const auto& a_row)
+                { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) && ranges::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
         | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
         | ranges::views::cache1
         | ranges::to<EM::XLS_Values>();
 
-
     // now, for all values except 'per share', apply the multiplier.
-    // for now, keep parens to indicate negative numbers.
-    // TODO: figure out if this should be replaced with negative sign.
 
-    if (multiplier.second > 1)
-    {
-        ranges::for_each(values
-                | ranges::views::filter([](auto& x) { return ! boost::regex_search(x.first.get().begin(), x.first.get().end(), regex_per_share); }),
-                [&multiplier](auto& x)
-                {
-                    auto& value = x.second.get();
-                    if (value.back() == ')')
-                    {
-                        value.resize(value.size() - 1);
-                    }
-                    if (auto pos = value.find('.'); pos != std::string::npos)
-                    {
-                        auto after_decimal = value.size() - pos - 1;
-                        if (after_decimal > multiplier.first.size())
-                        {
-                            // we'll bump the decimal point and truncate the rest
+    ranges::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier.first); } );
 
-                            value.resize(pos + multiplier.first.size() + 1);
-                        }
-                        else
-                        {
-                            value.append(multiplier.first, after_decimal);
-                        }
-                        value.erase(pos, 1);
-                    }
-                    else if (! value.ends_with(multiplier.first))
-                    {
-                        value += multiplier.first;
-                    }
-                    if (value[0] == '(')
-                    {
-                        value += ')';
-                    }
-                });
-    }
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
@@ -329,6 +302,60 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
 
+
+// ===  FUNCTION  ======================================================================
+//         Name:  ApplyMultiplierAndCleanUpValue
+//  Description:  
+// =====================================================================================
+
+std::string ApplyMultiplierAndCleanUpValue (const EM::XLS_Entry& value, const std::string& multiplier)
+{
+    // if there is a multiplier, then apply it.
+    // allow for decimal values.
+    // replace () with leading -
+    // convert all values to floats.
+
+    std::string result;
+    ranges::remove_copy(value.second.get(), ranges::back_inserter(result), ',');
+    if (result.ends_with(')'))
+    {
+        result.resize(result.size() - 1);
+    }
+    if (! boost::regex_search(value.first.get().begin(), value.first.get().end(), regex_per_share))
+    {
+        if (! multiplier.empty())
+        {
+            if (auto pos = result.find('.'); pos != std::string::npos)
+            {
+                auto after_decimal = result.size() - pos - 1;
+                if (after_decimal > multiplier.size())
+                {
+                    // we'll bump the decimal point and truncate the rest
+
+                    result.resize(pos + multiplier.size() + 1);
+                }
+                else
+                {
+                    result.append(multiplier, after_decimal);
+                }
+                result.erase(pos, 1);
+            }
+            else if (! result.ends_with(multiplier))
+            {
+                result += multiplier;
+            }
+        }
+    }
+    if (result[0] == '(')
+    {
+        result[0] = '-';
+    }
+    if (result.find('.') == std::string::npos)
+    {
+        result += ".0";        // make everything look like a float
+    }
+    return result;
+}		// -----  end of function ApplyMultiplierAndCleanUpValue  -----
 
 // ===  FUNCTION  ======================================================================
 //         Name:  ExtractMultiplier
