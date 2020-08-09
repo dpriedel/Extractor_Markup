@@ -180,8 +180,7 @@ auto SumT(const std::tuple<Ts...>& t)
 }
 
 // utility to convert a date::year_month_day to a string
-// based on code from "The C++ Standard Library 2nd Edition"
-// by Nicolai Josuttis p. 158
+// using Howard Hinnant's date library
 
 inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
 {

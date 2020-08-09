@@ -668,7 +668,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(const EM::FileCon
         input_file_name.get()).c_str());
 
 //        did_load = true;
-    bool did_load = LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    bool did_load = LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
     if (did_load)
     {
         return {1, 0, 0};
@@ -690,7 +690,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const EM::FileCo
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    bool did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts");
+    bool did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts", replace_DB_content_);
 
     if (did_load)
     {
@@ -725,7 +725,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileCo
         input_file_name.get()).c_str());
 
 //        did_load = true;
-    bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
     if (did_load)
     {
         return {1, 0, 0};
@@ -955,7 +955,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, con
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
-    return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
@@ -973,7 +973,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, co
     auto label_data = ExtractFieldLabels(labels_xml);
 
     return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
-                schema_prefix_ + "unified_extracts");
+                schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
@@ -994,7 +994,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, co
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
-    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts");
+    return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms)

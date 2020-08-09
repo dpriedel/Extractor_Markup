@@ -285,7 +285,7 @@ MultDataList CreateMultiplierListWhenNoAnchors (const std::vector<EM::DocumentSe
 std::string ApplyMultiplierAndCleanUpValue(const EM::Extracted_Value& value, const std::string& multiplier);
 
 bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatements& financial_statements,
-        const std::string& schema_name);
+        const std::string& schema_name, bool replace_DB_content);
 
 int UpdateOutstandingShares(const SharesOutstanding& so, const EM::DocumentSectionList& document_sections, const EM::SEC_Header_fields& fields,
         const std::vector<std::string>& forms, const std::string& schema_name, EM::FileName file_name);
