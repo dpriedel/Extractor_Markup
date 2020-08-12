@@ -61,7 +61,7 @@ namespace po = boost::program_options;
 #include "spdlog/spdlog.h"
 
 #include "Extractor.h"
-#include "ExtractorMutexAndLock.h"
+//#include "ExtractorMutexAndLock.h"
 #include "Extractor_Utils.h"
 #include "SharesOutstanding.h"
 
@@ -88,7 +88,7 @@ public:
     static bool SignalReceived() { return had_signal_ ; }
 
     bool Startup();
-    void Run();
+    std::tuple<int, int, int> Run();
     void Shutdown();
 
 protected:
@@ -127,7 +127,7 @@ protected:
     std::tuple<int, int, int> LoadFilesFromListToDB();
 	std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms);
+    std::tuple<int, int, int> LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed);
 
 		// ====================  DATA MEMBERS  =======================================
 

@@ -486,9 +486,9 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
                 ;
 
         pqxx::work trxn{c};
-        auto row = trxn.exec1(check_for_existing_content_cmd);
+	    auto amended_date = trxn.query_value<std::string>(check_for_existing_content_cmd);
         trxn.commit();
-        if (row[0].is_null())
+        if (amended_date.empty())
         {
             // no previously stored ameended data so 
             // we need to use this.
@@ -497,7 +497,7 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
 
         // lastly, let's see if this data is more recent.
 
-        auto stored_amended_date = StringToDateYMD("%F", row[0].as<std::string>());
+        auto stored_amended_date = StringToDateYMD("%F", amended_date);
         auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
         if (date_filed <= stored_amended_date)
         {

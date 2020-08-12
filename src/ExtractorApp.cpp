@@ -61,6 +61,7 @@
 #include "date/tz.h"
 
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/async.h"
 
 #include <pqxx/pqxx>
 
@@ -69,6 +70,7 @@
 #include "SEC_Header.h"
 
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 // This ctype facet does NOT classify spaces and tabs as whitespace
 // from cppreference example
@@ -174,7 +176,7 @@ void ExtractorApp::ConfigureLogging()
                 fs::create_directories(log_dir);
             }
 
-            logger_ = spdlog::basic_logger_mt(logger_name, log_file_path_name_.get().c_str());
+            logger_ = spdlog::basic_logger_mt<spdlog::async_factory>(logger_name, log_file_path_name_.get().c_str());
             spdlog::set_default_logger(logger_);
         }
     }
@@ -502,7 +504,7 @@ void ExtractorApp::BuildFilterList()
     }
 }		/* -----  end of method ExtractorApp::BuildFilterList  ----- */
 
-void ExtractorApp::Run()
+std::tuple<int, int, int> ExtractorApp::Run()
 {
     std::tuple<int, int, int> single_counters{0, 0, 0};
 
@@ -543,6 +545,8 @@ void ExtractorApp::Run()
 
     spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ",
             success_counter, ". Skips: ", skipped_counter , ". Errors: ", error_counter, "."));
+
+    return counters;
 }		/* -----  end of method ExtractorApp::Run  ----- */
 
 std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields& SEC_fields, const EM::FileName& file_name, const EM::DocumentSectionList& sections,
@@ -997,7 +1001,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, co
     return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, ExtractMutex* active_forms)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -1026,11 +1030,51 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_n
 
     auto locking_id = catenate(SEC_fields.at("cik"), '_', SEC_fields.at("quarter_ending"));
 
-    ExtractLock form_lock{active_forms, locking_id};
+//    ExtractLock form_lock{active_forms, locking_id};
 
     if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
     {
-        LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
+        int retry = 0;
+        try
+        {
+            LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
+        }
+        catch(const pqxx::serialization_failure& e)
+        {
+            retry = 2;
+        }
+        catch(const pqxx::failure& e)
+        {
+            // need to log name of file which failed
+            
+            spdlog::error(catenate("Problem adding file content to DB: ", file_name.get(), '\n', e.what()));
+            
+            auto eptr = std::current_exception();
+            std::rethrow_exception(eptr);
+        }
+        while (retry > 0)
+        {
+            std::this_thread::sleep_for(1ms);
+            try
+            {
+                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
+                retry = 0;
+            }
+            catch(const pqxx::serialization_failure& e)
+            {
+                // need to log name of file which failed
+                
+                spdlog::error(catenate("Still trying...but problem adding file content to DB again: ", file_name.get(), '\n', e.what()));
+                
+                if (--retry == 0)
+                {
+                    // we've been very persistent but still not go so time to leave...
+
+                    auto eptr = std::current_exception();
+                    std::rethrow_exception(eptr);
+                }
+            }
+        }
     }
     else
     {
@@ -1077,7 +1121,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     // use this to manage potential concurrent access when processing amended forms.
 
-    ExtractMutex active_forms;
+//    ExtractMutex active_forms;
 
     // prime the pump...
 
@@ -1087,7 +1131,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         // queue up our tasks up to the limit.
 
         tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &active_forms));
+        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed));
     }
 
     int continue_here{0};
@@ -1144,10 +1188,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
             // OK, let's remember our first time here.
 
-            if (! ep)
-            {
-                ep = std::current_exception();
-            }
+//            if (! ep)
+//            {
+//                ep = std::current_exception();
+//            }
         }
         catch (std::exception& e)
         {
@@ -1158,10 +1202,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
             // OK, let's remember our first time here.
 
-            if (! ep)
-            {
-                ep = std::current_exception();
-            }
+//            if (! ep)
+//            {
+//                ep = std::current_exception();
+//            }
         }
         catch (...)
         {
@@ -1189,7 +1233,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         if (current_file < list_of_files_to_process_.size())
         {
             tasks[ready_task] = std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &active_forms);
+                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed);
             continue_here = (ready_task + 1) % max_at_a_time_;
             ready_task = -1;
         }
@@ -1224,10 +1268,11 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         catch(std::exception& e)
         {
             counters = AddTs(counters, {0, 0, 1});
-            if (! ep)
-            {
-                ep = std::current_exception();
-            }
+            spdlog::error(e.what());
+//            if (! ep)
+//            {
+//                ep = std::current_exception();
+//            }
         }
         catch (...)
         {

@@ -68,11 +68,13 @@
 #include "spdlog/spdlog.h"
 
 #include <pqxx/pqxx>
+#include <pqxx/transaction.hxx>
 
 #include "SEC_Header.h"
 #include "SharesOutstanding.h"
 
 using namespace std::string_literals;
+using namespace date::literals;
 
 const auto XBLR_TAG_LEN{7};
 
@@ -911,36 +913,20 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     // check for existing data but clash on the insert.  In fact, we want insert failures.
 
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::work trxn{c};
+    pqxx::transaction<pqxx::isolation_level::serializable, pqxx::write_policy::read_write> trxn{c};
 
     // when checking for existing data, we don't filter on source
     // since that may have changed (especially if we are processing an
     // amended form)
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+    auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-			trxn.esc(SEC_fields.at("cik")),
+            trxn.esc(SEC_fields.at("cik")),
             trxn.esc(base_form_type),
-			trxn.esc(filing_fields.period_end_date),
+            trxn.esc(filing_fields.period_end_date),
             schema_name)
-			;
-	auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
-
-    pqxx::row saved_original_data;
-
-    if (have_data)
-    {
-        auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(filing_fields.period_end_date),
-                schema_name)
-                ;
-        saved_original_data = trxn.exec1(save_original_data_cmd);
-    }
-
-    trxn.commit();
+            ;
+    auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
     std::string original_file_name;
@@ -949,33 +935,37 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 
     if (! saved_original_data.empty())
     {
-        if (! saved_original_data["date_filed"].is_null())
+        if (! saved_original_data[0]["date_filed"].is_null())
         {
-            original_date_filed = saved_original_data["date_filed"].view();
+            original_date_filed = saved_original_data[0]["date_filed"].view();
         }
-        if (! saved_original_data["file_name"].is_null())
+        if (! saved_original_data[0]["file_name"].is_null())
         {
-            original_file_name = saved_original_data["file_name"].view();
+            original_file_name = saved_original_data[0]["file_name"].view();
         }
-        if (! saved_original_data["amended_date_filed"].is_null())
+        if (! saved_original_data[0]["amended_date_filed"].is_null())
         {
-            amended_date_filed = saved_original_data["amended_date_filed"].view();
+            amended_date_filed = saved_original_data[0]["amended_date_filed"].view();
         }
-        if (! saved_original_data["amended_file_name"].is_null())
+        if (! saved_original_data[0]["amended_file_name"].is_null())
         {
-            amended_file_name = saved_original_data["amended_file_name"].view();
+            amended_file_name = saved_original_data[0]["amended_file_name"].view();
         }
     }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended;
+    date::year_month_day date_filed_amended = 1900_y/1/1_d;        // need to start somewhere
 
     if ( ! amended_date_filed.empty())
     {
         date_filed_amended = StringToDateYMD("%F", amended_date_filed);
     }
 
-    pqxx::work trxn2{c};
+    if (! replace_DB_content && form_type.ends_with("_A") && date_filed <= date_filed_amended)
+    {
+        return false;
+    }
+
     if (replace_DB_content || form_type.ends_with("_A") && date_filed > date_filed_amended)
     {
         if (form_type.ends_with("_A"))
@@ -991,44 +981,40 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn2.esc(SEC_fields.at("cik")),
-                trxn2.esc(base_form_type),
-                trxn2.esc(SEC_fields.at("quarter_ending")),
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(base_form_type),
+                trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
-        trxn2.exec(filing_ID_cmd);
+        trxn.exec(filing_ID_cmd);
     }
 
 	auto filing_ID_cmd = fmt::format("INSERT INTO {11}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
 		" VALUES ('{0}', '{1}', {2}, '{3}', '{4}', '{5}', {6}, '{7}', '{8}', '{9}', '{10}', {12}, {13}) RETURNING filing_ID",
-		trxn2.esc(SEC_fields.at("cik")),
-		trxn2.esc(SEC_fields.at("company_name")),
-		original_file_name.empty() ? "NULL" : trxn2.quote(original_file_name),
-        trxn2.esc(filing_fields.trading_symbol),
-		trxn2.esc(SEC_fields.at("sic")),
-        trxn2.esc(base_form_type),
-		original_date_filed.empty() ? "NULL" : trxn2.quote(original_date_filed),
-		trxn2.esc(filing_fields.period_end_date),
-		trxn2.esc(filing_fields.period_context_ID),
-		trxn2.esc(filing_fields.shares_outstanding),
+		trxn.esc(SEC_fields.at("cik")),
+		trxn.esc(SEC_fields.at("company_name")),
+		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
+        trxn.esc(filing_fields.trading_symbol),
+		trxn.esc(SEC_fields.at("sic")),
+        trxn.esc(base_form_type),
+		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
+		trxn.esc(filing_fields.period_end_date),
+		trxn.esc(filing_fields.period_context_ID),
+		trxn.esc(filing_fields.shares_outstanding),
         "XBRL",
         schema_name,
-        amended_file_name.empty() ? "NULL" : trxn2.quote(amended_file_name),
-        amended_date_filed.empty() ? "NULL" : trxn2.quote(amended_date_filed)
+        amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
+        amended_date_filed.empty() ? "NULL" : trxn.quote(amended_date_filed)
         )
 		;
-    auto res = trxn2.exec(filing_ID_cmd);
-//    trxn2.commit();
-
-	std::string filing_ID;
-	res[0]["filing_ID"].to(filing_ID);
+    auto filing_ID = trxn.query_value<std::string>(filing_ID_cmd);
 
     // now, the goal of all this...save all the financial values for the given time period.
 
     int counter = 0;
-    pqxx::stream_to inserter1{trxn2, schema_name + ".sec_xbrl_data",
+    pqxx::stream_to inserter1{trxn, schema_name + ".sec_xbrl_data",
         std::vector<std::string>{"filing_ID", "xbrl_label", "label", "value", "context_ID", "period_begin",
             "period_end", "units", "decimals"}};
 
@@ -1049,7 +1035,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     }
 
     inserter1.complete();
-    trxn2.commit();
+    trxn.commit();
     return true;
 }		/* -----  end of function LoadDataToDB  ----- */
 
@@ -1077,36 +1063,20 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     // check for existing data but clash on the insert.  In fact, we want insert failures.
 
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::work trxn{c};
+    pqxx::transaction<pqxx::isolation_level::serializable, pqxx::write_policy::read_write> trxn{c};
 
     // when checking for existing data, we don't filter on source
     // since that may have changed (especially if we are processing an
     // amended form)
 
-	auto check_for_existing_content_cmd = fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+    auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-			trxn.esc(SEC_fields.at("cik")),
+            trxn.esc(SEC_fields.at("cik")),
             trxn.esc(base_form_type),
             trxn.esc(SEC_fields.at("quarter_ending")),
             schema_name)
-			;
-	auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
-
-    pqxx::row saved_original_data;
-
-    if (have_data )
-    {
-        auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
-                schema_name)
-                ;
-        saved_original_data = trxn.exec1(save_original_data_cmd);
-    }
-
-    trxn.commit();
+            ;
+    auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
     std::string original_file_name;
@@ -1115,33 +1085,38 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
     if (! saved_original_data.empty())
     {
-        if (! saved_original_data["date_filed"].is_null())
+        if (! saved_original_data[0]["date_filed"].is_null())
         {
-            original_date_filed = saved_original_data["date_filed"].view();
+            original_date_filed = saved_original_data[0]["date_filed"].view();
         }
-        if (! saved_original_data["file_name"].is_null())
+        if (! saved_original_data[0]["file_name"].is_null())
         {
-            original_file_name = saved_original_data["file_name"].view();
+            original_file_name = saved_original_data[0]["file_name"].view();
         }
-        if (! saved_original_data["amended_date_filed"].is_null())
+        if (! saved_original_data[0]["amended_date_filed"].is_null())
         {
-            amended_date_filed = saved_original_data["amended_date_filed"].view();
+            amended_date_filed = saved_original_data[0]["amended_date_filed"].view();
         }
-        if (! saved_original_data["amended_file_name"].is_null())
+        if (! saved_original_data[0]["amended_file_name"].is_null())
         {
-            amended_file_name = saved_original_data["amended_file_name"].view();
+            amended_file_name = saved_original_data[0]["amended_file_name"].view();
         }
     }
 
+//    std::cout << catenate("a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended;
+    date::year_month_day date_filed_amended = 1900_y/1/1_d;        // need to start somewhere
 
     if ( ! amended_date_filed.empty())
     {
         date_filed_amended = StringToDateYMD("%F", amended_date_filed);
     }
 
-    pqxx::work trxn2{c};
+    if (! replace_DB_content && form_type.ends_with("_A") && date_filed <= date_filed_amended)
+    {
+        return false;
+    }
+
     if (replace_DB_content || form_type.ends_with("_A") && date_filed > date_filed_amended)
     {
         if (form_type.ends_with("_A"))
@@ -1157,45 +1132,40 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn2.esc(SEC_fields.at("cik")),
-                trxn2.esc(base_form_type),
-                trxn2.esc(SEC_fields.at("quarter_ending")),
+                trxn.esc(SEC_fields.at("cik")),
+                trxn.esc(base_form_type),
+                trxn.esc(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
-        trxn2.exec(filing_ID_cmd);
+        trxn.exec(filing_ID_cmd);
     }
 
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
 		" VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}', {6}, '{7}', '{8}', '{10}', {11}, {12}) RETURNING filing_ID",
-		trxn2.esc(SEC_fields.at("cik")),
-		trxn2.esc(SEC_fields.at("company_name")),
-		original_file_name.empty() ? "NULL" : trxn2.quote(original_file_name),
+		trxn.esc(SEC_fields.at("cik")),
+		trxn.esc(SEC_fields.at("company_name")),
+		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
         "NULL",
-		trxn2.esc(SEC_fields.at("sic")),
-        trxn2.esc(base_form_type),
-		original_date_filed.empty() ? "NULL" : trxn2.quote(original_date_filed),
-		trxn2.esc(SEC_fields.at("quarter_ending")),
+		trxn.esc(SEC_fields.at("sic")),
+        trxn.esc(base_form_type),
+		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
+		trxn.esc(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,
         schema_name,
         "XLS",
-        amended_file_name.empty() ? "NULL" : trxn2.quote(amended_file_name),
-        amended_date_filed.empty() ? "NULL" : trxn2.quote(amended_date_filed)
+        amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
+        amended_date_filed.empty() ? "NULL" : trxn.quote(amended_date_filed)
         )
 		;
     // std::cout << filing_ID_cmd << '\n';
-    auto res = trxn2.exec(filing_ID_cmd);
-//    trxn.commit();
-
-	std::string filing_ID;
-	res[0]["filing_ID"].to(filing_ID);
+    auto filing_ID = trxn.query_value<std::string>(filing_ID_cmd);
 
     // now, the goal of all this...save all the financial values for the given time period.
 
-//    pqxx::work trxn{c};
     int counter = 0;
-    pqxx::stream_to inserter1{trxn2, schema_name + ".sec_bal_sheet_data",
+    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
         std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
@@ -1210,7 +1180,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
     inserter1.complete();
 
-    pqxx::stream_to inserter2{trxn2, schema_name + ".sec_stmt_of_ops_data",
+    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
         std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
@@ -1225,7 +1195,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
     inserter2.complete();
 
-    pqxx::stream_to inserter3{trxn2, schema_name + ".sec_cash_flows_data",
+    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
         std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
@@ -1240,7 +1210,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
     inserter3.complete();
 
-    trxn2.commit();
+    trxn.commit();
 
     return true;
 }		/* -----  end of function LoadDataToDB_XLS  ----- */
