@@ -49,8 +49,7 @@ SRCS2 := $(SDIR2)/ExtractorApp.cpp \
 		$(SDIR2)/AnchorsFromHTML.cpp \
 		$(SDIR2)/TablesFromFile.cpp \
 		$(SDIR2)/SharesOutstanding.cpp \
-		$(SDIR2)/XLS_Data.cpp \
-		$(SDIR2)/ExtractorMutexAndLock.cpp
+		$(SDIR2)/XLS_Data.cpp 
 
 SRCS := $(SRCS1) $(SRCS2)
 
