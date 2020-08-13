@@ -46,19 +46,12 @@ CREATE TABLE unified_extracts.sec_bal_sheet_data
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	label TEXT NOT NULL,
-    value TEXT NOT NULL,
+    value NUMERIC(20,4) NOT NULL,
     tsv_index_col tsvector GENERATED ALWAYS AS (to_tsvector('pg_catalog.english', label)) STORED,
 	PRIMARY KEY(filing_data_ID)
 );
 
 ALTER TABLE unified_extracts.sec_bal_sheet_data OWNER TO extractor_pg;
-
-/* DROP TRIGGER IF EXISTS tsv_update ON unified_extracts.sec_bal_sheet_data ; */
-
-/* CREATE TRIGGER tsv_update */
-/* 	BEFORE INSERT OR UPDATE ON unified_extracts.sec_bal_sheet_data FOR EACH ROW */
-/* 	EXECUTE PROCEDURE */
-/* 		tsvector_update_trigger(tsv, 'pg_catalog.english', label); */
 
 DROP INDEX IF EXISTS idx_bal_sheet_val ;
 CREATE INDEX idx_bal_sheet_val ON unified_extracts.sec_bal_sheet_data USING GIN (tsv_index_col);
@@ -71,19 +64,12 @@ CREATE TABLE unified_extracts.sec_stmt_of_ops_data
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	label TEXT NOT NULL,
-    value TEXT NOT NULL,
+    value NUMERIC(20,4) NOT NULL,
     tsv_index_col tsvector GENERATED ALWAYS AS (to_tsvector('pg_catalog.english', label)) STORED,
 	PRIMARY KEY(filing_data_ID)
 );
 
 ALTER TABLE unified_extracts.sec_stmt_of_ops_data OWNER TO extractor_pg;
-
-/* DROP TRIGGER IF EXISTS tsv_update ON unified_extracts.sec_stmt_of_ops_data ; */
-
-/* CREATE TRIGGER tsv_update */
-/* 	BEFORE INSERT OR UPDATE ON unified_extracts.sec_stmt_of_ops_data FOR EACH ROW */
-/* 	EXECUTE PROCEDURE */
-/* 		tsvector_update_trigger(tsv, 'pg_catalog.english', label); */
 
 DROP INDEX IF EXISTS idx_stmt_of_ops_val ;
 CREATE INDEX idx_stmt_of_ops_val ON unified_extracts.sec_stmt_of_ops_data USING GIN (tsv_index_col);
@@ -96,19 +82,12 @@ CREATE TABLE unified_extracts.sec_cash_flows_data
     filing_data_ID bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
 	filing_ID bigint REFERENCES unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	label TEXT NOT NULL,
-    value TEXT NOT NULL,
+    value NUMERIC(20,4) NOT NULL,
     tsv_index_col tsvector GENERATED ALWAYS AS (to_tsvector('pg_catalog.english', label)) STORED,
 	PRIMARY KEY(filing_data_ID)
 );
 
 ALTER TABLE unified_extracts.sec_cash_flows_data OWNER TO extractor_pg;
-
-/* DROP TRIGGER IF EXISTS tsv_update ON unified_extracts.sec_cash_flows_data ; */
-
-/* CREATE TRIGGER tsv_update */
-/* 	BEFORE INSERT OR UPDATE ON unified_extracts.sec_cash_flows_data FOR EACH ROW */
-/* 	EXECUTE PROCEDURE */
-/* 		tsvector_update_trigger(tsv, 'pg_catalog.english', label); */
 
 DROP INDEX IF EXISTS idx_cash_flows_val ;
 CREATE INDEX idx_cash_flows_val ON unified_extracts.sec_cash_flows_data USING GIN (tsv_index_col);
@@ -122,7 +101,7 @@ CREATE TABLE unified_extracts.sec_xbrl_data
 	filing_ID bigint REFERENCES unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	xbrl_label TEXT NOT NULL,
 	label TEXT NOT NULL,
-    value TEXT NOT NULL,
+    value NUMERIC(20,4) NOT NULL,
 	context_ID TEXT NOT NULL,
 	period_begin DATE NOT NULL,
 	period_end DATE NOT NULL,
@@ -133,13 +112,6 @@ CREATE TABLE unified_extracts.sec_xbrl_data
 );
 
 ALTER TABLE unified_extracts.sec_xbrl_data OWNER TO extractor_pg;
-
-/* DROP TRIGGER IF EXISTS tsv_update ON unified_extracts.sec_xbrl_data ; */
-
-/* CREATE TRIGGER tsv_update */
-/* 	BEFORE INSERT OR UPDATE ON unified_extracts.sec_xbrl_data FOR EACH ROW */
-/* 	EXECUTE PROCEDURE */
-/* 		tsvector_update_trigger(tsv, 'pg_catalog.english', label); */
 
 DROP INDEX IF EXISTS idx_xbrl_data_val ;
 CREATE INDEX idx_xbrl_data_val ON unified_extracts.sec_xbrl_data USING GIN (tsv_index_col);
