@@ -210,7 +210,7 @@ bool ExtractorApp::Startup()
         ConfigureLogging();
 		result = CheckArgs ();
 	}
-	catch(std::exception& e)
+	catch(const std::exception& e)
 	{
         spdlog::error(catenate("Problem in startup: ", e.what(), '\n'));
 		//	we're outta here!
@@ -879,7 +879,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
                 ++skipped_counter;
             }
         }
-        catch(MaxFilesException& e)
+        catch(const MaxFilesException& e)
         {
             // reached our limit of files to process, so let's get out of here.
 
@@ -890,7 +890,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
                     ". Errors: ", error_counter, "."));
             throw;
         }
-        catch(std::system_error& e)
+        catch(const std::system_error& e)
         {
             // reached our limit of files to process, so let's get out of here.
 
@@ -901,7 +901,7 @@ void ExtractorApp::Do_SingleFile(std::atomic<int>* forms_processed, int& success
                     ". Errors: ", error_counter, "."));
             throw;
         }
-        catch(std::exception& e)
+        catch(const std::exception& e)
         {
             ++error_counter;
             spdlog::error(catenate("Problem processing file: ", file_name.get(), ". ", e.what()));
@@ -935,23 +935,23 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
 }		/* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
-        const EM::DocumentSectionList& sections, EM::sv sec_header, FileMode file_mode)
+        const EM::DocumentSectionList& sections, EM::sv sec_header, FileMode file_mode, std::mutex* db_mutex)
 {
     spdlog::info(catenate("Loading contents from file: ", file_name.get()));
 
     if (file_mode == FileMode::e_XLS)
     {
-        return LoadFileFromFolderToDB_XLS(file_name, SEC_fields, sections, sec_header);
+        return LoadFileFromFolderToDB_XLS(file_name, SEC_fields, sections, sec_header, db_mutex);
     }
     if (file_mode == FileMode::e_XBRL)
     {
-        return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, sections);
+        return LoadFileFromFolderToDB_XBRL(file_name, SEC_fields, sections, db_mutex);
     }
-    return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, sections, sec_header);
+    return LoadFileFromFolderToDB_HTML(file_name, SEC_fields, sections, sec_header, db_mutex);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
-        const EM::DocumentSectionList& sections, EM::sv sec_header)
+        const EM::DocumentSectionList& sections, EM::sv sec_header, std::mutex* db_mutex)
 {
     //TODO: check for and handle exporting spreadsheets.
 
@@ -959,11 +959,17 @@ bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, con
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    if (db_mutex == nullptr)
+    {
+        return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
+    }
+    std::lock_guard<std::mutex> lock(*db_mutex);
     return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
+
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
-        const EM::DocumentSectionList& document_sections)
+        const EM::DocumentSectionList& document_sections, std::mutex* db_mutex)
 {
     auto labels_document = LocateLabelDocument(document_sections, file_name);
     auto labels_xml = ParseXMLContent(labels_document);
@@ -976,12 +982,16 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName& file_name, co
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
-                schema_prefix_ + "unified_extracts", replace_DB_content_);
+    if (db_mutex == nullptr)
+    {
+        return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts", replace_DB_content_);
+    }
+    std::lock_guard<std::mutex> lock(*db_mutex);
+    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, const EM::SEC_Header_fields& SEC_fields,
-        const EM::DocumentSectionList& sections, EM::sv sec_header)
+        const EM::DocumentSectionList& sections, EM::sv sec_header, std::mutex* db_mutex)
 {
     if (update_shares_outstanding_)
     {
@@ -998,10 +1008,15 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, co
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
     BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    if (db_mutex == nullptr)
+    {
+        return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
+    }
+    std::lock_guard<std::mutex> lock(*db_mutex);
     return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
 }		/* -----  end of method ExtractorApp::LoadFileFromFolderToDB_HTML  ----- */
 
-std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed)
+std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_name, std::atomic<int>* forms_processed, std::mutex* db_mutex)
 {
     int success_counter{0};
     int skipped_counter{0};
@@ -1030,18 +1045,11 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_n
 
     auto locking_id = catenate(SEC_fields.at("cik"), '_', SEC_fields.at("quarter_ending"));
 
-//    ExtractLock form_lock{active_forms, locking_id};
-
     if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
     {
-        int retry = 0;
         try
         {
-            LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
-        }
-        catch(const pqxx::serialization_failure& e)
-        {
-            retry = 2;
+            LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value(), db_mutex) ? ++success_counter : ++skipped_counter;
         }
         catch(const pqxx::failure& e)
         {
@@ -1051,29 +1059,6 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_n
             
             auto eptr = std::current_exception();
             std::rethrow_exception(eptr);
-        }
-        while (retry > 0)
-        {
-            std::this_thread::sleep_for(1ms);
-            try
-            {
-                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter : ++skipped_counter;
-                retry = 0;
-            }
-            catch(const pqxx::serialization_failure& e)
-            {
-                // need to log name of file which failed
-                
-                spdlog::error(catenate("Still trying...but problem adding file content to DB again: ", file_name.get(), '\n', e.what()));
-                
-                if (--retry == 0)
-                {
-                    // we've been very persistent but still not go so time to leave...
-
-                    auto eptr = std::current_exception();
-                    std::rethrow_exception(eptr);
-                }
-            }
         }
     }
     else
@@ -1121,6 +1106,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     // use this to manage potential concurrent access when processing amended forms.
 
+    std::mutex db_mutex;
 //    ExtractMutex active_forms;
 
     // prime the pump...
@@ -1131,7 +1117,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         // queue up our tasks up to the limit.
 
         tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed));
+        EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &db_mutex));
     }
 
     int continue_here{0};
@@ -1152,7 +1138,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             auto result = tasks[ready_task].get();
             counters = AddTs(counters, result);
         }
-        catch (std::system_error& e)
+        catch (const std::system_error& e)
         {
             // any system problems, we eventually abort, but only after finishing work in process.
 
@@ -1167,7 +1153,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
             ep = std::current_exception();
             break;
         }
-        catch (MaxFilesException& e)
+        catch (const MaxFilesException& e)
         {
             // any 'expected' problems, we'll document them and continue on.
 
@@ -1183,29 +1169,14 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         catch(const pqxx::failure& e)
         {
             spdlog::error(catenate("Database error: ", e.what()));
-//            spdlog::error(catenate("Query was: ", e.query()));
             counters = AddTs(counters, {0, 0, 1});
-
-            // OK, let's remember our first time here.
-
-//            if (! ep)
-//            {
-//                ep = std::current_exception();
-//            }
         }
-        catch (std::exception& e)
+        catch (const std::exception& e)
         {
             // any 'expected' problems, we'll document them and continue on.
 
             spdlog::error(e.what());
             counters = AddTs(counters, {0, 0, 1});
-
-            // OK, let's remember our first time here.
-
-//            if (! ep)
-//            {
-//                ep = std::current_exception();
-//            }
         }
         catch (...)
         {
@@ -1233,7 +1204,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         if (current_file < list_of_files_to_process_.size())
         {
             tasks[ready_task] = std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed);
+                    EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &db_mutex);
             continue_here = (ready_task + 1) % max_at_a_time_;
             ready_task = -1;
         }
@@ -1254,7 +1225,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
                 counters = AddTs(counters, result);
             }
         }
-        catch (ExtractorException& e)
+        catch (const ExtractorException& e)
         {
             // any problems, we'll document them and continue.
 
@@ -1265,14 +1236,10 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
             continue;
         }
-        catch(std::exception& e)
+        catch(const std::exception& e)
         {
             counters = AddTs(counters, {0, 0, 1});
             spdlog::error(e.what());
-//            if (! ep)
-//            {
-//                ep = std::current_exception();
-//            }
         }
         catch (...)
         {

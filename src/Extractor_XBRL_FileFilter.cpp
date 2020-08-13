@@ -913,7 +913,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     // check for existing data but clash on the insert.  In fact, we want insert failures.
 
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::transaction<pqxx::isolation_level::serializable, pqxx::write_policy::read_write> trxn{c};
+    pqxx::work trxn{c};
 
     // when checking for existing data, we don't filter on source
     // since that may have changed (especially if we are processing an
@@ -952,6 +952,11 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
             amended_file_name = saved_original_data[0]["amended_file_name"].view();
         }
     }
+    else if (! form_type.ends_with("_A"))
+    {
+        original_date_filed = SEC_fields.at("date_filed");
+        original_file_name = SEC_fields.at("file_name");
+    }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
     date::year_month_day date_filed_amended = 1900_y/1/1_d;        // need to start somewhere
@@ -972,11 +977,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
         {
             amended_date_filed = SEC_fields.at("date_filed");
             amended_file_name =  SEC_fields.at("file_name");
-        }
-        else
-        {
-            original_date_filed = SEC_fields.at("date_filed");
-            original_file_name = SEC_fields.at("file_name");
         }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
@@ -1063,7 +1063,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     // check for existing data but clash on the insert.  In fact, we want insert failures.
 
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::transaction<pqxx::isolation_level::serializable, pqxx::write_policy::read_write> trxn{c};
+    pqxx::work trxn{c};
 
     // when checking for existing data, we don't filter on source
     // since that may have changed (especially if we are processing an
@@ -1102,8 +1102,13 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
             amended_file_name = saved_original_data[0]["amended_file_name"].view();
         }
     }
+    else if (! form_type.ends_with("_A"))
+    {
+        original_date_filed = SEC_fields.at("date_filed");
+        original_file_name = SEC_fields.at("file_name");
+    }
 
-//    std::cout << catenate("a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
+//    std::cout << catenate("1 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
     date::year_month_day date_filed_amended = 1900_y/1/1_d;        // need to start somewhere
 
@@ -1124,11 +1129,6 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
             amended_date_filed = SEC_fields.at("date_filed");
             amended_file_name =  SEC_fields.at("file_name");
         }
-        else
-        {
-            original_date_filed = SEC_fields.at("date_filed");
-            original_file_name = SEC_fields.at("file_name");
-        }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
             " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
@@ -1140,6 +1140,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
         trxn.exec(filing_ID_cmd);
     }
 
+//    std::cout << catenate("2 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"

@@ -1011,7 +1011,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     // check for existing data but clash on the insert.  In fact, we want insert failures.
 
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::transaction<pqxx::isolation_level::serializable, pqxx::write_policy::read_write> trxn{c};
+    pqxx::work trxn{c};
 
     // when checking for existing data, we don't filter on source
     // since that may have changed (especially if we are processing an
@@ -1050,6 +1050,11 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
             amended_file_name = saved_original_data[0]["amended_file_name"].view();
         }
     }
+    else if (! form_type.ends_with("_A"))
+    {
+        original_date_filed = SEC_fields.at("date_filed");
+        original_file_name = SEC_fields.at("file_name");
+    }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
     date::year_month_day date_filed_amended = 1900_y/1/1_d;        // need to start somewhere
@@ -1070,11 +1075,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
         {
             amended_date_filed = SEC_fields.at("date_filed");
             amended_file_name =  SEC_fields.at("file_name");
-        }
-        else
-        {
-            original_date_filed = SEC_fields.at("date_filed");
-            original_file_name = SEC_fields.at("file_name");
         }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
