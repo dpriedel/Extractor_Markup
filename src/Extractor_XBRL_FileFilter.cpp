@@ -920,10 +920,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     // amended form)
 
     auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-            trxn.esc(SEC_fields.at("cik")),
-            trxn.esc(base_form_type),
-            trxn.esc(filing_fields.period_end_date),
+        " cik = {0} AND form_type = {1} AND period_ending = {2}",
+            trxn.quote(SEC_fields.at("cik")),
+            trxn.quote(base_form_type),
+            trxn.quote(filing_fields.period_end_date),
             schema_name)
             ;
     auto saved_original_data = trxn.exec(save_original_data_cmd);
@@ -980,10 +980,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
         }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
         trxn.exec(filing_ID_cmd);
@@ -992,17 +992,17 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 	auto filing_ID_cmd = fmt::format("INSERT INTO {11}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_ID,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
-		" VALUES ('{0}', '{1}', {2}, '{3}', '{4}', '{5}', {6}, '{7}', '{8}', '{9}', '{10}', {12}, {13}) RETURNING filing_ID",
-		trxn.esc(SEC_fields.at("cik")),
-		trxn.esc(SEC_fields.at("company_name")),
+		" VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, '{10}', {12}, {13}) RETURNING filing_ID",
+		trxn.quote(SEC_fields.at("cik")),
+		trxn.quote(SEC_fields.at("company_name")),
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
-        filing_fields.trading_symbol.empty() ? "NULL" : trxn.esc(filing_fields.trading_symbol),
-		trxn.esc(SEC_fields.at("sic")),
-        trxn.esc(base_form_type),
+        filing_fields.trading_symbol.empty() ? "NULL" : trxn.quote(filing_fields.trading_symbol),
+		trxn.quote(SEC_fields.at("sic")),
+        trxn.quote(base_form_type),
 		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
-		trxn.esc(filing_fields.period_end_date),
-		trxn.esc(filing_fields.period_context_ID),
-		trxn.esc(filing_fields.shares_outstanding),
+		trxn.quote(filing_fields.period_end_date),
+		trxn.quote(filing_fields.period_context_ID),
+		filing_fields.shares_outstanding,
         "XBRL",
         schema_name,
         amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
@@ -1070,10 +1070,10 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     // amended form)
 
     auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-            trxn.esc(SEC_fields.at("cik")),
-            trxn.esc(base_form_type),
-            trxn.esc(SEC_fields.at("quarter_ending")),
+        " cik = {0} AND form_type = {1} AND period_ending = {2}",
+            trxn.quote(SEC_fields.at("cik")),
+            trxn.quote(base_form_type),
+            trxn.quote(SEC_fields.at("quarter_ending")),
             schema_name)
             ;
     auto saved_original_data = trxn.exec(save_original_data_cmd);
@@ -1131,10 +1131,10 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
         }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
         trxn.exec(filing_ID_cmd);
@@ -1144,15 +1144,15 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
-		" VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}', {6}, '{7}', '{8}', '{10}', {11}, {12}) RETURNING filing_ID",
-		trxn.esc(SEC_fields.at("cik")),
-		trxn.esc(SEC_fields.at("company_name")),
+		" VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, {12}) RETURNING filing_ID",
+		trxn.quote(SEC_fields.at("cik")),
+		trxn.quote(SEC_fields.at("company_name")),
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
         "NULL",
-		trxn.esc(SEC_fields.at("sic")),
-        trxn.esc(base_form_type),
+		trxn.quote(SEC_fields.at("sic")),
+        trxn.quote(base_form_type),
 		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
-		trxn.esc(SEC_fields.at("quarter_ending")),
+		trxn.quote(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,
         schema_name,
         "XLS",

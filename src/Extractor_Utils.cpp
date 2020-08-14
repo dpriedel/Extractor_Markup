@@ -440,22 +440,22 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     if (mode_ == "BOTH")
     {
         check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_prefix_)
                 ;
     }
     else
     {
         check_for_existing_content_cmd = fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND data_source = '{4}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2} AND data_source = {4}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_prefix_,
-                mode_)
+                trxn.quote(mode_))
                 ;
     }
 
@@ -478,10 +478,10 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
     if (have_data != 0 && ! replace_DB_content_ && form_type.ends_with("_A"))
     {
         check_for_existing_content_cmd = fmt::format("SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_prefix_)
                 ;
 

@@ -1018,10 +1018,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     // amended form)
 
     auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-            trxn.esc(SEC_fields.at("cik")),
-            trxn.esc(base_form_type),
-            trxn.esc(SEC_fields.at("quarter_ending")),
+        " cik = {0} AND form_type = {1} AND period_ending = {2}",
+            trxn.quote(SEC_fields.at("cik")),
+            trxn.quote(base_form_type),
+            trxn.quote(SEC_fields.at("quarter_ending")),
             schema_name)
             ;
     auto saved_original_data = trxn.exec(save_original_data_cmd);
@@ -1078,10 +1078,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
         }
 
         auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-                trxn.esc(SEC_fields.at("cik")),
-                trxn.esc(base_form_type),
-                trxn.esc(SEC_fields.at("quarter_ending")),
+            " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                trxn.quote(SEC_fields.at("cik")),
+                trxn.quote(base_form_type),
+                trxn.quote(SEC_fields.at("quarter_ending")),
                 schema_name)
                 ;
         trxn.exec(filing_ID_cmd);
@@ -1090,15 +1090,15 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
-		" VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}', {6}, '{7}', '{8}', '{10}', {11}, {12}) RETURNING filing_ID",
-		trxn.esc(SEC_fields.at("cik")),
-		trxn.esc(SEC_fields.at("company_name")),
+		" VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, {12}) RETURNING filing_ID",
+		trxn.quote(SEC_fields.at("cik")),
+		trxn.quote(SEC_fields.at("company_name")),
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
         "NULL",
-		trxn.esc(SEC_fields.at("sic")),
-        trxn.esc(base_form_type),
+		trxn.quote(SEC_fields.at("sic")),
+        trxn.quote(base_form_type),
 		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
-		trxn.esc(SEC_fields.at("quarter_ending")),
+		trxn.quote(SEC_fields.at("quarter_ending")),
         financial_statements.outstanding_shares_,
         schema_name,
         "HTML",
