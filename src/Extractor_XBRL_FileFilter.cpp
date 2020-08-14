@@ -996,7 +996,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
 		trxn.esc(SEC_fields.at("cik")),
 		trxn.esc(SEC_fields.at("company_name")),
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
-        trxn.esc(filing_fields.trading_symbol),
+        filing_fields.trading_symbol.empty() ? "NULL" : trxn.esc(filing_fields.trading_symbol),
 		trxn.esc(SEC_fields.at("sic")),
         trxn.esc(base_form_type),
 		original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
