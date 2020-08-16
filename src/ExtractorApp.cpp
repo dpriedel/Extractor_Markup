@@ -1043,8 +1043,6 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName& file_n
     decltype(auto) SEC_fields = SEC_data.GetFields();
     auto sec_header = SEC_data.GetHeader();
 
-    auto locking_id = catenate(SEC_fields.at("cik"), '_', SEC_fields.at("quarter_ending"));
-
     if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
     {
         try
