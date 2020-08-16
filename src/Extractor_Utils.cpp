@@ -486,7 +486,12 @@ bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields,
                 ;
 
         pqxx::work trxn{c};
-	    auto amended_date = trxn.query_value<std::string>(check_for_existing_content_cmd);
+	    auto row = trxn.exec1(check_for_existing_content_cmd);
+        std::string amended_date;
+        if (! row["amended_date_filed"].is_null())
+        {
+            amended_date = row["amended_date_filed"].view();
+        }
         trxn.commit();
         if (amended_date.empty())
         {
