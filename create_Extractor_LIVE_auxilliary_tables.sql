@@ -11,6 +11,7 @@ CREATE TABLE live_unified_extracts.filing_data
 (
 	filing_ID bigint REFERENCES live_unified_extracts.sec_filing_id (filing_ID) ON DELETE CASCADE,
 	cik TEXT NOT NULL,
+    company_name TEXT DEFAULT NULL,
 	symbol TEXT DEFAULT NULL,
 	form_type TEXT NOT NULL,
 	period_ending DATE NOT NULL,
