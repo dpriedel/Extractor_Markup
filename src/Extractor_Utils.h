@@ -56,7 +56,9 @@
 #include <range/v3/view/transform.hpp>
 #include <range/v3/view/trim.hpp>
 
-#include "date/tz.h"
+#include <date/tz.h>
+
+#include <fmt/format.h>
 
 #include "Extractor.h"
 
@@ -80,71 +82,44 @@ concept has_string = requires(T t)
     t.string();
 };
 
-// suport for concatenation of string-like things
-// let's use some concepts
+// custom fmtlib formatter for filesytem paths
 
-//template<can_be_appended_to_string T>
-//void append_to_string(std::string& s, const T& t)
-//{
-//    s +=t;
-//}
-//
-//template<has_string T>
-//void append_to_string(std::string& s, const T& t)
-//{
-//    s +=t.to_string();
-//}
-//
-//template<typename T> requires(std::is_arithmetic_v<T>)
-//void append_to_string(std::string& s, const T& t)
-//{
-//    s+= std::to_string(t);
-//}
-//
-template<typename T>
-void append_to_string(std::string& s, const T& t)
-{
-    // look for things which are 'string like' so we can just append them.
+template <> struct fmt::formatter<std::filesystem::path>: formatter<std::string> {
+  // parse is inherited from formatter<string_view>.
+  template <typename FormatContext>
+  auto format(const std::filesystem::path& p, FormatContext& ctx) {
+    std::string f_name = p.string();
+    return formatter<std::string>::format(f_name, ctx);
+  }
+};
 
-    if constexpr(can_be_appended_to_string<T>)
-    {
-        s.append(t);
-    }
-    else if constexpr(std::is_same_v<T, char>)
-    {
-        s += t;
-    }
-    else if constexpr(std::is_arithmetic_v<T>)
-    {
-        // it's a number so convert it.
+// custom fmtlib formatter for date year_month_day
 
-        s.append(std::to_string(t));
-    }
-    else if constexpr(has_string<T>)
-    {
-        // it can look like a string
+template <> struct fmt::formatter<date::year_month_day>: formatter<std::string> {
+  // parse is inherited from formatter<string_view>.
+  template <typename FormatContext>
+  auto format(date::year_month_day d, FormatContext& ctx) {
+    std::string s_date = date::format("%Y-%m-%d", d);
+    return formatter<std::string>::format(s_date, ctx);
+  }
+};
 
-        s.append(t.string());
-    }
-    else
-    {
-        // we don't know what to do with it.
-
-        throw std::invalid_argument("wrong type for 'catenate' function: "s + typeid(t).name());
-    }
-}
-
-// now, a function to concatenate a bunch of string-like things.
 
 template<typename... Ts>
-std::string catenate(const Ts&... ts)
+inline std::string catenate(Ts&&... ts)
 {
-    // let's use fold a expression
-    // (comma operator is cool...)
+    constexpr auto N = sizeof...(Ts);
 
-    std::string x;
-    ( ... , append_to_string(x, ts) );
-    return x;
+    // first, construct our format string
+    // TODO: make constexpr
+    
+    std::string f_string;
+    for (int i = 0; i < N; ++i)
+    {
+        f_string.append("{}");
+    }
+    
+    return fmt::format(f_string, std::forward<Ts>(ts)...);
 }
 
 // let's add tuples...

@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.74_gcc-10
-GCCDIR := /extra/gcc/gcc-10
+BOOSTDIR := /extra/boost/boost-1.76_gcc-11
+GCCDIR := /extra/gcc/gcc-11
 CPP := $(GCCDIR)/bin/g++
 
 # If no configuration is specified, "Debug" will be used
@@ -65,7 +65,6 @@ OUTDIR=Debug
 CFG_LIB := -lpthread -ltbb \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
-		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
 		-lxlsxio_read \
@@ -73,11 +72,11 @@ CFG_LIB := -lpthread -ltbb \
 		-lgumbo \
 		-lgq \
 		-lfmt \
-		-ltz \
+		-ldate-tz \
+		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
 		-lzip \
-		-lpqxx -lpq \
 		-lpugixml
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
@@ -86,7 +85,7 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++20 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++20 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -102,7 +101,6 @@ OUTDIR=Release
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
    		-L$(BOOSTDIR)/lib \
-		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
 		-lxlsxio_read \
@@ -110,11 +108,11 @@ CFG_LIB := -lpthread \
 		-lgumbo \
 		-lgq \
 		-lfmt \
-		-ltz \
+		-ldate-tz \
+		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
 		-lzip \
-		-lpqxx -lpq \
 		-lpugixml
 
 
@@ -126,7 +124,7 @@ DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
-COMPILE=$(CPP) -c  -x c++  -O2  -std=c++20 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O2  -std=c++20 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_FMT_EXTERNAL -DBOOST_REGEX_STANDALONE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
