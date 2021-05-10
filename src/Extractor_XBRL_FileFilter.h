@@ -42,12 +42,14 @@
 
 #include <range/v3/view/concat.hpp>
 
-#include "gq/Node.h"
+namespace rng = ranges;
+
+#include <gq/Node.h>
 #include <pugixml.hpp>
 
 #include "Extractor_Utils.h"
 #include "Extractor.h"
-#include "XLS_Data.h"
+#include <XLS_Data.h>
 
 // Extracting the desired content from each financial statement section
 // will likely differ for each so let's encapsulate the code.

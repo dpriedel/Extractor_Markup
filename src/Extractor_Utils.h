@@ -56,6 +56,8 @@
 #include <range/v3/view/transform.hpp>
 #include <range/v3/view/trim.hpp>
 
+namespace rng = ranges;
+
 #include <date/tz.h>
 
 #include <fmt/format.h>
@@ -233,14 +235,14 @@ inline std::vector<T> split_string(EM::sv string_data, char delim)
 {
     std::vector<T> results;
 
-    auto splitter = ranges::views::split(delim)
-        | ranges::views::transform([](const auto& rng)
+    auto splitter = rng::views::split(delim)
+        | rng::views::transform([](const auto& rng)
             {
-                T item(&*ranges::begin(rng), ranges::distance(rng));
+                T item(&*rng::begin(rng), rng::distance(rng));
                 return item;
             });
 
-    ranges::for_each(string_data | splitter, [&results](const T& e) { results.push_back(e); } );
+    rng::for_each(string_data | splitter, [&results](const T& e) { results.push_back(e); } );
 
     return results;
 }

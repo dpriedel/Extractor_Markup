@@ -65,8 +65,8 @@
 #include <range/v3/view/cache1.hpp>
 #include <range/v3/range/conversion.hpp>
 
-#include "fmt/core.h"
-#include "spdlog/spdlog.h"
+#include <fmt/core.h>
+#include <spdlog/spdlog.h>
 
 #include <pqxx/pqxx>
 #include <pqxx/stream_to>
@@ -136,7 +136,7 @@ bool FinancialStatements::ValidateContent ()
  */
 bool FinancialDocumentFilter::operator() (const HtmlInfo& html_info)
 {
-    return ranges::find(forms_, html_info.file_type_.get()) != forms_.end();
+    return rng::find(forms_, html_info.file_type_.get()) != forms_.end();
 }		/* -----  end of function FinancialDocumentFilter  ----- */
 
 // ===  FUNCTION  ======================================================================
@@ -150,7 +150,7 @@ EM::AnchorContent FindFinancialContentTopLevelAnchor (EM::HTMLContent financial_
     {R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    auto found_it = ranges::find_if(anchors, [](const auto& anchor)
+    auto found_it = rng::find_if(anchors, [](const auto& anchor)
             { return AnchorFilterUsingRegex(regex_finance_statements, anchor); });
     if (found_it == anchors.end())
     {
@@ -195,7 +195,7 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
 
     auto anchor_filter_matcher([&document_anchor_regexs](const auto& anchor)
         {
-            return ranges::any_of(document_anchor_regexs, [&anchor](const boost::regex* regex)
+            return rng::any_of(document_anchor_regexs, [&anchor](const boost::regex* regex)
                 {
                     return AnchorFilterUsingRegex(*regex, anchor);
                 });
@@ -223,7 +223,7 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
 
     HTML_FromFile htmls{document_sections, document_name};
 
-    auto financial_content = ranges::find_if(htmls, look_for_top_level);
+    auto financial_content = rng::find_if(htmls, look_for_top_level);
 
     if (financial_content != htmls.end())
     {
@@ -255,10 +255,10 @@ AnchorsFromHTML::iterator FindDestinationAnchor (const AnchorData& financial_anc
             return false;
         }
 
-        return ranges::equal( looking_for, anchor.name_,
+        return rng::equal( looking_for, anchor.name_,
                 [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
     });
-    auto found_it = ranges::find_if(anchors, do_compare);
+    auto found_it = rng::find_if(anchors, do_compare);
     if (found_it == anchors.end())
     {
         throw HTMLException("Can't find destination anchor for: " + financial_anchor.href_);
@@ -309,7 +309,7 @@ MultDataList FindDollarMultipliers (const AnchorList& financial_anchors)
 std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
 {
     std::string mplier;
-    ranges::transform(multiplier, ranges::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); } );
+    rng::transform(multiplier, rng::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); } );
 
     if (mplier == "thousands")
     {
@@ -459,7 +459,7 @@ bool ApplyStatementFilter (const std::vector<const boost::regex*>& regexs, EM::s
         {
             return boost::regex_search(table.begin(), table.end(), *regex, boost::regex_constants::match_not_dot_newline);
         });
-    int how_many_matches = ranges::count_if(regexs, matcher);
+    int how_many_matches = rng::count_if(regexs, matcher);
 
     if (how_many_matches < matches_needed)
     {
@@ -502,7 +502,7 @@ FinancialStatements FindAndExtractFinancialStatements (const SharesOutstanding& 
 
     HTML_FromFile htmls{document_sections, document_name};
 
-    auto financial_content = ranges::find_if(htmls, document_filter);
+    auto financial_content = rng::find_if(htmls, document_filter);
     if (financial_content != htmls.end())
     {
         try
@@ -582,19 +582,19 @@ FinancialStatements ExtractFinancialStatements (EM::HTMLContent financial_conten
 
     FinancialStatements the_tables;
 
-    auto balance_sheet = ranges::find_if(tables, [](const auto& x) { return BalanceSheetFilter(x.current_table_parsed_); });
+    auto balance_sheet = rng::find_if(tables, [](const auto& x) { return BalanceSheetFilter(x.current_table_parsed_); });
     if (balance_sheet != tables.end())
     {
         the_tables.balance_sheet_.parsed_data_ = balance_sheet->current_table_parsed_;
         the_tables.balance_sheet_.raw_data_ = balance_sheet.TableContent();
 
-        auto statement_of_ops = ranges::find_if(tables, [](const auto& x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
+        auto statement_of_ops = rng::find_if(tables, [](const auto& x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
         if (statement_of_ops != tables.end())
         {
             the_tables.statement_of_operations_.parsed_data_ = statement_of_ops->current_table_parsed_;
             the_tables.statement_of_operations_.raw_data_ = statement_of_ops.TableContent();
 
-            auto cash_flows = ranges::find_if(tables, [](const auto& x) { return CashFlowsFilter(x.current_table_parsed_); });
+            auto cash_flows = rng::find_if(tables, [](const auto& x) { return CashFlowsFilter(x.current_table_parsed_); });
             if (cash_flows != tables.end())
             {
                 the_tables.cash_flows_.parsed_data_ = cash_flows->current_table_parsed_;
@@ -890,24 +890,24 @@ EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, c
     // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
 
     EM::Extractor_Values values = lines 
-        | ranges::views::filter([&match_values, &digits](const auto& a_line)
-                { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) && ranges::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
-        | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
-        | ranges::views::cache1
-        | ranges::to<EM::Extractor_Values>();
+        | rng::views::filter([&match_values, &digits](const auto& a_line)
+                { return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) && rng::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
+        | rng::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
+        | rng::views::cache1
+        | rng::to<EM::Extractor_Values>();
 
 
     // now, for all values except 'per share', apply the multiplier.
 
-    ranges::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier); } );
+    rng::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier); } );
 
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
     values = std::move(values)
-        | ranges::actions::transform([](auto x) { x.first = CleanLabel(x.first); return x; } )
-        | ranges::actions::remove_if([](auto& x) { return x.first.empty(); });
+        | rng::actions::transform([](auto x) { x.first = CleanLabel(x.first); return x; } )
+        | rng::actions::remove_if([](auto& x) { return x.first.empty(); });
 
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
@@ -925,7 +925,7 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::Extracted_Value& value, co
     // convert all values to floats.
 
     std::string result;
-    ranges::remove_copy(value.second, ranges::back_inserter(result), ',');
+    rng::remove_copy(value.second, rng::back_inserter(result), ',');
     if (result.ends_with(')'))
     {
         result.resize(result.size() - 1);

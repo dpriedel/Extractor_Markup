@@ -37,7 +37,7 @@
 
 #include <range/v3/action/transform.hpp>
 
-#include "date/date.h"
+#include <date/date.h>
 
 #include "Extractor_Utils.h"
 
@@ -113,7 +113,7 @@ void SEC_Header::ExtractFormType ()
     // we can't have the '/' character in it.  Our Collect program replaces the '/' with '_'
     // so we do the same here.
 
-	parsed_header_data_["form_type"] = results.str(1) | ranges::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
+	parsed_header_data_["form_type"] = results.str(1) | rng::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
 }		// -----  end of method SEC_Header::ExtractFormNumber  -----
 
 void SEC_Header::ExtractDateFiled ()

@@ -127,7 +127,7 @@ std::vector<std::string> XLS_File::GetSheetNames() const
             while ((tempname = xlsxioread_sheetlist_next(temp_list.get())) != nullptr)
             {
                 results.emplace_back(std::string{tempname});
-                results.back() |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+                results.back() |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
             }
         }
     }
@@ -137,11 +137,11 @@ std::vector<std::string> XLS_File::GetSheetNames() const
 std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
 {
     std::string looking_for{sheet_name};
-    looking_for |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+    looking_for |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
 
     if (! sheet_name.empty())
     {
-        auto pos = ranges::find_if(*this, [looking_for] (auto& x) { return x.GetSheetName() == looking_for; });
+        auto pos = rng::find_if(*this, [looking_for] (auto& x) { return x.GetSheetName() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
@@ -153,11 +153,11 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByName (EM::sv sheet_name) const
 std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName (EM::sv sheet_name) const
 {
     std::string looking_for{sheet_name};
-    looking_for |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+    looking_for |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
 
     if (! sheet_name.empty())
     {
-        auto pos = ranges::find_if(*this, [looking_for] (auto& x) { return x.GetSheetNameFromInside() == looking_for; });
+        auto pos = rng::find_if(*this, [looking_for] (auto& x) { return x.GetSheetNameFromInside() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
@@ -395,7 +395,7 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator++ ()
 XLS_Sheet::XLS_Sheet (const std::vector<char>* content, const XLSXIOCHAR* sheet_name)
     : content_{content}, sheet_name_mc_{sheet_name}
 {
-    ranges::transform(sheet_name_mc_, ranges::back_inserter(sheet_name_lc_), [](unsigned char c) { return std::tolower(c); });
+    rng::transform(sheet_name_mc_, rng::back_inserter(sheet_name_lc_), [](unsigned char c) { return std::tolower(c); });
 
 }  // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  ----- 
 
@@ -471,7 +471,7 @@ const std::string& XLS_Sheet::GetSheetNameFromInside () const
                 if (! first_row.empty())
                 {
                     extended_sheet_name_ = first_row.substr(0, first_row.find('\t'));
-                    extended_sheet_name_ |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+                    extended_sheet_name_ |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
                 }
             }
         }

@@ -48,8 +48,8 @@
 
 #include <pqxx/pqxx>
 
-#include "fmt/core.h"
-#include "spdlog/spdlog.h"
+#include <fmt/core.h>
+#include <spdlog/spdlog.h>
 
 
 namespace fs = std::filesystem;
@@ -388,7 +388,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
         auto file_type = FindFileType(document);
 
         if (file_name.get().extension() == ".htm"
-                && ranges::find(form_list_, file_type.get()) != ranges::end(form_list_))
+                && rng::find(form_list_, file_type.get()) != rng::end(form_list_))
         {
             auto content = FindHTML(document, file_name);
             if (! content.get().empty())
@@ -402,7 +402,7 @@ bool FileHasHTML::operator() (const EM::SEC_Header_fields& header_fields, const 
 
 bool FileHasFormType::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
-    return (ranges::find(form_list_, SEC_fields.at("form_type")) != ranges::end(form_list_));
+    return (rng::find(form_list_, SEC_fields.at("form_type")) != rng::end(form_list_));
 }		/* -----  end of method FileHasFormType::operator()  ----- */
 
 bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
@@ -414,12 +414,12 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::D
         return (CIK_list_[0] <= SEC_fields.at("cik") && SEC_fields.at("cik") <= CIK_list_[1]);
     }
     
-    return (ranges::find(CIK_list_, SEC_fields.at("cik")) != ranges::end(CIK_list_));
+    return (rng::find(CIK_list_, SEC_fields.at("cik")) != rng::end(CIK_list_));
 }		/* -----  end of method FileHasCIK::operator()  ----- */
 
 bool FileHasSIC::operator()(const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
 {
-    return (ranges::find(SIC_list_, SEC_fields.at("sic")) != ranges::end(SIC_list_));
+    return (rng::find(SIC_list_, SEC_fields.at("sic")) != rng::end(SIC_list_));
 }		/* -----  end of method FileHasSIC::operator()  ----- */
 
 bool NeedToUpdateDBContent::operator() (const EM::SEC_Header_fields& SEC_fields, const EM::DocumentSectionList& document_sections) const 
@@ -566,7 +566,7 @@ std::string CleanLabel (const std::string& label)
 
     // lastly, lowercase
 
-    ranges::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
+    rng::for_each(cleaned_label, [] (char& c) { c = std::tolower(c); } );
 
     return cleaned_label;
 }		// -----  end of function CleanLabel  -----

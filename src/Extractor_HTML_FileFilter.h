@@ -55,6 +55,8 @@
 #include <range/v3/view/transform.hpp>
 #include <range/v3/view/take.hpp>
 
+namespace rng = ranges;
+
 #include "Extractor.h"
 #include "AnchorsFromHTML.h"
 #include "Extractor_Utils.h"
@@ -169,7 +171,7 @@ struct FinancialStatements
     void FindAndStoreMultipliers();
     void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent html);
 
-    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
+    [[nodiscard]] auto ListValues(void) const { return rng::views::concat(
             balance_sheet_.values_,
             statement_of_operations_.values_,
             cash_flows_.values_); }
@@ -252,11 +254,11 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
     StatementType stmt_type;
 
     auto the_data = anchors 
-        | ranges::views::filter([stmt_anchor_regex](const auto& anchor)
+        | rng::views::filter([stmt_anchor_regex](const auto& anchor)
             { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); })
-        | ranges::views::transform([&anchors](const auto& anchor)
+        | rng::views::transform([&anchors](const auto& anchor)
             { return FindDestinationAnchor(anchor, anchors); })
-        | ranges::views::take(1);
+        | rng::views::take(1);
 
     AnchorData the_anchor = *the_data.front();
     auto anchor_content_val = the_anchor.anchor_content_.get();
@@ -265,7 +267,7 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
 
     TablesFromHTML tables{EM::HTMLContent{EM::sv{anchor_content_val.data(),
         financial_content.get().size() - (anchor_content_val.data() - financial_content.get().data())}}};
-    auto stmt_tbl = ranges::find_if(
+    auto stmt_tbl = rng::find_if(
             tables, [&stmt_type_filter](const auto& x)
             {
                 return stmt_type_filter(x.current_table_parsed_);

@@ -63,9 +63,9 @@
 
 #include <boost/regex.hpp>
 
-#include "fmt/core.h"
-#include "pstreams/pstream.h"
-#include "spdlog/spdlog.h"
+#include <fmt/core.h>
+#include <pstreams/pstream.h>
+#include <spdlog/spdlog.h>
 
 #include <pqxx/pqxx>
 #include <pqxx/transaction.hxx>
@@ -130,22 +130,22 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &
     financial_statements.outstanding_shares_ = ExtractXLSSharesOutstanding(*xls_file.begin());
 
 
-    auto bal_sheets = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } );
-    if (bal_sheets != ranges::end(xls_file))
+    auto bal_sheets = rng::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_bal); } );
+    if (bal_sheets != rng::end(xls_file))
     {
         financial_statements.balance_sheet_.found_sheet_ = true;
         financial_statements.balance_sheet_.values_ = CollectXLSValues(*bal_sheets);
     }
 
-    auto stmt_of_ops = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } );
-    if (stmt_of_ops != ranges::end(xls_file))
+    auto stmt_of_ops = rng::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_ops); } );
+    if (stmt_of_ops != rng::end(xls_file))
     {
         financial_statements.statement_of_operations_.found_sheet_ = true;
         financial_statements.statement_of_operations_.values_ = CollectXLSValues(*stmt_of_ops);
     }
 
-    auto cash_flows = ranges::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } );
-    if (cash_flows != ranges::end(xls_file))
+    auto cash_flows = rng::find_if(xls_file, [] (const auto& x) { const auto& name = x.GetSheetNameFromInside(); return boost::regex_search(name, regex_finance_statements_cash); } );
+    if (cash_flows != rng::end(xls_file))
     {
         financial_statements.cash_flows_.found_sheet_ = true;
         financial_statements.cash_flows_.values_ = CollectXLSValues(*cash_flows);
@@ -193,9 +193,9 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
         }
     }
 
-    for(auto row : xls_sheet | ranges::views::drop(multiplier_skips))
+    for(auto row : xls_sheet | rng::views::drop(multiplier_skips))
     {
-        row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+        row |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
 
         if (row.find("outstanding") == std::string::npos)
         {
@@ -215,7 +215,7 @@ int64_t ExtractXLSSharesOutstanding (const XLS_Sheet& xls_sheet)
     {
         // need to replace any commas we might have.
 
-        auto shares_no_commas = ranges::remove(shares, ',');
+        auto shares_no_commas = rng::remove(shares, ',');
         if (shares_no_commas != shares.end())
         {
             shares.erase(shares_no_commas);
@@ -282,24 +282,24 @@ EM::XLS_Values CollectXLSValues (const XLS_Sheet& sheet)
     // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
 
     EM::XLS_Values values = sheet 
-        | ranges::views::drop(multiplier_skips)                // first row contains sheet name and multiplier
-        | ranges::views::filter([&match_values, &digits](const auto& a_row)
-                { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) && ranges::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
-        | ranges::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
-        | ranges::views::cache1
-        | ranges::to<EM::XLS_Values>();
+        | rng::views::drop(multiplier_skips)                // first row contains sheet name and multiplier
+        | rng::views::filter([&match_values, &digits](const auto& a_row)
+                { return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) && rng::any_of(match_values[2].str(), [&digits] (char c) { return digits.find(c) != std::string::npos; }); })
+        | rng::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); } )
+        | rng::views::cache1
+        | rng::to<EM::XLS_Values>();
 
     // now, for all values except 'per share', apply the multiplier.
 
-    ranges::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier.first); } );
+    rng::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier.first); } );
 
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
     values = std::move(values)
-        | ranges::actions::transform([](auto& x) { x.first = CleanLabel(x.first.get()); return x; } )
-        | ranges::actions::remove_if([](auto& x) { return x.first.get().empty(); });
+        | rng::actions::transform([](auto& x) { x.first = CleanLabel(x.first.get()); return x; } )
+        | rng::actions::remove_if([](auto& x) { return x.first.get().empty(); });
 
     return values;
 }		/* -----  end of method CollectStatementValues  ----- */
@@ -318,7 +318,7 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::XLS_Entry& value, const st
     // convert all values to floats.
 
     std::string result;
-    ranges::remove_copy(value.second.get(), ranges::back_inserter(result), ',');
+    rng::remove_copy(value.second.get(), rng::back_inserter(result), ',');
     if (result.ends_with(')'))
     {
         result.resize(result.size() - 1);
@@ -365,7 +365,7 @@ std::string ApplyMultiplierAndCleanUpValue (const EM::XLS_Entry& value, const st
 // =====================================================================================
 std::pair<std::string, int64_t> ExtractMultiplier (std::string row)
 {
-    row |= ranges::actions::transform([](unsigned char c) { return std::tolower(c); });
+    row |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
     if (row.find("thousands") != std::string::npos)
     {
         return {"000", 1000};
