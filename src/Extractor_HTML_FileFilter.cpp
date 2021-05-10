@@ -1090,7 +1090,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 	auto filing_ID_cmd = fmt::format("INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
-		" VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, {12}) RETURNING filing_ID",
+		" VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, {12}) RETURNING filing_id",
 		trxn.quote(SEC_fields.at("cik")),
 		trxn.quote(SEC_fields.at("company_name")),
 		original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
@@ -1112,8 +1112,9 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
     // now, the goal of all this...save all the financial values for the given time period.
 
     int counter = 0;
-    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
-        std::vector<std::string>{"filing_ID", "label", "value"}};
+    auto inserter1{pqxx::stream_to::table(trxn, {schema_name, "sec_bal_sheet_data"}, {"filing_id", "label", "value"})};
+//    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
+//        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.balance_sheet_.values_)
     {
@@ -1127,8 +1128,9 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter1.complete();
 
-    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
-        std::vector<std::string>{"filing_ID", "label", "value"}};
+    auto inserter2{pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
+//    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
+//        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.statement_of_operations_.values_)
     {
@@ -1142,8 +1144,9 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const FinancialStatem
 
     inserter2.complete();
 
-    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
-        std::vector<std::string>{"filing_ID", "label", "value"}};
+    auto inserter3{pqxx::stream_to::table(trxn, {schema_name, "sec_cash_flows_data"}, {"filing_id", "label", "value"})};
+//    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
+//        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto&[label, value] : financial_statements.cash_flows_.values_)
     {
