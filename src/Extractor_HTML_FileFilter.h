@@ -48,15 +48,6 @@
 
 #include <boost/regex.hpp>
 
-#include <range/v3/algorithm/find_if.hpp>
-
-#include <range/v3/view/concat.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/transform.hpp>
-#include <range/v3/view/take.hpp>
-
-namespace rng = ranges;
-
 #include "Extractor.h"
 #include "AnchorsFromHTML.h"
 #include "Extractor_Utils.h"
@@ -171,10 +162,9 @@ struct FinancialStatements
     void FindAndStoreMultipliers();
     void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent html);
 
-    [[nodiscard]] auto ListValues(void) const { return rng::views::concat(
-            balance_sheet_.values_,
-            statement_of_operations_.values_,
-            cash_flows_.values_); }
+    int ValuesTotal(void) { return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size(); }
+
+//    [[nodiscard]] auto ListValues() const;
 };
 
 EM::Extractor_Values CollectStatementValues (const std::vector<EM::sv>& lines, const std::string& multiplier);
@@ -241,6 +231,11 @@ bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorD
 
 using StmtTypeFilter = bool(*)(EM::sv);
 
+AnchorData FindAnchorUsingFilter (const AnchorsFromHTML& anchors, const boost::regex& stmt_anchor_regex);
+
+std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor (EM::HTMLContent financial_content,
+        const AnchorData& the_anchor, StmtTypeFilter stmt_type_filter);
+
 // let's take advantage of the fact that we defined all of these structs to have the
 // same fields, field name, and methods...a little templating is good for us !
 
@@ -253,27 +248,13 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
 {
     StatementType stmt_type;
 
-    auto the_data = anchors 
-        | rng::views::filter([stmt_anchor_regex](const auto& anchor)
-            { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); })
-        | rng::views::transform([&anchors](const auto& anchor)
-            { return FindDestinationAnchor(anchor, anchors); })
-        | rng::views::take(1);
-
-    AnchorData the_anchor = *the_data.front();
-    auto anchor_content_val = the_anchor.anchor_content_.get();
-
-    const char* anchor_begin = anchor_content_val.data();
-
-    TablesFromHTML tables{EM::HTMLContent{EM::sv{anchor_content_val.data(),
-        financial_content.get().size() - (anchor_content_val.data() - financial_content.get().data())}}};
-    auto stmt_tbl = rng::find_if(
-            tables, [&stmt_type_filter](const auto& x)
-            {
-                return stmt_type_filter(x.current_table_parsed_);
-            });
-    if (stmt_tbl != tables.end())
+    AnchorData the_anchor = FindAnchorUsingFilter(anchors, stmt_anchor_regex);
+    auto tbl_lookup = FindStatementTableFromAnchor(financial_content, the_anchor, stmt_type_filter);
+    if (tbl_lookup)
     {
+        auto stmt_tbl = tbl_lookup.value();
+        auto anchor_content_val = the_anchor.anchor_content_.get();
+        const char* anchor_begin = anchor_content_val.data();
         stmt_type.the_anchor_ = the_anchor;
         stmt_type.parsed_data_ = stmt_tbl->current_table_parsed_;
         size_t total_len = stmt_tbl.TableContent().get().data() + stmt_tbl.TableContent().get().size() - anchor_begin;

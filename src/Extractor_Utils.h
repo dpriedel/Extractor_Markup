@@ -51,13 +51,6 @@
 
 #include <boost/assert.hpp>
 
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/view/split.hpp>
-#include <range/v3/view/transform.hpp>
-#include <range/v3/view/trim.hpp>
-
-namespace rng = ranges;
-
 #include <date/tz.h>
 
 #include <fmt/format.h>
@@ -223,27 +216,30 @@ public:
     explicit MaxFilesException(const std::string& what);
 };
 
-//  let's do a little 'template normal' programming again along with
-//  some ranges.  See if this is a little simpler.
+//  let's do a little 'template normal' programming again
 
 // function to split a string on a delimiter and return a vector of items.
-// might be nice to use concepts to restrict to strings and string_views.
+// use concepts to restrict to strings and string_views.
 
 template<typename T>
 inline std::vector<T> split_string(EM::sv string_data, char delim)
     requires std::is_same_v<T, std::string> || std::is_same_v<T, EM::sv>
 {
     std::vector<T> results;
-
-    auto splitter = rng::views::split(delim)
-        | rng::views::transform([](const auto& rng)
-            {
-                T item(&*rng::begin(rng), rng::distance(rng));
-                return item;
-            });
-
-    rng::for_each(string_data | splitter, [&results](const T& e) { results.push_back(e); } );
-
+	for (auto it = 0; it != T::npos; ++it)
+	{
+		auto pos = string_data.find(delim, it);
+        if (pos != T::npos)
+        {
+    		results.emplace_back(string_data.substr(it, pos - it));
+        }
+        else
+        {
+    		results.emplace_back(string_data.substr(it));
+            break;
+        }
+		it = pos;
+	}
     return results;
 }
 

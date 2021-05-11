@@ -50,20 +50,25 @@
 #include <boost/regex.hpp>
 
 #include <range/v3/action/remove_if.hpp>
-#include <range/v3/algorithm/remove_copy.hpp>
 #include <range/v3/action/transform.hpp>
 #include <range/v3/algorithm/any_of.hpp>
 #include <range/v3/algorithm/count_if.hpp>
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/find_if.hpp>
+#include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/algorithm/remove_copy.hpp>
 #include <range/v3/algorithm/transform.hpp>
-
 #include <range/v3/iterator/insert_iterators.hpp>
-
-#include <range/v3/view/cache1.hpp>
 #include <range/v3/range/conversion.hpp>
+#include <range/v3/view/cache1.hpp>
+#include <range/v3/view/concat.hpp>
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/take.hpp>
+#include <range/v3/view/transform.hpp>
+
+namespace rng = ranges;
 
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
@@ -708,6 +713,52 @@ bool AnchorFilterUsingRegex(const boost::regex& stmt_anchor_regex, const AnchorD
     return boost::regex_search(anchor_val.cbegin(), anchor_val.cend(), stmt_anchor_regex);
 }		// -----  end of function AnchorFilterUsingRegex  -----
 
+
+// ===  FUNCTION  ======================================================================
+//         Name:  FindAnchorUsingFilter
+//  Description:  
+// =====================================================================================
+AnchorData FindAnchorUsingFilter (const AnchorsFromHTML& anchors, const boost::regex& stmt_anchor_regex)
+{
+    auto the_data = anchors 
+        | rng::views::filter([stmt_anchor_regex](const auto& anchor)
+            { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); })
+        | rng::views::transform([&anchors](const auto& anchor)
+            { return FindDestinationAnchor(anchor, anchors); })
+        | rng::views::take(1);
+
+    AnchorData the_anchor = *the_data.front();
+    return the_anchor ;
+}		// -----  end of function FindAnchorUsingFilter  -----
+
+// ===  FUNCTION  ======================================================================
+//         Name:  FindStatementTableFromAnchor
+//  Description:  
+// =====================================================================================
+
+std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor (EM::HTMLContent financial_content,
+        const AnchorData& the_anchor, StmtTypeFilter stmt_type_filter)
+{
+    auto anchor_content_val = the_anchor.anchor_content_.get();
+
+    const char* anchor_begin = anchor_content_val.data();
+
+    TablesFromHTML tables{EM::HTMLContent{EM::sv{anchor_content_val.data(),
+        financial_content.get().size() - (anchor_content_val.data() - financial_content.get().data())}}};
+    auto stmt_tbl = rng::find_if(
+            tables, [&stmt_type_filter](const auto& x)
+            {
+                return stmt_type_filter(x.current_table_parsed_);
+            });
+    if (stmt_tbl != tables.end())
+    {
+        return {stmt_tbl};
+    }
+    else
+    {
+        return {};
+    }
+}		// -----  end of function FindStatementTableFromAnchor  -----
 void FinancialStatements::FindAndStoreMultipliers()
 {
 //    if (balance_sheet_.has_anchor())
@@ -848,6 +899,14 @@ void FinancialStatements::FindSharesOutstanding(const SharesOutstanding& so, EM:
     }
 
 }		/* -----  end of method FinancialStatements::FindSharesOutstanding  ----- */
+
+//auto FinancialStatements::ListValues () const
+//{
+//     return rng::views::concat(
+//            balance_sheet_.values_,
+//            statement_of_operations_.values_,
+//            cash_flows_.values_); 
+//}		// -----  end of method FinancialStatements::ListValues  ----- 
 
 /* 
  * ===  FUNCTION  ======================================================================

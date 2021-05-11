@@ -37,6 +37,8 @@
 
 #include <range/v3/action/transform.hpp>
 
+namespace rng = ranges;
+
 #include <date/date.h>
 
 #include "Extractor_Utils.h"

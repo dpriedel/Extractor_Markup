@@ -40,10 +40,6 @@
 #include <tuple>
 #include <vector>
 
-#include <range/v3/view/concat.hpp>
-
-namespace rng = ranges;
-
 #include <gq/Node.h>
 #include <pugixml.hpp>
 
@@ -113,10 +109,10 @@ struct XLS_FinancialStatements
     void FindAndStoreMultipliers();
 //    void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent html);
 
-    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
-            balance_sheet_.values_,
-            statement_of_operations_.values_,
-            cash_flows_.values_); }
+//    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
+//            balance_sheet_.values_,
+//            statement_of_operations_.values_,
+//            cash_flows_.values_); }
 };
 
 XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const & document_sections, const EM::FileName& document_name);

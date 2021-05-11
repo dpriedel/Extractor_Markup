@@ -51,15 +51,16 @@
 #include <range/v3/algorithm/find.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/algorithm/remove_copy.hpp>
 #include <range/v3/algorithm/remove.hpp>
+#include <range/v3/algorithm/remove_copy.hpp>
 #include <range/v3/algorithm/transform.hpp>
+#include <range/v3/iterator/insert_iterators.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/cache1.hpp>
-#include <range/v3/view/filter.hpp>
 #include <range/v3/view/drop.hpp>
+#include <range/v3/view/filter.hpp>
 
-#include <range/v3/iterator/insert_iterators.hpp>
+namespace rng = ranges;
 
 #include <boost/regex.hpp>
 

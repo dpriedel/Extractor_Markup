@@ -21,8 +21,10 @@
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/transform.hpp>
 #include <range/v3/iterator.hpp>
-#include "XLS_Data.h"
 
+namespace rng = ranges;
+
+#include "XLS_Data.h"
 #include "Extractor_Utils.h"
 
 

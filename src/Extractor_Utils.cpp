@@ -45,6 +45,12 @@
 #include <boost/regex.hpp>
 
 #include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/for_each.hpp>
+#include <range/v3/view/split.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/trim.hpp>
+
+namespace rng = ranges;
 
 #include <pqxx/pqxx>
 
