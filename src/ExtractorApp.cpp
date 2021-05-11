@@ -668,7 +668,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(const EM::FileCon
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ",
         input_file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ",
         input_file_name.get()).c_str());
 
 //        did_load = true;
@@ -725,7 +725,7 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileCo
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ",
         input_file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ",
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ",
         input_file_name.get()).c_str());
 
 //        did_load = true;
@@ -958,7 +958,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName& file_name, con
     auto the_tables = FindAndExtractXLSContent(sections, file_name);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
     if (db_mutex == nullptr)
     {
         return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
@@ -1007,7 +1007,7 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName& file_name, co
     auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_, file_name);
     BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(! the_tables.ListValues().empty(), catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
     if (db_mutex == nullptr)
     {
         return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);

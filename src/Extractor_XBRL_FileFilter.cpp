@@ -59,6 +59,7 @@
 #include <range/v3/view/cache1.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/filter.hpp>
+#include <range/v3/view/transform.hpp>
 
 namespace rng = ranges;
 

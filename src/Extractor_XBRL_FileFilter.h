@@ -107,6 +107,8 @@ struct XLS_FinancialStatements
     void PrepareTableContent();
     bool ValidateContent();
     void FindAndStoreMultipliers();
+
+    int ValuesTotal(void) { return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size(); }
 //    void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent html);
 
 //    [[nodiscard]] auto ListValues(void) const { return ranges::views::concat(
