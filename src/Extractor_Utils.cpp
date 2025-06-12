@@ -53,6 +53,7 @@ namespace rng = ranges;
 
 #include <pqxx/pqxx>
 
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
@@ -66,9 +67,9 @@ date::year_month_day StringToDateYMD(const std::string &input_format,
                                      const std::string &the_date) {
   std::istringstream in{the_date};
   date::sys_days tp;
-  auto xxx = std::chrono::parse(input_format, tp);
-  // BOOST_ASSERT_MSG(! in.fail() && ! in.bad(), catenate("Unable to parse given
-  // date: ", the_date).c_str());
+  date::from_stream(in, input_format.data(), tp);
+  BOOST_ASSERT_MSG(!in.fail() && !in.bad(),
+                   catenate("Unable to parse given date: ", the_date).c_str());
   date::year_month_day result = tp;
   BOOST_ASSERT_MSG(result.ok(), catenate("Invalid date: ", the_date).c_str());
   return result;
