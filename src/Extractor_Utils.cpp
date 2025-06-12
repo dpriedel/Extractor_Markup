@@ -476,7 +476,7 @@ bool NeedToUpdateDBContent::operator()(
         trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
 
     pqxx::work trxn{c};
-    auto row = trxn.exec1(check_for_existing_content_cmd);
+    auto row = trxn.exec(check_for_existing_content_cmd).one_row();
     std::string amended_date;
     if (!row["amended_date_filed"].is_null()) {
       amended_date = row["amended_date_filed"].view();

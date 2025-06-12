@@ -47,13 +47,13 @@
 #include <typeinfo>
 #include <vector>
 
+#include "Extractor.h"
+
 #include <boost/assert.hpp>
 
 #include <date/tz.h>
 
 #include <fmt/format.h>
-
-#include "Extractor.h"
 
 namespace fs = std::filesystem;
 

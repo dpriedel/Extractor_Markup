@@ -1286,7 +1286,7 @@ int UpdateOutstandingShares(const SharesOutstanding &so,
           "data_source = 'HTML'",
           trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
           trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name));
-      auto row1 = trxn.exec1(query_cmd);
+      auto row1 = trxn.exec(query_cmd).one_row();
       int64_t DB_shares = row1[0].as<int64_t>();
 
       if (DB_shares != file_shares) {
