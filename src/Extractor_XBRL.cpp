@@ -19,37 +19,34 @@
 // =====================================================================================
 //
 
+/* This file is part of Extractor_Markup. */
 
-	/* This file is part of Extractor_Markup. */
+/* Extractor_Markup is free software: you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License as published by */
+/* the Free Software Foundation, either version 3 of the License, or */
+/* (at your option) any later version. */
 
-	/* Extractor_Markup is free software: you can redistribute it and/or modify */
-	/* it under the terms of the GNU General Public License as published by */
-	/* the Free Software Foundation, either version 3 of the License, or */
-	/* (at your option) any later version. */
+/* Extractor_Markup is distributed in the hope that it will be useful, */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
+/* GNU General Public License for more details. */
 
-	/* Extractor_Markup is distributed in the hope that it will be useful, */
-	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-	/* GNU General Public License for more details. */
-
-	/* You should have received a copy of the GNU General Public License */
-	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
-
-#include <fstream>
-#include <iostream>
+/* You should have received a copy of the GNU General Public License */
+/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <boost/date_time/gregorian/gregorian.hpp>
-//#include <boost/format.hpp>
+#include <fstream>
+#include <iostream>
+// #include <boost/format.hpp>
 #include <boost/regex.hpp>
 
 namespace bg = boost::gregorian;
 
-#include "fmt/core.h"
 #include <pqxx/pqxx>
-
 
 #include "Extractor_XBRL.h"
 #include "SEC_Header.h"
+#include "fmt/core.h"
 
 // let's try the pugi XML parser.
 // since we already have the document in memory, we'll just
@@ -69,14 +66,15 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields)
 
     pugi::xml_document doc;
     auto result = doc.load_buffer(document.data(), document.size());
-    if (! result)
+    if (!result)
     {
-        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+        throw std::runtime_error{std::string{"Error description: "} + result.description() +
+                                 "\nError offset: " + std::to_string(result.offset) + "\n"};
     }
 
     std::cout << "\n ****** \n";
 
-    auto top_level_node = doc.first_child();           //  should be <xbrl> node.
+    auto top_level_node = doc.first_child();    //  should be <xbrl> node.
 
     // next, some filing specific data from the XBRL portion of our document.
 
@@ -92,32 +90,24 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields)
 
     // for now, let's assume we are going to to a full replace of the data for each filing.
 
-	auto filing_ID_cmd = fmt::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
+    auto filing_ID_cmd = fmt::format(
+        "DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
-			trxn.esc(fields.at("cik")),
-			trxn.esc(fields.at("form_type")),
-			trxn.esc(period_end_date))
-			;
+        trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")), trxn.esc(period_end_date));
     trxn.exec(filing_ID_cmd);
 
-	filing_ID_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_id"
+    filing_ID_cmd = fmt::format(
+        "INSERT INTO xbrl_extracts.extractor_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
-		" VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
-		trxn.esc(fields.at("cik")),
-		trxn.esc(fields.at("company_name")),
-		trxn.esc(fields.at("file_name")),
-        trxn.esc(trading_symbol),
-		trxn.esc(fields.at("sic")),
-		trxn.esc(fields.at("form_type")),
-		trxn.esc(fields.at("date_filed")),
-		trxn.esc(period_end_date),
-		trxn.esc(shares_outstanding))
-		;
+        " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
+        trxn.esc(fields.at("cik")), trxn.esc(fields.at("company_name")), trxn.esc(fields.at("file_name")), trxn.esc(trading_symbol),
+        trxn.esc(fields.at("sic")), trxn.esc(fields.at("form_type")), trxn.esc(fields.at("date_filed")), trxn.esc(period_end_date),
+        trxn.esc(shares_outstanding));
     auto res = trxn.exec(filing_ID_cmd);
     trxn.commit();
 
-	std::string filing_ID;
-	res[0]["filing_ID"].to(filing_ID);
+    std::string filing_ID;
+    res[0]["filing_ID"].to(filing_ID);
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
@@ -127,21 +117,18 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields)
     int counter = 0;
     for (auto second_level_nodes = top_level_node.first_child(); second_level_nodes; second_level_nodes = second_level_nodes.next_sibling())
     {
-        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0)
-            continue;
+        if (strncmp(second_level_nodes.name(), "us-gaap:", 8) != 0) continue;
         // if (second_level_nodes.attribute("contextRef").value() != context_ID)
         //     continue;
         // std::cout << "here...\n";
-//        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
-//            << second_level_nodes.attribute("contextRef").value() ;
-//        std::cout << std::endl;
+        //        std::cout << "Name:  " << second_level_nodes.name() << ": = " << second_level_nodes.child_value() << "   "
+        //            << second_level_nodes.attribute("contextRef").value() ;
+        //        std::cout << std::endl;
         ++counter;
-    	auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_data"
+        auto detail_cmd = fmt::format(
+            "INSERT INTO xbrl_extracts.extractor_filing_data"
             " (filing_ID, xbrl_label, xbrl_value) VALUES ('{0}', '{1}', '{2}')",
-    			trxn.esc(filing_ID),
-    			trxn.esc(second_level_nodes.name()),
-    			trxn.esc(second_level_nodes.child_value()))
-    			;
+            trxn.esc(filing_ID), trxn.esc(second_level_nodes.name()), trxn.esc(second_level_nodes.child_value()));
         details.exec(detail_cmd);
     }
 
@@ -149,23 +136,23 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields)
     std::cout << "Found: " << counter << "\n ****** \n";
 }
 
-//std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
+// std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
 //
 //{
-//    //  our given date is yyyy-mm-dd.
+//     //  our given date is yyyy-mm-dd.
 //
-//    static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
-//        "October", "November", "December"};
+//     static const char* month_names[]{"", "January", "February", "March", "April", "May", "June", "July", "August", "September",
+//         "October", "November", "December"};
 //
-//    std::string result{"cx_"};
-//    result.append(period_end_date.data() + 8, 2);
-//    result +=  '_';
-//    result += month_names[std::stoi(std::string{period_end_date.substr(5, 2)})];
-//    result += '_';
-//    result.append(period_end_date.data(), 4);
+//     std::string result{"cx_"};
+//     result.append(period_end_date.data() + 8, 2);
+//     result +=  '_';
+//     result += month_names[std::stoi(std::string{period_end_date.substr(5, 2)})];
+//     result += '_';
+//     result.append(period_end_date.data(), 4);
 //
-//    return result;
-//}
+//     return result;
+// }
 
 void ParseTheXML_Labels(const EM::sv document, const EM::SEC_Header_fields& fields)
 {
@@ -175,9 +162,10 @@ void ParseTheXML_Labels(const EM::sv document, const EM::SEC_Header_fields& fiel
 
     pugi::xml_document doc;
     auto result = doc.load_buffer(document.data(), document.size());
-    if (! result)
+    if (!result)
     {
-        throw std::runtime_error{std::string{"Error description: "} + result.description() + "\nError offset: " + std::to_string(result.offset) +"\n" };
+        throw std::runtime_error{std::string{"Error description: "} + result.description() +
+                                 "\nError offset: " + std::to_string(result.offset) + "\n"};
     }
 
     std::cout << "\n ****** \n";
@@ -203,8 +191,8 @@ void ParseTheXML_Labels(const EM::sv document, const EM::SEC_Header_fields& fiel
 
     std::cout << "\n ****** \n";
 }
-std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type,
-    const int MAX_FILES, std::atomic<int>& files_processed)
+std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES,
+                                                 std::atomic<int>& files_processed)
 {
     SEC_Header file_header;
     file_header.UseData(file_content);
@@ -226,8 +214,7 @@ std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, E
 void WriteDataToFile(const fs::path& output_file_name, EM::sv document)
 {
     std::ofstream output_file(output_file_name);
-    if (not output_file)
-        throw(std::runtime_error("Can't open output file: " + output_file_name.string()));
+    if (not output_file) throw(std::runtime_error("Can't open output file: " + output_file_name.string()));
 
     output_file.write(document.data(), document.length());
     output_file.close();
