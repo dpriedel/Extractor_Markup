@@ -79,7 +79,7 @@ using namespace std::chrono_literals;
 //         whitespace v[' '] &= ~space;       // space will not be classified as
 //         whitespace return &v[0];
 //     }
-//     explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(),
+//     explicit line_only_whitespace(std::size_t refs = 0) : ctype(madke_table(),
 //     false, refs) {}
 // };
 

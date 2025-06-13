@@ -1129,8 +1129,9 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     {
         date_filed_amended = StringToDateYMD("%F", amended_date_filed);
     }
+    d
 
-    if (!replace_DB_content && form_type.ends_with("_A") && date_filed <= date_filed_amended)
+        if (!replace_DB_content && form_type.ends_with("_A") && date_filed <= date_filed_amended)
     {
         return false;
     }
