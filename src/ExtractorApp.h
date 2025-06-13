@@ -41,7 +41,6 @@
 // #include <fstream>
 #include <atomic>
 #include <filesystem>
-#include <functional>
 #include <mutex>
 #include <optional>
 #include <tuple>
@@ -50,16 +49,13 @@
 
 namespace fs = std::filesystem;
 
-// #include <boost/filesystem.hpp>
-// #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/program_options.hpp>
 
-// namespace bg = boost::gregorian;
+#include <spdlog/spdlog.h>
+
 namespace po = boost::program_options;
 
 #include "Extractor.h"
-#include "date/date.h"
-#include "spdlog/spdlog.h"
 // #include "ExtractorMutexAndLock.h"
 #include "Extractor_Utils.h"
 #include "SharesOutstanding.h"
@@ -173,8 +169,8 @@ private:
     char **mArgv = nullptr;
     const std::vector<std::string> tokens_;
 
-    date::year_month_day begin_date_;
-    date::year_month_day end_date_;
+    std::chrono::year_month_day begin_date_;
+    std::chrono::year_month_day end_date_;
 
     std::string start_date_;
     std::string stop_date_;

@@ -302,15 +302,15 @@ bool ExtractorApp::CheckArgs()
     if (!start_date_.empty())
     {
         std::istringstream in{start_date_};
-        date::sys_days tp;
-        date::from_stream(in, "%F", tp);
+        std::chrono::sys_days tp;
+        std::chrono::from_stream(in, "%F", tp);
         if (in.fail())
         {
             // try an alternate representation
 
             in.clear();
             in.rdbuf()->pubseekpos(0);
-            date::from_stream(in, "%Y-%b-%d", tp);
+            std::chrono::from_stream(in, "%Y-%b-%d", tp);
         }
         BOOST_ASSERT_MSG(!in.fail() && !in.bad(), catenate("Unable to parse begin date: ", start_date_).c_str());
         begin_date_ = tp;
@@ -319,15 +319,15 @@ bool ExtractorApp::CheckArgs()
     if (!stop_date_.empty())
     {
         std::istringstream in{stop_date_};
-        date::sys_days tp;
-        date::from_stream(in, "%F", tp);
+        std::chrono::sys_days tp;
+        std::chrono::from_stream(in, "%F", tp);
         if (in.fail())
         {
             // try an alternate representation
 
             in.clear();
             in.rdbuf()->pubseekpos(0);
-            date::from_stream(in, "%Y-%b-%d", tp);
+            std::chrono::from_stream(in, "%Y-%b-%d", tp);
         }
         BOOST_ASSERT_MSG(!in.fail() && !in.bad(), catenate("Unable to parse end date: ", stop_date_).c_str());
         end_date_ = tp;
