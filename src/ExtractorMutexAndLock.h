@@ -2,7 +2,7 @@
 //
 //       Filename:  ExtractorMutexAndLock.h
 //
-//    Description: Class to manage async form updates 
+//    Description: Class to manage async form updates
 //
 //        Version:  1.0
 //        Created:  03/16/2020 09:01:15 AM
@@ -23,9 +23,8 @@
 //              If not, wait and try again.
 // =====================================================================================
 
-
-#ifndef  ExtractMutex_INC
-#define  ExtractMutex_INC
+#ifndef ExtractMutex_INC
+#define ExtractMutex_INC
 
 #include <mutex>
 #include <set>
@@ -33,74 +32,74 @@
 
 class ExtractMutex
 {
-public:
-    // ====================  LIFECYCLE     ======================================= 
-    ExtractMutex () = default;                             // constructor 
+   public:
+    // ====================  LIFECYCLE     =======================================
+    ExtractMutex() = default;    // constructor
     ExtractMutex(const ExtractMutex& rhs) = delete;
     ExtractMutex(ExtractMutex&& rhs) = delete;
 
-    // ====================  ACCESSORS     ======================================= 
+    // ====================  ACCESSORS     =======================================
 
-    // ====================  MUTATORS      ======================================= 
+    // ====================  MUTATORS      =======================================
 
     bool AddEntry(const std::string& entry);
     void RemoveEntry(const std::string& entry);
 
-    // ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
-    ExtractMutex& operator = (const ExtractMutex& rhs) = delete;
-    ExtractMutex& operator = (ExtractMutex&& rhs) = delete;
+    ExtractMutex& operator=(const ExtractMutex& rhs) = delete;
+    ExtractMutex& operator=(ExtractMutex&& rhs) = delete;
 
-protected:
-    // ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-    // ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
     std::mutex m_;
     std::set<std::string> active_forms_;
 
-}; // -----  end of class ExtractMutex  ----- 
+};    // -----  end of class ExtractMutex  -----
 
 // =====================================================================================
 //        Class:  ExtractLock
-//  Description:  grant access to an activity. uses ExtractMutex. 
+//  Description:  grant access to an activity. uses ExtractMutex.
 //                use RAII
 // =====================================================================================
 class ExtractLock
 {
-public:
-    // ====================  LIFECYCLE     ======================================= 
-    ExtractLock (ExtractMutex* active_forms, const std::string& locking_id_);    // constructor 
+   public:
+    // ====================  LIFECYCLE     =======================================
+    ExtractLock(ExtractMutex* active_forms, const std::string& locking_id_);    // constructor
     ~ExtractLock(void);
 
-    // ====================  ACCESSORS     ======================================= 
+    // ====================  ACCESSORS     =======================================
 
-    // ====================  MUTATORS      ======================================= 
+    // ====================  MUTATORS      =======================================
 
-//    bool SeekExtractLock(const std::string& locking_id);
-//    void ReleaseExtractLock();
+    //    bool SeekExtractLock(const std::string& locking_id);
+    //    void ReleaseExtractLock();
 
-    // ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
-protected:
-    // ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-    // ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
     ExtractMutex* extract_list_;
     std::string locking_id_;
     bool lock_is_active_;
 
-}; // -----  end of class ExtractLock  ----- 
+};    // -----  end of class ExtractLock  -----
 
-#endif   // ----- #ifndef ExtractMutex_INC  ----- 
+#endif    // ----- #ifndef ExtractMutex_INC  -----

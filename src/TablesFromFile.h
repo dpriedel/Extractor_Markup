@@ -12,36 +12,34 @@
  *
  *         Author:  David P. Riedel (), driedel@cox.net
  *        License:  GNU General Public License v3
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
 
-	/* This file is part of Extractor_Markup. */
+/* This file is part of Extractor_Markup. */
 
-	/* Extractor_Markup is free software: you can redistribute it and/or modify */
-	/* it under the terms of the GNU General Public License as published by */
-	/* the Free Software Foundation, either version 3 of the License, or */
-	/* (at your option) any later version. */
+/* Extractor_Markup is free software: you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License as published by */
+/* the Free Software Foundation, either version 3 of the License, or */
+/* (at your option) any later version. */
 
-	/* Extractor_Markup is distributed in the hope that it will be useful, */
-	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-	/* GNU General Public License for more details. */
+/* Extractor_Markup is distributed in the hope that it will be useful, */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
+/* GNU General Public License for more details. */
 
-	/* You should have received a copy of the GNU General Public License */
-	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
+/* You should have received a copy of the GNU General Public License */
+/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
+#ifndef _TABLESFROMFILE_INC_
+#define _TABLESFROMFILE_INC_
 
-#ifndef  _TABLESFROMFILE_INC_
-#define  _TABLESFROMFILE_INC_
-
+#include <boost/regex.hpp>
 #include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include <boost/regex.hpp>
 
 #include "Extractor.h"
 
@@ -54,10 +52,7 @@ struct TableData
     EM::TableContent current_table_html_;
     std::string current_table_parsed_;
 
-    bool operator==(TableData const& rhs) const
-    {
-        return current_table_html_.get() == rhs.current_table_html_.get();
-    }
+    bool operator==(TableData const& rhs) const { return current_table_html_.get() == rhs.current_table_html_.get(); }
 };
 
 using TableDataList = std::vector<TableData>;
@@ -70,18 +65,17 @@ using TableDataList = std::vector<TableData>;
  */
 class TablesFromHTML
 {
-public:
-
+   public:
     class table_itor;
 
     using iterator = table_itor;
     using const_iterator = table_itor;
 
-public:
+   public:
     /* ====================  LIFECYCLE     ======================================= */
 
     TablesFromHTML() = default;
-    explicit TablesFromHTML (EM::HTMLContent html) : html_{html} { }         /* constructor */
+    explicit TablesFromHTML(EM::HTMLContent html) : html_{html} {} /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -94,13 +88,12 @@ public:
 
     /* ====================  OPERATORS     ======================================= */
 
-protected:
+   protected:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-private:
-
+   private:
     friend class table_itor;
 
     /* ====================  METHODS       ======================================= */
@@ -114,8 +107,7 @@ private:
 
     // these regexes are used to help parse the HTML.
 
-    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
-        boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
     // used to clean up the parsed data
 
@@ -138,7 +130,6 @@ private:
 
 }; /* -----  end of class TablesFromHTML  ----- */
 
-
 // =====================================================================================
 //        Class:  TablesFromHTML::table_itor
 //  Description:  Range compatible iterator from contents of TablesFromHTML container.
@@ -146,30 +137,34 @@ private:
 //
 class TablesFromHTML::table_itor
 {
-public:
-
+   public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = TableData;
     using difference_type = ptrdiff_t;
-    using pointer = TableData *;
-    using reference = TableData &;
+    using pointer = TableData*;
+    using reference = TableData&;
 
-    // ====================  LIFECYCLE     ======================================= 
+    // ====================  LIFECYCLE     =======================================
 
-    table_itor() : tables_{nullptr} { }
+    table_itor() : tables_{nullptr} {}
     explicit table_itor(TablesFromHTML const* tables);
 
-    // ====================  ACCESSORS     ======================================= 
+    // ====================  ACCESSORS     =======================================
 
     EM::TableContent TableContent() const { return table_data_.current_table_html_; }
-    bool TableHasMarkup (EM::TableContent table);
+    bool TableHasMarkup(EM::TableContent table);
 
-    // ====================  MUTATORS      ======================================= 
+    // ====================  MUTATORS      =======================================
 
     table_itor& operator++();
-    table_itor operator++(int) { table_itor retval = *this; ++(*this); return retval; }
+    table_itor operator++(int)
+    {
+        table_itor retval = *this;
+        ++(*this);
+        return retval;
+    }
 
-    // ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
     bool operator==(const table_itor& other) const { return tables_ == other.tables_ && table_data_ == other.table_data_; }
     bool operator!=(const table_itor& other) const { return !(*this == other); }
@@ -177,35 +172,34 @@ public:
     reference operator*() const { return table_data_; };
     pointer operator->() const { return &table_data_; }
 
-protected:
-    // ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-    // ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
     std::optional<TableData> FindNextTable();
     std::string CollectTableContent(EM::TableContent html);
 
     // a_table is non-const because the qumbo-query library doesn't do 'const'
 
-    std::string ExtractTextDataFromTable (CNode& a_table);
-    std::string FilterFoundHTML (const std::string& new_row_data);
+    std::string ExtractTextDataFromTable(CNode& a_table);
+    std::string FilterFoundHTML(const std::string& new_row_data);
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
     boost::cregex_token_iterator doc_;
     boost::cregex_token_iterator end_;
 
-    TablesFromHTML const * tables_ = nullptr;
+    TablesFromHTML const* tables_ = nullptr;
     EM::HTMLContent html_;
-    
+
     mutable TableData table_data_;
 
     int using_saved_table_data_ = -1;
 
-}; // -----  end of class TablesFromHTML::table_itor  ----- 
+};    // -----  end of class TablesFromHTML::table_itor  -----
 
-
-#endif   /* ----- #ifndef TABLESFROMFILE_INC  ----- */
+#endif /* ----- #ifndef TABLESFROMFILE_INC  ----- */

@@ -13,35 +13,34 @@
  *
  *         Author:  David P. Riedel (), driedel@cox.net
  *        License:  GNU General Public License v3
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
 
-	/* This file is part of Extractor_Markup. */
+/* This file is part of Extractor_Markup. */
 
-	/* Extractor_Markup is free software: you can redistribute it and/or modify */
-	/* it under the terms of the GNU General Public License as published by */
-	/* the Free Software Foundation, either version 3 of the License, or */
-	/* (at your option) any later version. */
+/* Extractor_Markup is free software: you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License as published by */
+/* the Free Software Foundation, either version 3 of the License, or */
+/* (at your option) any later version. */
 
-	/* Extractor_Markup is distributed in the hope that it will be useful, */
-	/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-	/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-	/* GNU General Public License for more details. */
+/* Extractor_Markup is distributed in the hope that it will be useful, */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
+/* GNU General Public License for more details. */
 
-	/* You should have received a copy of the GNU General Public License */
-	/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
+/* You should have received a copy of the GNU General Public License */
+/* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
-
-#ifndef  _ANCHORSFROMHTML_INC_
-#define  _ANCHORSFROMHTML_INC_
+#ifndef _ANCHORSFROMHTML_INC_
+#define _ANCHORSFROMHTML_INC_
 
 #include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
- 
+
 #include "Extractor.h"
 
 struct AnchorData
@@ -51,7 +50,7 @@ struct AnchorData
     std::string text_;
     EM::AnchorContent anchor_content_;
     EM::HTMLContent html_document_;
-};				/* ----------  end of struct AnchorData  ---------- */
+}; /* ----------  end of struct AnchorData  ---------- */
 
 using AnchorList = std::vector<AnchorData>;
 
@@ -63,18 +62,17 @@ using AnchorList = std::vector<AnchorData>;
  */
 class AnchorsFromHTML
 {
-public:
-
+   public:
     class anchor_itor;
 
     using iterator = anchor_itor;
     using const_iterator = anchor_itor;
 
-public:
+   public:
     /* ====================  LIFECYCLE     ======================================= */
 
     AnchorsFromHTML() = default;
-    explicit AnchorsFromHTML (EM::HTMLContent html);                             /* constructor */
+    explicit AnchorsFromHTML(EM::HTMLContent html); /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -89,13 +87,12 @@ public:
 
     /* ====================  OPERATORS     ======================================= */
 
-protected:
+   protected:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-private:
-    
+   private:
     friend class anchor_itor;
 
     /* ====================  METHODS       ======================================= */
@@ -108,7 +105,6 @@ private:
 
 }; /* -----  end of class AnchorsFromHTML  ----- */
 
-
 // =====================================================================================
 //        Class:  AnchorsFromHTML::anchor_itor
 //  Description:  Range compatible iterator for AnchorsFromHTML container.
@@ -116,50 +112,56 @@ private:
 
 class AnchorsFromHTML::anchor_itor
 {
-public:
-
+   public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = AnchorData;
     using difference_type = ptrdiff_t;
-    using pointer = AnchorData *;
-    using reference = AnchorData &;
+    using pointer = AnchorData*;
+    using reference = AnchorData&;
 
-    // ====================  LIFECYCLE     ======================================= 
+    // ====================  LIFECYCLE     =======================================
 
     anchor_itor() = default;
     explicit anchor_itor(const AnchorsFromHTML* anchors);
 
-    // ====================  ACCESSORS     ======================================= 
+    // ====================  ACCESSORS     =======================================
 
     EM::AnchorContent AnchorContent() const { return the_anchor_.anchor_content_; }
 
-    // ====================  MUTATORS      ======================================= 
+    // ====================  MUTATORS      =======================================
 
     anchor_itor& operator++();
-    anchor_itor operator++(int) { anchor_itor retval = *this; ++(*this); return retval; }
+    anchor_itor operator++(int)
+    {
+        anchor_itor retval = *this;
+        ++(*this);
+        return retval;
+    }
 
-    // ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
     bool operator==(const anchor_itor& rhs) const
-        { return anchor_search_start == rhs.anchor_search_start && anchor_search_end == rhs.anchor_search_end; }
+    {
+        return anchor_search_start == rhs.anchor_search_start && anchor_search_end == rhs.anchor_search_end;
+    }
     bool operator!=(const anchor_itor& rhs) const { return !(*this == rhs); }
 
     reference operator*() const { return the_anchor_; }
     pointer operator->() const { return &the_anchor_; }
 
-protected:
-    // ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-    // ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
     std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
     const char* FindAnchorEnd(const char* begin, const char* end, int level);
-    AnchorData ExtractDataFromAnchor (const char* start, const char* end, EM::HTMLContent html);
+    AnchorData ExtractDataFromAnchor(const char* start, const char* end, EM::HTMLContent html);
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
     const AnchorsFromHTML* anchors_ = nullptr;
     EM::HTMLContent html_;
@@ -168,6 +170,6 @@ private:
     mutable AnchorData the_anchor_;
     int using_saved_anchor = -1;
 
-}; // -----  end of class AnchorsFromHTML::anchor_itor  ----- 
+};    // -----  end of class AnchorsFromHTML::anchor_itor  -----
 
-#endif   /* ----- #ifndef ANCHORSFROMHTML_INC  ----- */
+#endif /* ----- #ifndef ANCHORSFROMHTML_INC  ----- */

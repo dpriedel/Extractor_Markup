@@ -2,7 +2,7 @@
 //
 //       Filename:  SharesOutstanding.h
 //
-//    Description: class to find number of shares outstanding in a SEC 10K or 10Q report 
+//    Description: class to find number of shares outstanding in a SEC 10K or 10Q report
 //
 //        Version:  1.0
 //        Created:  10/11/2019 01:10:55 PM
@@ -14,8 +14,8 @@
 //
 // =====================================================================================
 
-#ifndef  _SHARESOUTSTANDING_INC_
-#define  _SHARESOUTSTANDING_INC_
+#ifndef _SHARESOUTSTANDING_INC_
+#define _SHARESOUTSTANDING_INC_
 
 #include <map>
 #include <memory>
@@ -27,10 +27,8 @@
 
 // gumbo-parse
 
-#include "gumbo.h"
-
 #include "Extractor_Utils.h"
-
+#include "gumbo.h"
 
 // =====================================================================================
 //        Class:  SharesOutstanding
@@ -40,33 +38,32 @@
 
 class SharesOutstanding
 {
-public:
+   public:
+    // ====================  LIFECYCLE     =======================================
 
-    // ====================  LIFECYCLE     ======================================= 
+    SharesOutstanding() = default;    // constructor
 
-    SharesOutstanding () = default;                   // constructor 
+    // ====================  ACCESSORS     =======================================
 
-    // ====================  ACCESSORS     ======================================= 
+    // ====================  MUTATORS      =======================================
 
-    // ====================  MUTATORS      ======================================= 
-
-    // ====================  OPERATORS     ======================================= 
+    // ====================  OPERATORS     =======================================
 
     int64_t operator()(EM::HTMLContent html) const;
 
-protected:
-    // ====================  METHODS       ======================================= 
+   protected:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-private:
-    // ====================  METHODS       ======================================= 
+   private:
+    // ====================  METHODS       =======================================
 
-    // ====================  DATA MEMBERS  ======================================= 
+    // ====================  DATA MEMBERS  =======================================
 
-}; // -----  end of class SharesOutstanding  ----- 
+};    // -----  end of class SharesOutstanding  -----
 
-    // try a new approach
+// try a new approach
 
 // NOTE: this method can throw length_error if max_length_to_parse_ != 0
 
@@ -76,4 +73,4 @@ void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned
 
 [[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string& parsed_text);
 
-#endif   // ----- #ifndef _SHARESOUTSTANDING_INC_  ----- 
+#endif    // ----- #ifndef _SHARESOUTSTANDING_INC_  -----
