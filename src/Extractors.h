@@ -49,13 +49,13 @@ namespace po = boost::program_options;
 namespace fs = std::filesystem;
 
 std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES,
-                                                 std::atomic<int>& files_processed);
+                                                 std::atomic<int> &files_processed);
 
 struct XLS_data
 {
-    explicit XLS_data(const po::variables_map& args);
+    explicit XLS_data(const po::variables_map &args);
     void UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName output_directory,
-                      const EM::SEC_Header_fields& fields);
+                      const EM::SEC_Header_fields &fields);
     std::vector<char> ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content);
     std::vector<char> ConvertDataToString(EM::sv content);
 
@@ -68,12 +68,13 @@ struct Count_XLS
 {
     int XLS_counter = 0;
 
-    void UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName, const EM::SEC_Header_fields&);
+    void UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName,
+                      const EM::SEC_Header_fields &);
 };
 
 using FilterTypes = std::variant<XLS_data, Count_XLS>;
 using FilterList = std::vector<FilterTypes>;
 
-FilterList SelectExtractors(const po::variables_map& args);
+FilterList SelectExtractors(const po::variables_map &args);
 
 #endif /* end of include guard:  _EXTRACTORS__*/

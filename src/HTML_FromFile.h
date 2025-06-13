@@ -60,17 +60,18 @@ struct HtmlInfo
 
 class HTML_FromFile
 {
-   public:
+public:
     class html_itor;
 
     using iterator = html_itor;
     using const_iterator = html_itor;
 
-   public:
+public:
     /* ====================  LIFECYCLE     ======================================= */
 
     HTML_FromFile() = default;
-    explicit HTML_FromFile(EM::DocumentSectionList const* document_sections, EM::FileName document_name); /* constructor */
+    explicit HTML_FromFile(EM::DocumentSectionList const *document_sections,
+                           EM::FileName document_name); /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -79,23 +80,26 @@ class HTML_FromFile
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return document_sections_->empty(); }
+    [[nodiscard]] bool empty() const
+    {
+        return document_sections_->empty();
+    }
 
     /* ====================  MUTATORS      ======================================= */
 
     /* ====================  OPERATORS     ======================================= */
 
-   protected:
+protected:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-   private:
+private:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-    EM::DocumentSectionList const* document_sections_;
+    EM::DocumentSectionList const *document_sections_;
     EM::FileName document_name_;
 
 }; /* -----  end of class HTML_FromFile  ----- */
@@ -107,23 +111,23 @@ class HTML_FromFile
 
 class HTML_FromFile::html_itor
 {
-   public:
+public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = HtmlInfo;
     using difference_type = ptrdiff_t;
-    using pointer = HtmlInfo*;
-    using reference = HtmlInfo&;
+    using pointer = HtmlInfo *;
+    using reference = HtmlInfo &;
 
     // ====================  LIFECYCLE     =======================================
 
     html_itor() = default;
-    explicit html_itor(EM::DocumentSectionList const* document_sections, EM::FileName document_name);
+    explicit html_itor(EM::DocumentSectionList const *document_sections, EM::FileName document_name);
 
     // ====================  ACCESSORS     =======================================
 
     // ====================  MUTATORS      =======================================
 
-    html_itor& operator++();
+    html_itor &operator++();
     html_itor operator++(int)
     {
         html_itor retval = *this;
@@ -133,29 +137,41 @@ class HTML_FromFile::html_itor
 
     // ====================  OPERATORS     =======================================
 
-    bool operator==(const html_itor& other) const { return current_doc_ == other.current_doc_; }
-    bool operator!=(const html_itor& other) const { return !(*this == other); }
+    bool operator==(const html_itor &other) const
+    {
+        return current_doc_ == other.current_doc_;
+    }
+    bool operator!=(const html_itor &other) const
+    {
+        return !(*this == other);
+    }
 
-    reference operator*() const { return html_info_; }
-    pointer operator->() const { return &html_info_; }
+    reference operator*() const
+    {
+        return html_info_;
+    }
+    pointer operator->() const
+    {
+        return &html_info_;
+    }
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
     int current_doc_ = -1;
 
-    EM::DocumentSectionList const* document_sections_ = nullptr;
+    EM::DocumentSectionList const *document_sections_ = nullptr;
     EM::FileName document_name_;
 
     mutable HtmlInfo html_info_;
 
-};    // -----  end of class HTML_FromFile::html_itor  -----
+}; // -----  end of class HTML_FromFile::html_itor  -----
 
 #endif /* ----- #ifndef HTML_FromFile_INC  ----- */

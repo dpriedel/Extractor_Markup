@@ -32,30 +32,30 @@
 
 class ExtractMutex
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
-    ExtractMutex() = default;    // constructor
-    ExtractMutex(const ExtractMutex& rhs) = delete;
-    ExtractMutex(ExtractMutex&& rhs) = delete;
+    ExtractMutex() = default; // constructor
+    ExtractMutex(const ExtractMutex &rhs) = delete;
+    ExtractMutex(ExtractMutex &&rhs) = delete;
 
     // ====================  ACCESSORS     =======================================
 
     // ====================  MUTATORS      =======================================
 
-    bool AddEntry(const std::string& entry);
-    void RemoveEntry(const std::string& entry);
+    bool AddEntry(const std::string &entry);
+    void RemoveEntry(const std::string &entry);
 
     // ====================  OPERATORS     =======================================
 
-    ExtractMutex& operator=(const ExtractMutex& rhs) = delete;
-    ExtractMutex& operator=(ExtractMutex&& rhs) = delete;
+    ExtractMutex &operator=(const ExtractMutex &rhs) = delete;
+    ExtractMutex &operator=(ExtractMutex &&rhs) = delete;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
@@ -63,7 +63,7 @@ class ExtractMutex
     std::mutex m_;
     std::set<std::string> active_forms_;
 
-};    // -----  end of class ExtractMutex  -----
+}; // -----  end of class ExtractMutex  -----
 
 // =====================================================================================
 //        Class:  ExtractLock
@@ -72,9 +72,9 @@ class ExtractMutex
 // =====================================================================================
 class ExtractLock
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
-    ExtractLock(ExtractMutex* active_forms, const std::string& locking_id_);    // constructor
+    ExtractLock(ExtractMutex *active_forms, const std::string &locking_id_); // constructor
     ~ExtractLock(void);
 
     // ====================  ACCESSORS     =======================================
@@ -86,20 +86,20 @@ class ExtractLock
 
     // ====================  OPERATORS     =======================================
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-    ExtractMutex* extract_list_;
+    ExtractMutex *extract_list_;
     std::string locking_id_;
     bool lock_is_active_;
 
-};    // -----  end of class ExtractLock  -----
+}; // -----  end of class ExtractLock  -----
 
-#endif    // ----- #ifndef ExtractMutex_INC  -----
+#endif // ----- #ifndef ExtractMutex_INC  -----

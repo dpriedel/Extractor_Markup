@@ -42,15 +42,21 @@
 
 class SEC_Header
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
 
-    SEC_Header() = default;    // constructor
+    SEC_Header() = default; // constructor
 
     // ====================  ACCESSORS     =======================================
 
-    [[nodiscard]] const EM::SEC_Header_fields& GetFields() const { return parsed_header_data_; }
-    [[nodiscard]] EM::sv GetHeader(void) const { return header_data_; }
+    [[nodiscard]] const EM::SEC_Header_fields &GetFields() const
+    {
+        return parsed_header_data_;
+    }
+    [[nodiscard]] EM::sv GetHeader(void) const
+    {
+        return header_data_;
+    }
 
     // ====================  MUTATORS      =======================================
 
@@ -59,7 +65,7 @@ class SEC_Header
 
     // ====================  OPERATORS     =======================================
 
-   protected:
+protected:
     void ExtractCIK();
     void ExtractSIC();
     void ExtractFormType();
@@ -70,13 +76,13 @@ class SEC_Header
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  DATA MEMBERS  =======================================
 
     EM::sv header_data_;
 
     EM::SEC_Header_fields parsed_header_data_;
 
-};    // -----  end of class SEC_Header  -----
+}; // -----  end of class SEC_Header  -----
 
-#endif    // ----- #ifndef _SEC_HEADER_INC_  -----
+#endif // ----- #ifndef _SEC_HEADER_INC_  -----

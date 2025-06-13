@@ -38,10 +38,10 @@
 
 class SharesOutstanding
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
 
-    SharesOutstanding() = default;    // constructor
+    SharesOutstanding() = default; // constructor
 
     // ====================  ACCESSORS     =======================================
 
@@ -51,26 +51,27 @@ class SharesOutstanding
 
     int64_t operator()(EM::HTMLContent html) const;
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-};    // -----  end of class SharesOutstanding  -----
+}; // -----  end of class SharesOutstanding  -----
 
 // try a new approach
 
 // NOTE: this method can throw length_error if max_length_to_parse_ != 0
 
-void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text);
+void CleanText(GumboNode *node, size_t max_length_to_clean, std::string &cleaned_text);
 
-[[nodiscard]] std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse = 0, size_t max_length_to_clean = 0);
+[[nodiscard]] std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse = 0,
+                                    size_t max_length_to_clean = 0);
 
-[[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string& parsed_text);
+[[nodiscard]] std::vector<EM::sv> FindCandidates(const std::string &parsed_text);
 
-#endif    // ----- #ifndef _SHARESOUTSTANDING_INC_  -----
+#endif // ----- #ifndef _SHARESOUTSTANDING_INC_  -----

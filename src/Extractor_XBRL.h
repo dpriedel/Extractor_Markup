@@ -49,16 +49,16 @@ namespace fs = std::filesystem;
 // determine whether or not we want to process this file
 
 std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES,
-                                                 std::atomic<int>& files_processed);
+                                                 std::atomic<int> &files_processed);
 
-void ParseTheXML(EM::sv document, const EM::SEC_Header_fields& fields);
-void ParseTheXML_Labels(EM::sv document, const EM::SEC_Header_fields& fields);
+void ParseTheXML(EM::sv document, const EM::SEC_Header_fields &fields);
+void ParseTheXML_Labels(EM::sv document, const EM::SEC_Header_fields &fields);
 
-void WriteDataToFile(const fs::path& output_file_name, EM::sv document);
+void WriteDataToFile(const fs::path &output_file_name, EM::sv document);
 
-fs::path FindFileName(const fs::path& output_directory, EM::sv document, const boost::regex& regex_fname);
+fs::path FindFileName(const fs::path &output_directory, EM::sv document, const boost::regex &regex_fname);
 
-const EM::sv FindFileType(EM::sv document, const boost::regex& regex_ftype);
+const EM::sv FindFileType(EM::sv document, const boost::regex &regex_ftype);
 
 std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date);
 

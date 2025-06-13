@@ -54,7 +54,10 @@ struct XLS_BalanceSheet
     EM::XLS_Values values_;
     bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return !found_sheet_; }
+    [[nodiscard]] inline bool empty() const
+    {
+        return !found_sheet_;
+    }
 
     bool ValidateContent();
 };
@@ -64,7 +67,10 @@ struct XLS_StatementOfOperations
     EM::XLS_Values values_;
     bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return !found_sheet_; }
+    [[nodiscard]] inline bool empty() const
+    {
+        return !found_sheet_;
+    }
 
     bool ValidateContent();
 };
@@ -74,7 +80,10 @@ struct XLS_CashFlows
     EM::XLS_Values values_;
     bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return !found_sheet_; }
+    [[nodiscard]] inline bool empty() const
+    {
+        return !found_sheet_;
+    }
 
     bool ValidateContent();
 };
@@ -84,7 +93,10 @@ struct XLS_StockholdersEquity
     EM::XLS_Values values_;
     bool found_sheet_;
 
-    [[nodiscard]] inline bool empty() const { return !found_sheet_; }
+    [[nodiscard]] inline bool empty() const
+    {
+        return !found_sheet_;
+    }
 
     bool ValidateContent();
 };
@@ -108,7 +120,10 @@ struct XLS_FinancialStatements
     bool ValidateContent();
     void FindAndStoreMultipliers();
 
-    int ValuesTotal(void) { return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size(); }
+    int ValuesTotal(void)
+    {
+        return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size();
+    }
     //    void FindSharesOutstanding(const SharesOutstanding& so, EM::HTMLContent
     //    html);
 
@@ -119,15 +134,18 @@ struct XLS_FinancialStatements
     //            cash_flows_.values_); }
 };
 
-XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &document_sections, const EM::FileName &document_name);
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &document_sections,
+                                                 const EM::FileName &document_name);
 
 EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet &sheet);
 
 EM::XLS_Values CollectXLSValues(const XLS_Sheet &sheet);
 
-EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList &document_sections, const EM::FileName &document_name);
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList &document_sections,
+                                       const EM::FileName &document_name);
 
-EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList &document_sections, const EM::FileName &document_name);
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList &document_sections,
+                                    const EM::FileName &document_name);
 
 EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList &document_sections, const EM::FileName &document_name);
 
@@ -145,7 +163,8 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document &instance_
 
 EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document &labels_xml);
 
-std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements(const pugi::xml_node &top_level_node, const std::string &label_link_name,
+std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements(const pugi::xml_node &top_level_node,
+                                                         const std::string &label_link_name,
                                                          const std::string &label_node_name);
 
 std::map<EM::sv, EM::sv> FindLocElements(const pugi::xml_node &top_level_node, const std::string &label_link_name,
@@ -154,8 +173,8 @@ std::map<EM::sv, EM::sv> FindLocElements(const pugi::xml_node &top_level_node, c
 std::map<EM::sv, EM::sv> FindLabelArcElements(const pugi::xml_node &top_level_node, const std::string &label_link_name,
                                               const std::string &arc_node_name);
 
-EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>> &labels, const std::map<EM::sv, EM::sv> &locs,
-                                         const std::map<EM::sv, EM::sv> &arcs);
+EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>> &labels,
+                                         const std::map<EM::sv, EM::sv> &locs, const std::map<EM::sv, EM::sv> &arcs);
 
 EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document &instance_xml);
 

@@ -63,7 +63,9 @@ struct FinancialDocumentFilter
 {
     std::vector<std::string> forms_;
 
-    explicit FinancialDocumentFilter(const std::vector<std::string> &forms) : forms_{forms} {}
+    explicit FinancialDocumentFilter(const std::vector<std::string> &forms) : forms_{forms}
+    {
+    }
 
     bool operator()(const HtmlInfo &html_info);
 };
@@ -82,8 +84,14 @@ struct BalanceSheet
     int multiplier_ = 0;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return parsed_data_.empty(); }
-    [[nodiscard]] inline bool has_anchor() const { return !the_anchor_.anchor_content_.get().empty(); }
+    [[nodiscard]] inline bool empty() const
+    {
+        return parsed_data_.empty();
+    }
+    [[nodiscard]] inline bool has_anchor() const
+    {
+        return !the_anchor_.anchor_content_.get().empty();
+    }
 
     bool ValidateContent();
 };
@@ -99,8 +107,14 @@ struct StatementOfOperations
     int multiplier_ = 0;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return parsed_data_.empty(); }
-    [[nodiscard]] inline bool has_anchor() const { return !the_anchor_.anchor_content_.get().empty(); }
+    [[nodiscard]] inline bool empty() const
+    {
+        return parsed_data_.empty();
+    }
+    [[nodiscard]] inline bool has_anchor() const
+    {
+        return !the_anchor_.anchor_content_.get().empty();
+    }
 
     bool ValidateContent();
 };
@@ -116,8 +130,14 @@ struct CashFlows
     int multiplier_ = 0;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return parsed_data_.empty(); }
-    [[nodiscard]] inline bool has_anchor() const { return !the_anchor_.anchor_content_.get().empty(); }
+    [[nodiscard]] inline bool empty() const
+    {
+        return parsed_data_.empty();
+    }
+    [[nodiscard]] inline bool has_anchor() const
+    {
+        return !the_anchor_.anchor_content_.get().empty();
+    }
 
     bool ValidateContent();
 };
@@ -133,8 +153,14 @@ struct StockholdersEquity
     int multiplier_ = 0;
     bool is_valid_;
 
-    [[nodiscard]] inline bool empty() const { return parsed_data_.empty(); }
-    [[nodiscard]] inline bool has_anchor() const { return !the_anchor_.anchor_content_.get().empty(); }
+    [[nodiscard]] inline bool empty() const
+    {
+        return parsed_data_.empty();
+    }
+    [[nodiscard]] inline bool has_anchor() const
+    {
+        return !the_anchor_.anchor_content_.get().empty();
+    }
 
     bool ValidateContent();
 };
@@ -146,8 +172,8 @@ struct FinancialStatements
     CashFlows cash_flows_;
     StockholdersEquity stockholders_equity_;
     EM::HTMLContent html_;
-    const char *financial_statements_begin_ = nullptr;    // pointer to anchor/first part
-    size_t financial_statements_len_ = 0;                 // offset of end of last part
+    const char *financial_statements_begin_ = nullptr; // pointer to anchor/first part
+    size_t financial_statements_len_ = 0;              // offset of end of last part
     long int outstanding_shares_ = -1;
 
     [[nodiscard]] bool has_data() const
@@ -162,7 +188,10 @@ struct FinancialStatements
     void FindAndStoreMultipliers();
     void FindSharesOutstanding(const SharesOutstanding &so, EM::HTMLContent html);
 
-    int ValuesTotal(void) { return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size(); }
+    int ValuesTotal(void)
+    {
+        return balance_sheet_.values_.size() + statement_of_operations_.values_.size() + cash_flows_.values_.size();
+    }
 
     //    [[nodiscard]] auto ListValues() const;
 };
@@ -197,8 +226,8 @@ std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
 
 EM::AnchorContent FindFinancialContentTopLevelAnchor(EM::HTMLContent financial_content, const AnchorData &anchors);
 
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors(EM::DocumentSectionList const *document_sections,
-                                                                                         EM::FileName document_name);
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors(
+    EM::DocumentSectionList const *document_sections, EM::FileName document_name);
 
 AnchorsFromHTML::iterator FindDestinationAnchor(const AnchorData &financial_anchor, const AnchorsFromHTML &anchors);
 
@@ -221,8 +250,10 @@ bool ApplyStatementFilter(const std::vector<const boost::regex *> &regexs, EM::s
 
 // uses a 2-phase approach to look for financial statements.
 
-FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding &so, EM::DocumentSectionList const *document_sections,
-                                                      const std::vector<std::string> &forms, EM::FileName document_name);
+FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding &so,
+                                                      EM::DocumentSectionList const *document_sections,
+                                                      const std::vector<std::string> &forms,
+                                                      EM::FileName document_name);
 
 FinancialStatements ExtractFinancialStatements(EM::HTMLContent financial_content);
 
@@ -236,7 +267,8 @@ using StmtTypeFilter = bool (*)(EM::sv);
 
 AnchorData FindAnchorUsingFilter(const AnchorsFromHTML &anchors, const boost::regex &stmt_anchor_regex);
 
-std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLContent financial_content, const AnchorData &the_anchor,
+std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLContent financial_content,
+                                                                     const AnchorData &the_anchor,
                                                                      StmtTypeFilter stmt_type_filter);
 
 // let's take advantage of the fact that we defined all of these structs to have
@@ -248,8 +280,8 @@ std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLCon
 // https://www.youtube.com/watch?v=vwrXHznaYLA
 
 template <typename StatementType>
-StatementType FindStatementContent(EM::HTMLContent financial_content, const AnchorsFromHTML &anchors, const boost::regex &stmt_anchor_regex,
-                                   StmtTypeFilter stmt_type_filter)
+StatementType FindStatementContent(EM::HTMLContent financial_content, const AnchorsFromHTML &anchors,
+                                   const boost::regex &stmt_anchor_regex, StmtTypeFilter stmt_type_filter)
 {
     StatementType stmt_type;
 
@@ -268,15 +300,16 @@ StatementType FindStatementContent(EM::HTMLContent financial_content, const Anch
     return stmt_type;
 }
 
-MultDataList CreateMultiplierListWhenNoAnchors(const std::vector<EM::DocumentSection> &document_sections, EM::FileName document_name);
+MultDataList CreateMultiplierListWhenNoAnchors(const std::vector<EM::DocumentSection> &document_sections,
+                                               EM::FileName document_name);
 
 std::string ApplyMultiplierAndCleanUpValue(const EM::Extracted_Value &value, const std::string &multiplier);
 
-bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatements &financial_statements, const std::string &schema_name,
-                  bool replace_DB_content);
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatements &financial_statements,
+                  const std::string &schema_name, bool replace_DB_content);
 
 int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSectionList &document_sections,
-                            const EM::SEC_Header_fields &fields, const std::vector<std::string> &forms, const std::string &schema_name,
-                            EM::FileName file_name);
+                            const EM::SEC_Header_fields &fields, const std::vector<std::string> &forms,
+                            const std::string &schema_name, EM::FileName file_name);
 
 #endif

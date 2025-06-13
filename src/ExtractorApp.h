@@ -66,7 +66,7 @@ namespace po = boost::program_options;
 
 class ExtractorApp
 {
-   public:
+public:
     ExtractorApp(int argc, char *argv[]);
 
     // use ctor below for testing with predefined options
@@ -82,13 +82,16 @@ class ExtractorApp
     ExtractorApp &operator=(const ExtractorApp &rhs) = delete;
     ExtractorApp &operator=(ExtractorApp &&rhs) = delete;
 
-    static bool SignalReceived() { return had_signal_; }
+    static bool SignalReceived()
+    {
+        return had_signal_;
+    }
 
     bool Startup();
     std::tuple<int, int, int> Run();
     void Shutdown();
 
-   protected:
+protected:
     enum class FileMode
     {
         e_HTML,
@@ -117,41 +120,49 @@ class ExtractorApp
     bool LoadFileFromFolderToDB_XBRL(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
                                      const EM::DocumentSectionList &sections, std::mutex *db_mutex = nullptr);
     bool LoadFileFromFolderToDB_XLS(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
-                                    const EM::DocumentSectionList &sections, EM::sv sec_header, std::mutex *db_mutex = nullptr);
+                                    const EM::DocumentSectionList &sections, EM::sv sec_header,
+                                    std::mutex *db_mutex = nullptr);
     bool LoadFileFromFolderToDB_HTML(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
-                                     const EM::DocumentSectionList &sections, EM::sv sec_header, std::mutex *db_mutex = nullptr);
-    bool ExportHtmlFromSingleFile(const EM::DocumentSectionList &sections, const EM::FileName &file_name, EM::sv sec_header);
-    void Do_SingleFile(std::atomic<int> *forms_processed, int &success_counter, int &skipped_counter, int &error_counter,
-                       const EM::FileName &file_name);
+                                     const EM::DocumentSectionList &sections, EM::sv sec_header,
+                                     std::mutex *db_mutex = nullptr);
+    bool ExportHtmlFromSingleFile(const EM::DocumentSectionList &sections, const EM::FileName &file_name,
+                                  EM::sv sec_header);
+    void Do_SingleFile(std::atomic<int> *forms_processed, int &success_counter, int &skipped_counter,
+                       int &error_counter, const EM::FileName &file_name);
 
     std::tuple<int, int, int> LoadSingleFileToDB(const EM::FileName &input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const EM::FileContent &file_content, const EM::DocumentSectionList &document_sections,
-                                                      const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_XLS(const EM::FileContent &file_content, const EM::DocumentSectionList &document_sections,
+    std::tuple<int, int, int> LoadSingleFileToDB_XBRL(const EM::FileContent &file_content,
+                                                      const EM::DocumentSectionList &document_sections,
+                                                      const EM::SEC_Header_fields &SEC_fields,
+                                                      const EM::FileName &input_file_name);
+    std::tuple<int, int, int> LoadSingleFileToDB_XLS(const EM::FileContent &file_content,
+                                                     const EM::DocumentSectionList &document_sections,
                                                      EM::sv sec_header, const EM::SEC_Header_fields &SEC_fields,
                                                      const EM::FileName &input_file_name);
-    std::tuple<int, int, int> LoadSingleFileToDB_HTML(const EM::FileContent &file_content, const EM::DocumentSectionList &document_sections,
+    std::tuple<int, int, int> LoadSingleFileToDB_HTML(const EM::FileContent &file_content,
+                                                      const EM::DocumentSectionList &document_sections,
                                                       EM::sv sec_header, const EM::SEC_Header_fields &SEC_fields,
                                                       const EM::FileName &input_file_name);
     std::tuple<int, int, int> ProcessDirectory();
     std::tuple<int, int, int> LoadFilesFromListToDB();
     std::tuple<int, int, int> LoadFilesFromListToDBConcurrently();
 
-    std::tuple<int, int, int> LoadFileAsync(const EM::FileName &file_name, std::atomic<int> *forms_processed, std::mutex *db_mutex);
+    std::tuple<int, int, int> LoadFileAsync(const EM::FileName &file_name, std::atomic<int> *forms_processed,
+                                            std::mutex *db_mutex);
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     static void HandleSignal(int signal);
 
     // ====================  DATA MEMBERS  =======================================
 
-    using FilterTypes =
-        std::variant<FileHasCIK, FileHasSIC, FileHasXBRL, FileHasFormType, FileHasHTML, FileIsWithinDateRange, NeedToUpdateDBContent>;
+    using FilterTypes = std::variant<FileHasCIK, FileHasSIC, FileHasXBRL, FileHasFormType, FileHasHTML,
+                                     FileIsWithinDateRange, NeedToUpdateDBContent>;
     using FilterList = std::vector<FilterTypes>;
 
-    po::positional_options_description mPositional;          //	old style options
-    std::unique_ptr<po::options_description> mNewOptions;    //	new style options (with identifiers)
+    po::positional_options_description mPositional;       //	old style options
+    std::unique_ptr<po::options_description> mNewOptions; //	new style options (with identifiers)
     po::variables_map mVariableMap;
 
     ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
@@ -206,8 +217,8 @@ class ExtractorApp
 
     std::shared_ptr<spdlog::logger> logger_;
 
-    int max_forms_to_process_{-1};    // mainly for testing
-    int max_at_a_time_{-1};           // how many concurrent downloads allowed
+    int max_forms_to_process_{-1}; // mainly for testing
+    int max_at_a_time_{-1};        // how many concurrent downloads allowed
 
     bool replace_DB_content_{false};
     bool help_requested_{false};
@@ -218,6 +229,6 @@ class ExtractorApp
 
     static bool had_signal_;
 
-};    // -----  end of class ExtractorApp  -----
+}; // -----  end of class ExtractorApp  -----
 
 #endif /* EXTRACTORAPP_H_ */

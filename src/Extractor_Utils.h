@@ -69,12 +69,10 @@ concept has_string = requires(T t) { t.string(); };
 
 // custom fmtlib formatter for filesytem paths
 
-template <>
-struct fmt::formatter<std::filesystem::path> : formatter<std::string>
+template <> struct fmt::formatter<std::filesystem::path> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
-    template <typename FormatContext>
-    auto format(const std::filesystem::path &p, FormatContext &ctx) const
+    template <typename FormatContext> auto format(const std::filesystem::path &p, FormatContext &ctx) const
     {
         std::string f_name = p.string();
         return formatter<std::string>::format(f_name, ctx);
@@ -83,20 +81,17 @@ struct fmt::formatter<std::filesystem::path> : formatter<std::string>
 
 // custom fmtlib formatter for date year_month_day
 
-template <>
-struct fmt::formatter<date::year_month_day> : formatter<std::string>
+template <> struct fmt::formatter<date::year_month_day> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
-    template <typename FormatContext>
-    auto format(date::year_month_day d, FormatContext &ctx) const
+    template <typename FormatContext> auto format(date::year_month_day d, FormatContext &ctx) const
     {
         std::string s_date = date::format("%Y-%m-%d", d);
         return formatter<std::string>::format(s_date, ctx);
     }
 };
 
-template <typename... Ts>
-inline std::string catenate(Ts &&...ts)
+template <typename... Ts> inline std::string catenate(Ts &&...ts)
 {
     constexpr auto N = sizeof...(Ts);
 
@@ -115,8 +110,7 @@ inline std::string catenate(Ts &&...ts)
 // based on code techniques from C++17 STL Cookbook zipping tuples.
 // (works for any class which supports the '+' operator)
 
-template <typename... Ts>
-std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, std::tuple<Ts...> const &t2)
+template <typename... Ts> std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, std::tuple<Ts...> const &t2)
 {
     auto z_([](auto... xs) { return [xs...](auto... ys) { return std::make_tuple((xs + ys)...); }; });
 
@@ -127,8 +121,7 @@ std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, std::tuple<Ts...> const &t2
 // (from C++ Templates...second edition p.58
 // and C++17 STL Cookbook.
 
-template <typename... Ts>
-auto SumT(const std::tuple<Ts...> &t)
+template <typename... Ts> auto SumT(const std::tuple<Ts...> &t)
 {
     auto z_([](auto... ys) { return (... + ys); });
     return std::apply(z_, t);
@@ -156,7 +149,7 @@ std::string LoadDataFileForUse(const EM::FileName &file_name);
 
 class ExtractorException : public std::runtime_error
 {
-   public:
+public:
     explicit ExtractorException(const char *what);
 
     explicit ExtractorException(const std::string &what);
@@ -164,7 +157,7 @@ class ExtractorException : public std::runtime_error
 
 class AssertionException : public std::invalid_argument
 {
-   public:
+public:
     explicit AssertionException(const char *what);
 
     explicit AssertionException(const std::string &what);
@@ -172,7 +165,7 @@ class AssertionException : public std::invalid_argument
 
 class XBRLException : public ExtractorException
 {
-   public:
+public:
     explicit XBRLException(const char *what);
 
     explicit XBRLException(const std::string &what);
@@ -180,7 +173,7 @@ class XBRLException : public ExtractorException
 
 class HTMLException : public ExtractorException
 {
-   public:
+public:
     explicit HTMLException(const char *what);
 
     explicit HTMLException(const std::string &what);
@@ -190,7 +183,7 @@ class HTMLException : public ExtractorException
 
 class MaxFilesException : public std::range_error
 {
-   public:
+public:
     explicit MaxFilesException(const char *what);
 
     explicit MaxFilesException(const std::string &what);
@@ -225,14 +218,12 @@ inline std::vector<T> split_string(EM::sv string_data, char delim)
 
 // utility function
 
-template <typename... Ts>
-auto NotAllEmpty(const Ts &...ts)
+template <typename... Ts> auto NotAllEmpty(const Ts &...ts)
 {
     return ((!ts.empty()) || ...);
 }
 
-template <typename... Ts>
-auto AllNotEmpty(const Ts &...ts)
+template <typename... Ts> auto AllNotEmpty(const Ts &...ts)
 {
     return ((!ts.empty()) && ...);
 }
@@ -277,7 +268,9 @@ struct FileHasXLS
 
 struct FileHasHTML
 {
-    explicit FileHasHTML(const std::vector<std::string> &form_list) : form_list_{form_list} {}
+    explicit FileHasHTML(const std::vector<std::string> &form_list) : form_list_{form_list}
+    {
+    }
 
     bool operator()(const EM::SEC_Header_fields &, const EM::DocumentSectionList &document_sections) const;
 
@@ -288,7 +281,9 @@ struct FileHasHTML
 
 struct FileHasFormType
 {
-    explicit FileHasFormType(const std::vector<std::string> &form_list) : form_list_{form_list} {}
+    explicit FileHasFormType(const std::vector<std::string> &form_list) : form_list_{form_list}
+    {
+    }
 
     bool operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const;
 
@@ -299,7 +294,9 @@ struct FileHasFormType
 
 struct FileHasCIK
 {
-    explicit FileHasCIK(const std::vector<std::string> &CIK_list) : CIK_list_{CIK_list} {}
+    explicit FileHasCIK(const std::vector<std::string> &CIK_list) : CIK_list_{CIK_list}
+    {
+    }
 
     bool operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const;
 
@@ -310,7 +307,9 @@ struct FileHasCIK
 
 struct FileHasSIC
 {
-    explicit FileHasSIC(const std::vector<std::string> &SIC_list) : SIC_list_{SIC_list} {}
+    explicit FileHasSIC(const std::vector<std::string> &SIC_list) : SIC_list_{SIC_list}
+    {
+    }
 
     bool operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const;
 

@@ -52,7 +52,10 @@ struct TableData
     EM::TableContent current_table_html_;
     std::string current_table_parsed_;
 
-    bool operator==(TableData const& rhs) const { return current_table_html_.get() == rhs.current_table_html_.get(); }
+    bool operator==(TableData const &rhs) const
+    {
+        return current_table_html_.get() == rhs.current_table_html_.get();
+    }
 };
 
 using TableDataList = std::vector<TableData>;
@@ -65,17 +68,19 @@ using TableDataList = std::vector<TableData>;
  */
 class TablesFromHTML
 {
-   public:
+public:
     class table_itor;
 
     using iterator = table_itor;
     using const_iterator = table_itor;
 
-   public:
+public:
     /* ====================  LIFECYCLE     ======================================= */
 
     TablesFromHTML() = default;
-    explicit TablesFromHTML(EM::HTMLContent html) : html_{html} {} /* constructor */
+    explicit TablesFromHTML(EM::HTMLContent html) : html_{html}
+    {
+    } /* constructor */
 
     /* ====================  ACCESSORS     ======================================= */
 
@@ -88,12 +93,12 @@ class TablesFromHTML
 
     /* ====================  OPERATORS     ======================================= */
 
-   protected:
+protected:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-   private:
+private:
     friend class table_itor;
 
     /* ====================  METHODS       ======================================= */
@@ -107,7 +112,8 @@ class TablesFromHTML
 
     // these regexes are used to help parse the HTML.
 
-    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_table_{R"***(<table.*?>.*?</table>)***",
+                                    boost::regex_constants::normal | boost::regex_constants::icase};
 
     // used to clean up the parsed data
 
@@ -137,26 +143,31 @@ class TablesFromHTML
 //
 class TablesFromHTML::table_itor
 {
-   public:
+public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = TableData;
     using difference_type = ptrdiff_t;
-    using pointer = TableData*;
-    using reference = TableData&;
+    using pointer = TableData *;
+    using reference = TableData &;
 
     // ====================  LIFECYCLE     =======================================
 
-    table_itor() : tables_{nullptr} {}
-    explicit table_itor(TablesFromHTML const* tables);
+    table_itor() : tables_{nullptr}
+    {
+    }
+    explicit table_itor(TablesFromHTML const *tables);
 
     // ====================  ACCESSORS     =======================================
 
-    EM::TableContent TableContent() const { return table_data_.current_table_html_; }
+    EM::TableContent TableContent() const
+    {
+        return table_data_.current_table_html_;
+    }
     bool TableHasMarkup(EM::TableContent table);
 
     // ====================  MUTATORS      =======================================
 
-    table_itor& operator++();
+    table_itor &operator++();
     table_itor operator++(int)
     {
         table_itor retval = *this;
@@ -166,18 +177,30 @@ class TablesFromHTML::table_itor
 
     // ====================  OPERATORS     =======================================
 
-    bool operator==(const table_itor& other) const { return tables_ == other.tables_ && table_data_ == other.table_data_; }
-    bool operator!=(const table_itor& other) const { return !(*this == other); }
+    bool operator==(const table_itor &other) const
+    {
+        return tables_ == other.tables_ && table_data_ == other.table_data_;
+    }
+    bool operator!=(const table_itor &other) const
+    {
+        return !(*this == other);
+    }
 
-    reference operator*() const { return table_data_; };
-    pointer operator->() const { return &table_data_; }
+    reference operator*() const
+    {
+        return table_data_;
+    };
+    pointer operator->() const
+    {
+        return &table_data_;
+    }
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     std::optional<TableData> FindNextTable();
@@ -185,21 +208,21 @@ class TablesFromHTML::table_itor
 
     // a_table is non-const because the qumbo-query library doesn't do 'const'
 
-    std::string ExtractTextDataFromTable(CNode& a_table);
-    std::string FilterFoundHTML(const std::string& new_row_data);
+    std::string ExtractTextDataFromTable(CNode &a_table);
+    std::string FilterFoundHTML(const std::string &new_row_data);
 
     // ====================  DATA MEMBERS  =======================================
 
     boost::cregex_token_iterator doc_;
     boost::cregex_token_iterator end_;
 
-    TablesFromHTML const* tables_ = nullptr;
+    TablesFromHTML const *tables_ = nullptr;
     EM::HTMLContent html_;
 
     mutable TableData table_data_;
 
     int using_saved_table_data_ = -1;
 
-};    // -----  end of class TablesFromHTML::table_itor  -----
+}; // -----  end of class TablesFromHTML::table_itor  -----
 
 #endif /* ----- #ifndef TABLESFROMFILE_INC  ----- */

@@ -62,13 +62,13 @@ using AnchorList = std::vector<AnchorData>;
  */
 class AnchorsFromHTML
 {
-   public:
+public:
     class anchor_itor;
 
     using iterator = anchor_itor;
     using const_iterator = anchor_itor;
 
-   public:
+public:
     /* ====================  LIFECYCLE     ======================================= */
 
     AnchorsFromHTML() = default;
@@ -81,18 +81,21 @@ class AnchorsFromHTML
     [[nodiscard]] iterator end();
     [[nodiscard]] const_iterator end() const;
 
-    [[nodiscard]] bool empty() const { return html_.get().empty(); }
+    [[nodiscard]] bool empty() const
+    {
+        return html_.get().empty();
+    }
 
     /* ====================  MUTATORS      ======================================= */
 
     /* ====================  OPERATORS     ======================================= */
 
-   protected:
+protected:
     /* ====================  METHODS       ======================================= */
 
     /* ====================  DATA MEMBERS  ======================================= */
 
-   private:
+private:
     friend class anchor_itor;
 
     /* ====================  METHODS       ======================================= */
@@ -112,25 +115,28 @@ class AnchorsFromHTML
 
 class AnchorsFromHTML::anchor_itor
 {
-   public:
+public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = AnchorData;
     using difference_type = ptrdiff_t;
-    using pointer = AnchorData*;
-    using reference = AnchorData&;
+    using pointer = AnchorData *;
+    using reference = AnchorData &;
 
     // ====================  LIFECYCLE     =======================================
 
     anchor_itor() = default;
-    explicit anchor_itor(const AnchorsFromHTML* anchors);
+    explicit anchor_itor(const AnchorsFromHTML *anchors);
 
     // ====================  ACCESSORS     =======================================
 
-    EM::AnchorContent AnchorContent() const { return the_anchor_.anchor_content_; }
+    EM::AnchorContent AnchorContent() const
+    {
+        return the_anchor_.anchor_content_;
+    }
 
     // ====================  MUTATORS      =======================================
 
-    anchor_itor& operator++();
+    anchor_itor &operator++();
     anchor_itor operator++(int)
     {
         anchor_itor retval = *this;
@@ -140,36 +146,45 @@ class AnchorsFromHTML::anchor_itor
 
     // ====================  OPERATORS     =======================================
 
-    bool operator==(const anchor_itor& rhs) const
+    bool operator==(const anchor_itor &rhs) const
     {
         return anchor_search_start == rhs.anchor_search_start && anchor_search_end == rhs.anchor_search_end;
     }
-    bool operator!=(const anchor_itor& rhs) const { return !(*this == rhs); }
+    bool operator!=(const anchor_itor &rhs) const
+    {
+        return !(*this == rhs);
+    }
 
-    reference operator*() const { return the_anchor_; }
-    pointer operator->() const { return &the_anchor_; }
+    reference operator*() const
+    {
+        return the_anchor_;
+    }
+    pointer operator->() const
+    {
+        return &the_anchor_;
+    }
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
-    std::optional<AnchorData> FindNextAnchor(const char* begin, const char* end);
-    const char* FindAnchorEnd(const char* begin, const char* end, int level);
-    AnchorData ExtractDataFromAnchor(const char* start, const char* end, EM::HTMLContent html);
+    std::optional<AnchorData> FindNextAnchor(const char *begin, const char *end);
+    const char *FindAnchorEnd(const char *begin, const char *end, int level);
+    AnchorData ExtractDataFromAnchor(const char *start, const char *end, EM::HTMLContent html);
 
     // ====================  DATA MEMBERS  =======================================
 
-    const AnchorsFromHTML* anchors_ = nullptr;
+    const AnchorsFromHTML *anchors_ = nullptr;
     EM::HTMLContent html_;
-    const char* anchor_search_start = nullptr;
-    const char* anchor_search_end = nullptr;
+    const char *anchor_search_start = nullptr;
+    const char *anchor_search_end = nullptr;
     mutable AnchorData the_anchor_;
     int using_saved_anchor = -1;
 
-};    // -----  end of class AnchorsFromHTML::anchor_itor  -----
+}; // -----  end of class AnchorsFromHTML::anchor_itor  -----
 
 #endif /* ----- #ifndef ANCHORSFROMHTML_INC  ----- */

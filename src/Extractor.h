@@ -53,10 +53,9 @@ namespace Extractor
 //  distinguisable
 // =====================================================================================
 
-template <typename T, typename Uniqueifier>
-class UniqType
+template <typename T, typename Uniqueifier> class UniqType
 {
-   public:
+public:
     // ====================  LIFECYCLE     =======================================
 
     UniqType()
@@ -92,8 +91,14 @@ class UniqType
     // ====================  ACCESSORS     =======================================
 
     // not needed because we have assignment operators
-    T &get() { return value_; }
-    const T &get() const { return value_; }
+    T &get()
+    {
+        return value_;
+    }
+    const T &get() const
+    {
+        return value_;
+    }
 
     // ====================  MUTATORS      =======================================
 
@@ -148,19 +153,19 @@ class UniqType
         return is;
     }
 
-   protected:
+protected:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
-   private:
+private:
     // ====================  METHODS       =======================================
 
     // ====================  DATA MEMBERS  =======================================
 
     T value_;
 
-};    // -----  end of class UniqType  -----
+}; // -----  end of class UniqType  -----
 
 using sv = std::string_view;
 using SEC_Header_fields = std::map<std::string, std::string>;
@@ -220,14 +225,13 @@ using TableContent = UniqType<sv, struct TableContentTag>;
 
 using DocumentSectionList = std::vector<DocumentSection>;
 
-}    // namespace Extractor
+} // namespace Extractor
 
 namespace EM = Extractor;
 
 //  seems to be needed by boost program options
 
-template <typename T, typename Uniqueifier>
-inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
+template <typename T, typename Uniqueifier> inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
 {
     return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
 }
