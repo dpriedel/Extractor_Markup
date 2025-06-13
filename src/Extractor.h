@@ -141,18 +141,6 @@ public:
         return *this;
     }
 
-    std::ostream &operator<<(std::ostream &os)
-    {
-        os << value_;
-        return os;
-    }
-
-    std::istream &operator>>(std::istream &is)
-    {
-        is >> value_;
-        return is;
-    }
-
 protected:
     // ====================  METHODS       =======================================
 
@@ -166,6 +154,22 @@ private:
     T value_;
 
 }; // -----  end of class UniqType  -----
+
+template <typename T, typename Uniqueifier>
+std::ostream &operator<<(std::ostream &os, const UniqType<T, Uniqueifier> &a_type)
+{
+    os << a_type.get();
+    return os;
+}
+
+template <typename T, typename Uniqueifier>
+std::istream &operator>>(std::istream &is, const UniqType<T, Uniqueifier> &a_type)
+{
+    T temp;
+    is >> temp;
+    a_type = temp;
+    return is;
+}
 
 using sv = std::string_view;
 using SEC_Header_fields = std::map<std::string, std::string>;
