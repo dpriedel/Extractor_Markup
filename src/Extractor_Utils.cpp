@@ -71,7 +71,7 @@ date::year_month_day StringToDateYMD(const std::string &input_format, const std:
     date::year_month_day result = tp;
     BOOST_ASSERT_MSG(result.ok(), catenate("Invalid date: ", the_date).c_str());
     return result;
-}    // -----  end of method tringToDateYMD  -----
+} // -----  end of method tringToDateYMD  -----
 
 /*
  *--------------------------------------------------------------------------------------
@@ -80,13 +80,15 @@ date::year_month_day StringToDateYMD(const std::string &input_format, const std:
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractorException::ExtractorException(const char *text)
-    : std::runtime_error(text) {} /* -----  end of method ExtractorException::ExtractorException  (constructor)
-                                     ----- */
+ExtractorException::ExtractorException(const char *text) : std::runtime_error(text)
+{
+} /* -----  end of method ExtractorException::ExtractorException  (constructor)
+     ----- */
 
-ExtractorException::ExtractorException(const std::string &text)
-    : std::runtime_error(text) {} /* -----  end of method ExtractorException::ExtractorException  (constructor)
-                                     ----- */
+ExtractorException::ExtractorException(const std::string &text) : std::runtime_error(text)
+{
+} /* -----  end of method ExtractorException::ExtractorException  (constructor)
+     ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -95,13 +97,15 @@ ExtractorException::ExtractorException(const std::string &text)
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AssertionException::AssertionException(const char *text)
-    : std::invalid_argument(text) {} /* -----  end of method AssertionException::AssertionException  (constructor)
-                                        ----- */
+AssertionException::AssertionException(const char *text) : std::invalid_argument(text)
+{
+} /* -----  end of method AssertionException::AssertionException  (constructor)
+     ----- */
 
-AssertionException::AssertionException(const std::string &text)
-    : std::invalid_argument(text) {} /* -----  end of method AssertionException::AssertionException  (constructor)
-                                        ----- */
+AssertionException::AssertionException(const std::string &text) : std::invalid_argument(text)
+{
+} /* -----  end of method AssertionException::AssertionException  (constructor)
+     ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -110,11 +114,13 @@ AssertionException::AssertionException(const std::string &text)
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-XBRLException::XBRLException(const char *text)
-    : ExtractorException(text) {} /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
+XBRLException::XBRLException(const char *text) : ExtractorException(text)
+{
+} /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
 
-XBRLException::XBRLException(const std::string &text)
-    : ExtractorException(text) {} /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
+XBRLException::XBRLException(const std::string &text) : ExtractorException(text)
+{
+} /* -----  end of method XBRLException::XBRLException  (constructor)  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -123,11 +129,13 @@ XBRLException::XBRLException(const std::string &text)
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTMLException::HTMLException(const char *text)
-    : ExtractorException(text) {} /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
+HTMLException::HTMLException(const char *text) : ExtractorException(text)
+{
+} /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
 
-HTMLException::HTMLException(const std::string &text)
-    : ExtractorException(text) {} /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
+HTMLException::HTMLException(const std::string &text) : ExtractorException(text)
+{
+} /* -----  end of method HTMLException::HTMLException  (constructor)  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -136,13 +144,15 @@ HTMLException::HTMLException(const std::string &text)
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-MaxFilesException::MaxFilesException(const char *text)
-    : std::range_error(text) {} /* -----  end of method MaxFilesException::MaxFilesException  (constructor)
-                                   ----- */
+MaxFilesException::MaxFilesException(const char *text) : std::range_error(text)
+{
+} /* -----  end of method MaxFilesException::MaxFilesException  (constructor)
+     ----- */
 
-MaxFilesException::MaxFilesException(const std::string &text)
-    : std::range_error(text) {} /* -----  end of method MaxFilesException::MaxFilesException  (constructor)
-                                   ----- */
+MaxFilesException::MaxFilesException(const std::string &text) : std::range_error(text)
+{
+} /* -----  end of method MaxFilesException::MaxFilesException  (constructor)
+     ----- */
 
 /*
  * ===  FUNCTION
@@ -226,7 +236,8 @@ EM::FileName FindFileName(const EM::DocumentSection &document, const EM::FileNam
     const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
     boost::cmatch matches;
 
-    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname); found_it)
+    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_fname);
+        found_it)
     {
         EM::FileName file_name{std::string(matches[1].first, matches[1].length())};
         return file_name;
@@ -245,7 +256,8 @@ EM::FileType FindFileType(const EM::DocumentSection &document)
     const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
     boost::cmatch matches;
 
-    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_ftype); found_it)
+    if (bool found_it = boost::regex_search(document.get().cbegin(), document.get().cend(), matches, regex_ftype);
+        found_it)
     {
         EM::FileType file_type{EM::sv(matches[1].first, matches[1].length())};
         return file_type;
@@ -316,16 +328,15 @@ EM::HTMLContent FindHTML(const EM::DocumentSection &document, const EM::FileName
 
 bool FormIsInFileName(const std::vector<std::string> &form_types, const EM::FileName &file_name)
 {
-    auto check_for_form_in_name(
-        [&file_name](auto &form_type)
-        {
-            auto pos = file_name.get().string().find(catenate('/', form_type, '/'));
-            return (pos != std::string::npos);
-        });
+    auto check_for_form_in_name([&file_name](auto &form_type) {
+        auto pos = file_name.get().string().find(catenate('/', form_type, '/'));
+        return (pos != std::string::npos);
+    });
     return std::any_of(std::begin(form_types), std::end(form_types), check_for_form_in_name);
 } /* -----  end of function FormIsInFileName  ----- */
 
-bool FileHasXBRL::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasXBRL::operator()(const EM::SEC_Header_fields &SEC_fields,
+                             const EM::DocumentSectionList &document_sections) const
 {
     // need to do a little more detailed check.
 
@@ -342,7 +353,8 @@ bool FileHasXBRL::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::
     return false;
 } /* -----  end of method FileHasXBRL::operator()  ----- */
 
-bool FileHasXLS::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasXLS::operator()(const EM::SEC_Header_fields &SEC_fields,
+                            const EM::DocumentSectionList &document_sections) const
 {
     // need to do a little more detailed check.
 
@@ -364,7 +376,8 @@ bool FileHasXLS::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::D
  * FileHasHTML::operator() Description:
  * =====================================================================================
  */
-bool FileHasHTML::operator()(const EM::SEC_Header_fields &header_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasHTML::operator()(const EM::SEC_Header_fields &header_fields,
+                             const EM::DocumentSectionList &document_sections) const
 {
     // need to do a little more detailed check.
 
@@ -386,12 +399,14 @@ bool FileHasHTML::operator()(const EM::SEC_Header_fields &header_fields, const E
     return false;
 } /* -----  end of function FileHasHTML::operator()  ----- */
 
-bool FileHasFormType::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasFormType::operator()(const EM::SEC_Header_fields &SEC_fields,
+                                 const EM::DocumentSectionList &document_sections) const
 {
     return (rng::find(form_list_, SEC_fields.at("form_type")) != rng::end(form_list_));
 } /* -----  end of method FileHasFormType::operator()  ----- */
 
-bool FileHasCIK::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasCIK::operator()(const EM::SEC_Header_fields &SEC_fields,
+                            const EM::DocumentSectionList &document_sections) const
 {
     // if our list has only 2 elements, the consider this a range.  otherwise,
     // just a list.
@@ -404,12 +419,14 @@ bool FileHasCIK::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::D
     return (rng::find(CIK_list_, SEC_fields.at("cik")) != rng::end(CIK_list_));
 } /* -----  end of method FileHasCIK::operator()  ----- */
 
-bool FileHasSIC::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileHasSIC::operator()(const EM::SEC_Header_fields &SEC_fields,
+                            const EM::DocumentSectionList &document_sections) const
 {
     return (rng::find(SIC_list_, SEC_fields.at("sic")) != rng::end(SIC_list_));
 } /* -----  end of method FileHasSIC::operator()  ----- */
 
-bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields,
+                                       const EM::DocumentSectionList &document_sections) const
 {
     // we need to work with just the base form name
 
@@ -426,21 +443,22 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields, 
     std::string check_for_existing_content_cmd;
     if (mode_ == "BOTH")
     {
-        check_for_existing_content_cmd = fmt::format(
-            "SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
-            "WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
+        check_for_existing_content_cmd =
+            fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
+                        "WHERE"
+                        " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                        trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
     }
     else
     {
-        check_for_existing_content_cmd = fmt::format(
-            "SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
-            "WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2} AND "
-            "data_source = {4}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_,
-            trxn.quote(mode_));
+        check_for_existing_content_cmd =
+            fmt::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
+                        "WHERE"
+                        " cik = {0} AND form_type = {1} AND period_ending = {2} AND "
+                        "data_source = {4}",
+                        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                        trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_, trxn.quote(mode_));
     }
 
     auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
@@ -450,7 +468,8 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields, 
     {
         // simple case here
 
-        spdlog::info(catenate("Skipping: Form data exists and Replace not specifed for file: ", SEC_fields.at("file_name")));
+        spdlog::info(
+            catenate("Skipping: Form data exists and Replace not specifed for file: ", SEC_fields.at("file_name")));
         return false;
     }
 
@@ -461,10 +480,11 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields, 
 
     if (have_data != 0 && !replace_DB_content_ && form_type.ends_with("_A"))
     {
-        check_for_existing_content_cmd = fmt::format(
-            "SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
+        check_for_existing_content_cmd =
+            fmt::format("SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
+                        " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                        trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
 
         pqxx::work trxn{c};
         auto row = trxn.exec(check_for_existing_content_cmd).one_row();
@@ -494,7 +514,8 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields, 
     return true;
 } /* -----  end of method NeedToUpdateDBContent::operator()  ----- */
 
-bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields &SEC_fields, const EM::DocumentSectionList &document_sections) const
+bool FileIsWithinDateRange::operator()(const EM::SEC_Header_fields &SEC_fields,
+                                       const EM::DocumentSectionList &document_sections) const
 {
     auto report_date = StringToDateYMD("%F", SEC_fields.at("quarter_ending"));
     return (begin_date_ <= report_date && report_date <= end_date_);
@@ -509,7 +530,8 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator()(const EM::FileName &
     // we will assume there is not trailing delimiter on the stored remote prefix.
     // (even though we have no edit to enforce that for now.)
 
-    std::string source_index_name = boost::algorithm::replace_first_copy(source_file_path.get().string(), source_prefix_.string(), "");
+    std::string source_index_name =
+        boost::algorithm::replace_first_copy(source_file_path.get().string(), source_prefix_.string(), "");
 
     //  there seems to be a change in behaviour.  appending a path starting with
     //  '/' actually does an assignment, not an append.
@@ -524,7 +546,7 @@ fs::path ConvertInputHierarchyToOutputHierarchy::operator()(const EM::FileName &
     destination_path_name += ('_' + destination_file_name);
     return destination_path_name;
 
-}    // -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
+} // -----  end of method DailyIndexFileRetriever::MakeLocalIndexFileName  -----
 
 // ===  FUNCTION
 // ======================================================================
@@ -551,7 +573,7 @@ std::string CleanLabel(const std::string &label)
     rng::for_each(cleaned_label, [](char &c) { c = std::tolower(c); });
 
     return cleaned_label;
-}    // -----  end of function CleanLabel  -----
+} // -----  end of function CleanLabel  -----
 
 namespace boost
 {
@@ -569,8 +591,8 @@ namespace boost
 void assertion_failed_msg(char const *expr, char const *msg, char const *function, char const *file, long line)
 {
     std::cout << std::stacktrace::current() << std::endl;
-    throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function, " from file: ", file,
-                                      " at line: ", line, ".\nassertion msg: ", msg));
+    throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
+                                      " from file: ", file, " at line: ", line, ".\nassertion msg: ", msg));
 } /* -----  end of function assertion_failed_mgs  ----- */
 
 /*
@@ -582,7 +604,7 @@ void assertion_failed_msg(char const *expr, char const *msg, char const *functio
 void assertion_failed(char const *expr, char const *function, char const *file, long line)
 {
     std::cout << std::stacktrace::current() << std::endl;
-    throw AssertionException(
-        catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function, " from file: ", file, " at line: ", line));
+    throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr, " in function: ", function,
+                                      " from file: ", file, " at line: ", line));
 } /* -----  end of function assertion_failed  ----- */
 } /* end namespace boost */

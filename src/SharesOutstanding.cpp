@@ -61,7 +61,7 @@ int64_t SharesOutstanding::operator()(EM::HTMLContent html) const
     }
 
     spdlog::debug("\npossibilities-----------------------------");
-    ranges::for_each(possibilites, [](const auto& x) { spdlog::debug(catenate("Possible: ", x)); });
+    ranges::for_each(possibilites, [](const auto &x) { spdlog::debug(catenate("Possible: ", x)); });
 
     std::string shares = "-1";
 
@@ -69,7 +69,8 @@ int64_t SharesOutstanding::operator()(EM::HTMLContent html) const
     {
         boost::cmatch the_shares;
 
-        if (bool found_it = boost::regex_search(std::begin(possible), std::end(possible), the_shares, regex_share_extractor))
+        if (bool found_it =
+                boost::regex_search(std::begin(possible), std::end(possible), the_shares, regex_share_extractor))
         {
             shares = the_shares.str(1);
             break;
@@ -86,9 +87,11 @@ int64_t SharesOutstanding::operator()(EM::HTMLContent html) const
         const boost::regex regex_comma{R"***(,)***"};
         shares = boost::regex_replace(shares, regex_comma, delete_this);
 
-        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding);
+            ec != std::errc())
         {
-            throw ExtractorException(catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
+            throw ExtractorException(
+                catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
         }
     }
     else
@@ -98,9 +101,9 @@ int64_t SharesOutstanding::operator()(EM::HTMLContent html) const
 
     spdlog::debug(catenate("Shares outstanding: ", shares_outstanding));
     return shares_outstanding;
-}    // -----  end of method SharesOutstanding::operator()  -----
+} // -----  end of method SharesOutstanding::operator()  -----
 
-void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned_text)
+void CleanText(GumboNode *node, size_t max_length_to_clean, std::string &cleaned_text)
 {
     //    this code is based on example code in Gumbo Parser project
     //    I've added the ability to break out of the recursive
@@ -121,23 +124,24 @@ void CleanText(GumboNode* node, size_t max_length_to_clean, std::string& cleaned
         cleaned_text += the_text;
         cleaned_text += ' ';
     }
-    if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT && node->v.element.tag != GUMBO_TAG_STYLE)
+    if (node->type == GUMBO_NODE_ELEMENT && node->v.element.tag != GUMBO_TAG_SCRIPT &&
+        node->v.element.tag != GUMBO_TAG_STYLE)
     {
         std::string contents;
-        GumboVector* children = &node->v.element.children;
+        GumboVector *children = &node->v.element.children;
 
         for (unsigned int i = 0; i < children->length; ++i)
         {
-            CleanText((GumboNode*)children->data[i], max_length_to_clean, cleaned_text);
+            CleanText((GumboNode *)children->data[i], max_length_to_clean, cleaned_text);
         }
         if (max_length_to_clean > 0 && cleaned_text.size() >= max_length_to_clean)
         {
             throw std::length_error("'stop iteration'");
         }
     }
-}    // -----  end of method SharesOutstanding::CleanText  -----
+} // -----  end of method SharesOutstanding::CleanText  -----
 
-std::vector<EM::sv> FindCandidates(const std::string& the_text)
+std::vector<EM::sv> FindCandidates(const std::string &the_text)
 {
     // the beginning of the HTML content is actually a 'form' which almost always contains
     // the information we are looking for.
@@ -156,14 +160,14 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     const boost::regex regex_number{number, boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_market_value{market_value, boost::regex_constants::normal | boost::regex_constants::icase};
     const boost::regex regex_shares_yes_no{yes_no, boost::regex_constants::normal | boost::regex_constants::icase};
-    const boost::regex regex_shares_indicator{indicator, boost::regex_constants::normal | boost::regex_constants::icase};
+    const boost::regex regex_shares_indicator{indicator,
+                                              boost::regex_constants::normal | boost::regex_constants::icase};
 
     std::vector<EM::sv> results;
 
     boost::sregex_iterator iter1(the_text.begin(), the_text.end(), regex_shares_yes_no);
     std::for_each(iter1, boost::sregex_iterator{},
-                  [&the_text, &results, &regex_number, &regex_market_value](const boost::smatch& m)
-                  {
+                  [&the_text, &results, &regex_number, &regex_market_value](const boost::smatch &m) {
                       EM::sv possible(the_text.data() + m.position(), m.length());
                       if (boost::regex_search(possible.begin(), possible.end(), regex_market_value))
                       {
@@ -181,25 +185,23 @@ std::vector<EM::sv> FindCandidates(const std::string& the_text)
     if (results.empty())
     {
         boost::sregex_iterator iter2(the_text.begin(), the_text.end(), regex_shares_indicator);
-        std::for_each(iter2, boost::sregex_iterator{},
-                      [&the_text, &results, &regex_shares](const boost::smatch& m)
-                      {
-                          EM::sv possible(the_text.data() + m.position(), m.length());
-                          if (boost::regex_search(possible.begin(), possible.end(), regex_shares))
-                          {
-                              results.push_back(possible);
-                          }
-                      });
+        std::for_each(iter2, boost::sregex_iterator{}, [&the_text, &results, &regex_shares](const boost::smatch &m) {
+            EM::sv possible(the_text.data() + m.position(), m.length());
+            if (boost::regex_search(possible.begin(), possible.end(), regex_shares))
+            {
+                results.push_back(possible);
+            }
+        });
     }
 
     // prefer shortest matches
 
     if (results.size() > 1)
     {
-        results |= ranges::actions::sort([](const auto& a, const auto& b) { return a.size() < b.size(); });
+        results |= ranges::actions::sort([](const auto &a, const auto &b) { return a.size() < b.size(); });
     }
     return results;
-}    // -----  end of method SharesOutstanding::FindCandidates  -----
+} // -----  end of method SharesOutstanding::FindCandidates  -----
 
 std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse, size_t max_length_to_clean)
 {
@@ -213,18 +215,19 @@ std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse, size_t m
 
     GumboOptions options = kGumboDefaultOptions;
 
-    size_t length_HTML_to_parse = max_length_to_parse == 0 ? html.get().length() : std::min(html.get().length(), max_length_to_parse);
+    size_t length_HTML_to_parse =
+        max_length_to_parse == 0 ? html.get().length() : std::min(html.get().length(), max_length_to_parse);
 
-    std::unique_ptr<GumboOutput, std::function<void(GumboOutput*)>> output(
+    std::unique_ptr<GumboOutput, std::function<void(GumboOutput *)>> output(
         gumbo_parse_with_options(&options, html.get().data(), length_HTML_to_parse),
-        [&options](GumboOutput* output) { gumbo_destroy_output(&options, output); });
+        [&options](GumboOutput *output) { gumbo_destroy_output(&options, output); });
 
     std::string parsed_text;
     try
     {
         CleanText(output->root, max_length_to_clean, parsed_text);
     }
-    catch (std::length_error& e)
+    catch (std::length_error &e)
     {
         //   nothing to do, should be 'stop iteration'
     }
@@ -240,4 +243,4 @@ std::string ParseHTML(EM::HTMLContent html, size_t max_length_to_parse, size_t m
     the_text = boost::regex_replace(the_text, regex_dollar_number, one_space);
 
     return the_text;
-}    // -----  end of method SharesOutstanding::ParseHTML  -----
+} // -----  end of method SharesOutstanding::ParseHTML  -----

@@ -55,19 +55,29 @@ using namespace std::string_literals;
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::AnchorsFromHTML(EM::HTMLContent html)
-    : html_{html} {} /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
+AnchorsFromHTML::AnchorsFromHTML(EM::HTMLContent html) : html_{html}
+{
+} /* -----  end of method AnchorsFromHTML::AnchorsFromHTML  (constructor)  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::begin() { return iterator(this); } /* -----  end of method AnchorsFromHTML::begin  ----- */
+AnchorsFromHTML::iterator AnchorsFromHTML::begin()
+{
+    return iterator(this);
+} /* -----  end of method AnchorsFromHTML::begin  ----- */
 
 AnchorsFromHTML::const_iterator AnchorsFromHTML::begin() const
 {
     return const_iterator(this);
 } /* -----  end of method AnchorsFromHTML::begin  ----- */
 
-AnchorsFromHTML::iterator AnchorsFromHTML::end() { return {}; } /* -----  end of method AnchorsFromHTML::end  ----- */
+AnchorsFromHTML::iterator AnchorsFromHTML::end()
+{
+    return {};
+} /* -----  end of method AnchorsFromHTML::end  ----- */
 
-AnchorsFromHTML::const_iterator AnchorsFromHTML::end() const { return {}; } /* -----  end of method AnchorsFromHTML::end  ----- */
+AnchorsFromHTML::const_iterator AnchorsFromHTML::end() const
+{
+    return {};
+} /* -----  end of method AnchorsFromHTML::end  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -76,7 +86,7 @@ AnchorsFromHTML::const_iterator AnchorsFromHTML::end() const { return {}; } /* -
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-AnchorsFromHTML::anchor_itor::anchor_itor(const AnchorsFromHTML* anchors) : anchors_{anchors}
+AnchorsFromHTML::anchor_itor::anchor_itor(const AnchorsFromHTML *anchors) : anchors_{anchors}
 {
     if (anchors == nullptr)
     {
@@ -96,7 +106,7 @@ AnchorsFromHTML::anchor_itor::anchor_itor(const AnchorsFromHTML* anchors) : anch
 
 } /* -----  end of method AnchorsFromHTML::iterator::AnchorsFromHTML::iterator  (constructor)  ----- */
 
-AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++()
+AnchorsFromHTML::anchor_itor &AnchorsFromHTML::anchor_itor::operator++()
 {
     auto next_anchor = FindNextAnchor(anchor_search_start, anchor_search_end);
 
@@ -114,7 +124,7 @@ AnchorsFromHTML::anchor_itor& AnchorsFromHTML::anchor_itor::operator++()
     return *this;
 } /* -----  end of method AnchorsFromHTML::iterator::operator++  ----- */
 
-std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor(const char* begin, const char* end)
+std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor(const char *begin, const char *end)
 {
     if (++using_saved_anchor < anchors_->found_anchors_.size())
     {
@@ -149,7 +159,7 @@ std::optional<AnchorData> AnchorsFromHTML::iterator::FindNextAnchor(const char* 
     return std::optional<AnchorData>{anchor};
 } /* -----  end of method AnchorsFromHTML::iterator::FindNextAnchor  ----- */
 
-const char* AnchorsFromHTML::iterator::FindAnchorEnd(const char* begin, const char* end, int level)
+const char *AnchorsFromHTML::iterator::FindAnchorEnd(const char *begin, const char *end, int level)
 {
     if (level >= 5)
     {
@@ -194,7 +204,7 @@ const char* AnchorsFromHTML::iterator::FindAnchorEnd(const char* begin, const ch
     return nullptr;
 } /* -----  end of method AnchorsFromHTML::iterator::FindAnchorEnd  ----- */
 
-AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor(const char* start, const char* end, EM::HTMLContent html)
+AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor(const char *start, const char *end, EM::HTMLContent html)
 {
     CDocument whole_anchor;
     const std::string working_copy{start, end};
@@ -202,8 +212,8 @@ AnchorData AnchorsFromHTML::iterator::ExtractDataFromAnchor(const char* start, c
     auto the_anchor = whole_anchor.find("a"s);
     BOOST_ASSERT_MSG(the_anchor.nodeNum() > 0, "No anchor found in extractecd anchor!!");
 
-    AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"), the_anchor.nodeAt(0).text(),
-                      EM::AnchorContent{EM::sv(start, end - start)}, html};
+    AnchorData result{the_anchor.nodeAt(0).attribute("href"), the_anchor.nodeAt(0).attribute("name"),
+                      the_anchor.nodeAt(0).text(), EM::AnchorContent{EM::sv(start, end - start)}, html};
 
     // href sometimes is quoted, so remove them.
 

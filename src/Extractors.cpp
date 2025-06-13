@@ -60,7 +60,7 @@ const std::string::size_type START_WITH{1000000};
 const boost::regex regex_fname{R"***(^<FILENAME>(.*?)$)***"};
 const boost::regex regex_ftype{R"***(^<TYPE>(.*?)$)***"};
 
-FilterList SelectExtractors(const po::variables_map& args)
+FilterList SelectExtractors(const po::variables_map &args)
 {
     // NOTE: we can have an arbitrary number of filters selected.
 
@@ -84,7 +84,7 @@ FilterList SelectExtractors(const po::variables_map& args)
 } /* -----  end of function SelectExtractors  ----- */
 
 std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES,
-                                                 std::atomic<int>& files_processed)
+                                                 std::atomic<int> &files_processed)
 {
     SEC_Header file_header;
     file_header.UseData(file_content);
@@ -103,7 +103,7 @@ std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, E
     return std::optional{header_fields};
 }
 
-XLS_data::XLS_data(const po::variables_map& args)
+XLS_data::XLS_data(const po::variables_map &args)
 {
     EM::FileName source_prefix;
     if (args.count("form-dir") == 1)
@@ -118,11 +118,11 @@ XLS_data::XLS_data(const po::variables_map& args)
 }
 
 void XLS_data::UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName output_directory,
-                            const EM::SEC_Header_fields& fields)
+                            const EM::SEC_Header_fields &fields)
 {
     auto documents = LocateDocumentSections(file_content);
 
-    for (auto& doc : documents)
+    for (auto &doc : documents)
     {
         auto document = doc.get();
         if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != EM::sv::npos)
@@ -270,7 +270,8 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
     // and read the decoder's std::out into a charater vector.
     // No temp files involved.
 
-    redi::pstream out_in("uudecode -o /dev/stdout ", redi::pstreams::pstdin | redi::pstreams::pstdout | redi::pstreams::pstderr);
+    redi::pstream out_in("uudecode -o /dev/stdout ",
+                         redi::pstreams::pstdin | redi::pstreams::pstdout | redi::pstreams::pstderr);
     BOOST_ASSERT_MSG(out_in.is_open(), "Failed to open subprocess.");
 
     std::array<char, 4096> buf{'\0'};
@@ -336,7 +337,8 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
             if (out_in.eof())
             {
                 finished[1] = true;
-                if (!finished[0]) out_in.clear();
+                if (!finished[0])
+                    out_in.clear();
             }
         }
         if (!finished[0])
@@ -348,7 +350,8 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
             if (out_in.eof())
             {
                 finished[0] = true;
-                if (!finished[1]) out_in.clear();
+                if (!finished[1])
+                    out_in.clear();
             }
         }
     }
@@ -407,7 +410,7 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS(std::vector<char> report)
     XLS_File xls_file{std::move(report)};
 
     auto sheet_names = xls_file.GetSheetNames();
-    ranges::for_each(sheet_names, [](const auto& x) { std::cout << x << '\n'; });
+    ranges::for_each(sheet_names, [](const auto &x) { std::cout << x << '\n'; });
 
     // let's look for our necessary sheets
 
@@ -419,7 +422,7 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS(std::vector<char> report)
     std::cout << "SN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
 
     std::cout << "\n\n";
-    ranges::for_each(xls_file, [](const auto& x) { std::cout << x.GetSheetNameFromInside() << '\n'; });
+    ranges::for_each(xls_file, [](const auto &x) { std::cout << x.GetSheetNameFromInside() << '\n'; });
     std::cout << "\n\n";
 
     //   found_bal_sheet = xls_file.FindSheetByInternalName("balance sheets").has_value();
@@ -432,30 +435,25 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS(std::vector<char> report)
     static const boost::regex regex_finance_statements_bal{R"***(balance\s+sheet|financial position)***"};
     static const boost::regex regex_finance_statements_ops{
         R"***((?:(?:statement|statements)\s+?of.*?(?:oper|loss|income|earning|expense))|(?:income|loss|earning statement))***"};
-    static const boost::regex regex_finance_statements_cash{R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
+    static const boost::regex regex_finance_statements_cash{
+        R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
 
-    found_bal_sheet = ranges::find_if(xls_file,
-                                      [](const auto& x)
-                                      {
-                                          auto name = x.GetSheetNameFromInside();
-                                          return boost::regex_search(name, regex_finance_statements_bal);
-                                      }) != ranges::end(xls_file);
+    found_bal_sheet = ranges::find_if(xls_file, [](const auto &x) {
+                          auto name = x.GetSheetNameFromInside();
+                          return boost::regex_search(name, regex_finance_statements_bal);
+                      }) != ranges::end(xls_file);
     std::cout << "ISN: " << (found_bal_sheet ? "Found bal sheet" : "Missing bal sheet") << '\n';
 
-    found_stmt_of_ofs = ranges::find_if(xls_file,
-                                        [](const auto& x)
-                                        {
-                                            auto name = x.GetSheetNameFromInside();
-                                            return boost::regex_search(name, regex_finance_statements_ops);
-                                        }) != ranges::end(xls_file);
+    found_stmt_of_ofs = ranges::find_if(xls_file, [](const auto &x) {
+                            auto name = x.GetSheetNameFromInside();
+                            return boost::regex_search(name, regex_finance_statements_ops);
+                        }) != ranges::end(xls_file);
     std::cout << "ISN: " << (found_stmt_of_ofs ? "Found stmt of ops" : "Missing stmt of ops") << '\n';
 
-    found_cash_flows = ranges::find_if(xls_file,
-                                       [](const auto& x)
-                                       {
-                                           auto name = x.GetSheetNameFromInside();
-                                           return boost::regex_search(name, regex_finance_statements_cash);
-                                       }) != ranges::end(xls_file);
+    found_cash_flows = ranges::find_if(xls_file, [](const auto &x) {
+                           auto name = x.GetSheetNameFromInside();
+                           return boost::regex_search(name, regex_finance_statements_cash);
+                       }) != ranges::end(xls_file);
     std::cout << "ISN: " << (found_cash_flows ? "Found cash flows" : "Missing cash flows") << '\n';
 
     //   for (const auto& sheet : xls_file)
@@ -469,13 +467,14 @@ EM::Extractor_Values XLS_data::ExtractDataFromXLS(std::vector<char> report)
     //   }
 
     return {};
-}    // -----  end of method XLS_data::ExtractDataFromXLS  -----
+} // -----  end of method XLS_data::ExtractDataFromXLS  -----
 
-void Count_XLS::UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName, const EM::SEC_Header_fields& fields)
+void Count_XLS::UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName,
+                             const EM::SEC_Header_fields &fields)
 {
     auto documents = LocateDocumentSections(file_content);
 
-    for (auto& doc : documents)
+    for (auto &doc : documents)
     {
         auto document = doc.get();
         if (auto ss_loc = document.find(R"***(.xlsx)***"); ss_loc != EM::sv::npos)

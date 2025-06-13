@@ -32,16 +32,21 @@ namespace rng = ranges;
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-XLS_File::XLS_File(const std::vector<char>& content)
-    : content_{content} {}    // -----  end of method XLS_File::XLS_File  (constructor)  -----
+XLS_File::XLS_File(const std::vector<char> &content) : content_{content}
+{
+} // -----  end of method XLS_File::XLS_File  (constructor)  -----
 
-XLS_File::XLS_File(std::vector<char>&& content)
-    : content_{std::move(content)} {}    // -----  end of method XLS_File::XLS_File  (constructor)  -----
+XLS_File::XLS_File(std::vector<char> &&content) : content_{std::move(content)}
+{
+} // -----  end of method XLS_File::XLS_File  (constructor)  -----
 
-XLS_File::XLS_File(const XLS_File& rhs) : content_{rhs.content_} {}    // -----  end of method XLS_File::XLS_File  (constructor)  -----
+XLS_File::XLS_File(const XLS_File &rhs) : content_{rhs.content_}
+{
+} // -----  end of method XLS_File::XLS_File  (constructor)  -----
 
-XLS_File::XLS_File(XLS_File&& rhs) noexcept
-    : content_{std::move(rhs.content_)} {}    // -----  end of method XLS_File::XLS_File  (constructor)  -----
+XLS_File::XLS_File(XLS_File &&rhs) noexcept : content_{std::move(rhs.content_)}
+{
+} // -----  end of method XLS_File::XLS_File  (constructor)  -----
 
 XLS_File::iterator XLS_File::begin()
 {
@@ -51,7 +56,7 @@ XLS_File::iterator XLS_File::begin()
     }
 
     return {&content_};
-}    // -----  end of method XLS_File::begin  -----
+} // -----  end of method XLS_File::begin  -----
 
 XLS_File::const_iterator XLS_File::begin() const
 {
@@ -61,29 +66,35 @@ XLS_File::const_iterator XLS_File::begin() const
     }
 
     return {&content_};
-}    // -----  end of method XLS_File::begin  -----
+} // -----  end of method XLS_File::begin  -----
 
-XLS_File::iterator XLS_File::end() { return {}; }    // -----  end of method XLS_File::end  -----
+XLS_File::iterator XLS_File::end()
+{
+    return {};
+} // -----  end of method XLS_File::end  -----
 
-XLS_File::const_iterator XLS_File::end() const { return {}; }    // -----  end of method XLS_File::end  -----
+XLS_File::const_iterator XLS_File::end() const
+{
+    return {};
+} // -----  end of method XLS_File::end  -----
 
-XLS_File& XLS_File::operator=(const XLS_File& rhs)
+XLS_File &XLS_File::operator=(const XLS_File &rhs)
 {
     if (&rhs != this)
     {
         content_ = rhs.content_;
     }
     return *this;
-}    // -----  end of method XLS_File::operator=  -----
+} // -----  end of method XLS_File::operator=  -----
 
-XLS_File& XLS_File::operator=(XLS_File&& rhs) noexcept
+XLS_File &XLS_File::operator=(XLS_File &&rhs) noexcept
 {
     if (&rhs != this)
     {
         content_ = std::move(rhs.content_);
     }
     return *this;
-}    // -----  end of method XLS_File::operator=  -----
+} // -----  end of method XLS_File::operator=  -----
 
 std::vector<std::string> XLS_File::GetSheetNames() const
 {
@@ -94,7 +105,7 @@ std::vector<std::string> XLS_File::GetSheetNames() const
 
     auto file_closer = [](xlsxioreader file) { xlsxioread_close(file); };
     std::unique_ptr<xlsxio_read_struct, std::function<void(xlsxioreader)>> xlsxioread{
-        xlsxioread_open_memory(const_cast<char*>(content_.data()), content_.size(), 0), file_closer};
+        xlsxioread_open_memory(const_cast<char *>(content_.data()), content_.size(), 0), file_closer};
 
     std::vector<std::string> results;
 
@@ -106,7 +117,7 @@ std::vector<std::string> XLS_File::GetSheetNames() const
             xlsxioread_sheetlist_open(xlsxioread.get()), list_closer};
         if (temp_list)
         {
-            const XLSXIOCHAR* tempname = nullptr;
+            const XLSXIOCHAR *tempname = nullptr;
             while ((tempname = xlsxioread_sheetlist_next(temp_list.get())) != nullptr)
             {
                 results.emplace_back(std::string{tempname});
@@ -115,7 +126,7 @@ std::vector<std::string> XLS_File::GetSheetNames() const
         }
     }
     return results;
-}    // -----  end of method XLS_File::GetSheetNames  -----
+} // -----  end of method XLS_File::GetSheetNames  -----
 
 std::optional<XLS_Sheet> XLS_File::FindSheetByName(EM::sv sheet_name) const
 {
@@ -124,14 +135,14 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByName(EM::sv sheet_name) const
 
     if (!sheet_name.empty())
     {
-        auto pos = rng::find_if(*this, [looking_for](auto& x) { return x.GetSheetName() == looking_for; });
+        auto pos = rng::find_if(*this, [looking_for](auto &x) { return x.GetSheetName() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
         }
     }
     return std::nullopt;
-}    // -----  end of method XLS_File::FindSheetByName  -----
+} // -----  end of method XLS_File::FindSheetByName  -----
 
 std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName(EM::sv sheet_name) const
 {
@@ -140,14 +151,14 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName(EM::sv sheet_name) co
 
     if (!sheet_name.empty())
     {
-        auto pos = rng::find_if(*this, [looking_for](auto& x) { return x.GetSheetNameFromInside() == looking_for; });
+        auto pos = rng::find_if(*this, [looking_for](auto &x) { return x.GetSheetNameFromInside() == looking_for; });
         if (pos != this->end())
         {
             return std::optional{*pos};
         }
     }
     return std::nullopt;
-}    // -----  end of method XLS_File::FindSheetByName  -----
+} // -----  end of method XLS_File::FindSheetByName  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  XLS_File::sheet_itor
@@ -155,7 +166,7 @@ std::optional<XLS_Sheet> XLS_File::FindSheetByInternalName(EM::sv sheet_name) co
 // Description:  constructor
 //--------------------------------------------------------------------------------------
 
-XLS_File::sheet_itor::sheet_itor(const std::vector<char>* content) : content_{content}
+XLS_File::sheet_itor::sheet_itor(const std::vector<char> *content) : content_{content}
 {
     if (content_ == nullptr)
     {
@@ -165,7 +176,7 @@ XLS_File::sheet_itor::sheet_itor(const std::vector<char>* content) : content_{co
     // it's possible we won't be able to read the data in which case
     // our handle will be null.  All downstream classes should be prepared for this.
 
-    xlsxioread_ = xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0);
+    xlsxioread_ = xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0);
 
     if (xlsxioread_ == nullptr)
     {
@@ -192,16 +203,16 @@ XLS_File::sheet_itor::sheet_itor(const std::vector<char>* content) : content_{co
 
     current_sheet_ = {content_, sheet_name_};
 
-}    // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
+} // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
 
-XLS_File::sheet_itor::sheet_itor(const sheet_itor& rhs) : content_{rhs.content_}
+XLS_File::sheet_itor::sheet_itor(const sheet_itor &rhs) : content_{rhs.content_}
 {
     if (content_ == nullptr || rhs.sheet_name_ == nullptr)
     {
         return;
     }
 
-    xlsxioread_ = xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0);
+    xlsxioread_ = xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0);
 
     if (xlsxioread_ == nullptr)
     {
@@ -223,9 +234,9 @@ XLS_File::sheet_itor::sheet_itor(const sheet_itor& rhs) : content_{rhs.content_}
         this->operator++();
     }
 
-}    // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
+} // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
 
-XLS_File::sheet_itor::sheet_itor(sheet_itor&& rhs) noexcept
+XLS_File::sheet_itor::sheet_itor(sheet_itor &&rhs) noexcept
 
 {
     content_ = rhs.content_;
@@ -239,7 +250,7 @@ XLS_File::sheet_itor::sheet_itor(sheet_itor&& rhs) noexcept
     rhs.xlsxioread_ = nullptr;
     rhs.sheet_list_ = nullptr;
 
-}    // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
+} // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
 
 XLS_File::sheet_itor::~sheet_itor()
 {
@@ -251,9 +262,9 @@ XLS_File::sheet_itor::~sheet_itor()
     {
         xlsxioread_close(xlsxioread_);
     }
-}    // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
+} // -----  end of method XLS_File::sheet_itor::sheet_itor  (constructor)  -----
 
-XLS_File::sheet_itor& XLS_File::sheet_itor::operator=(const sheet_itor& rhs)
+XLS_File::sheet_itor &XLS_File::sheet_itor::operator=(const sheet_itor &rhs)
 {
     if (&rhs != this)
     {
@@ -272,7 +283,7 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator=(const sheet_itor& rhs)
 
         content_ = rhs.content_;
 
-        xlsxioread_ = xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0);
+        xlsxioread_ = xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0);
 
         if (xlsxioread_ == nullptr)
         {
@@ -315,9 +326,9 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator=(const sheet_itor& rhs)
         current_sheet_ = {content_, sheet_name_};
     }
     return *this;
-}    // -----  end of method XLS_File::sheet_itor::operator =  -----
+} // -----  end of method XLS_File::sheet_itor::operator =  -----
 
-XLS_File::sheet_itor& XLS_File::sheet_itor::operator=(sheet_itor&& rhs)
+XLS_File::sheet_itor &XLS_File::sheet_itor::operator=(sheet_itor &&rhs)
 {
     if (&rhs != this)
     {
@@ -346,9 +357,9 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator=(sheet_itor&& rhs)
         rhs.sheet_list_ = nullptr;
     }
     return *this;
-}    // -----  end of method XLS_File::sheet_itor::operator =  -----
+} // -----  end of method XLS_File::sheet_itor::operator =  -----
 
-XLS_File::sheet_itor& XLS_File::sheet_itor::operator++()
+XLS_File::sheet_itor &XLS_File::sheet_itor::operator++()
 {
     sheet_name_ = xlsxioread_sheetlist_next(sheet_list_);
     if (sheet_name_ == nullptr)
@@ -363,38 +374,35 @@ XLS_File::sheet_itor& XLS_File::sheet_itor::operator++()
 
     current_sheet_ = {content_, sheet_name_};
     return *this;
-}    // -----  end of method XLS_File::sheet_itor::operator++  -----
+} // -----  end of method XLS_File::sheet_itor::operator++  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  XLS_Sheet
 //      Method:  XLS_Sheet
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-XLS_Sheet::XLS_Sheet(const std::vector<char>* content, const XLSXIOCHAR* sheet_name) : content_{content}, sheet_name_mc_{sheet_name}
+XLS_Sheet::XLS_Sheet(const std::vector<char> *content, const XLSXIOCHAR *sheet_name)
+    : content_{content}, sheet_name_mc_{sheet_name}
 {
     rng::transform(sheet_name_mc_, rng::back_inserter(sheet_name_lc_), [](unsigned char c) { return std::tolower(c); });
 
-}    // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
+} // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
 
-XLS_Sheet::XLS_Sheet(const XLS_Sheet& rhs)
-    : content_{rhs.content_},
-      sheet_name_mc_{rhs.sheet_name_mc_},
-      extended_sheet_name_{rhs.extended_sheet_name_},
+XLS_Sheet::XLS_Sheet(const XLS_Sheet &rhs)
+    : content_{rhs.content_}, sheet_name_mc_{rhs.sheet_name_mc_}, extended_sheet_name_{rhs.extended_sheet_name_},
       sheet_name_lc_{rhs.sheet_name_lc_}
 {
-}    // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
+} // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
 
-XLS_Sheet::XLS_Sheet(XLS_Sheet&& rhs) noexcept
-    : content_{rhs.content_},
-      extended_sheet_name_{std::move(rhs.extended_sheet_name_)},
-      sheet_name_mc_{std::move(rhs.sheet_name_mc_)},
-      sheet_name_lc_{std::move(rhs.sheet_name_lc_)}
+XLS_Sheet::XLS_Sheet(XLS_Sheet &&rhs) noexcept
+    : content_{rhs.content_}, extended_sheet_name_{std::move(rhs.extended_sheet_name_)},
+      sheet_name_mc_{std::move(rhs.sheet_name_mc_)}, sheet_name_lc_{std::move(rhs.sheet_name_lc_)}
 {
     rhs.content_ = nullptr;
 
-}    // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
+} // -----  end of method XLS_Sheet::XLS_Sheet  (constructor)  -----
 
-XLS_Sheet& XLS_Sheet::operator=(const XLS_Sheet& rhs)
+XLS_Sheet &XLS_Sheet::operator=(const XLS_Sheet &rhs)
 {
     if (&rhs != this)
     {
@@ -404,9 +412,9 @@ XLS_Sheet& XLS_Sheet::operator=(const XLS_Sheet& rhs)
         sheet_name_lc_ = rhs.sheet_name_lc_;
     }
     return *this;
-}    // -----  end of method XLS_Sheet::operator =  -----
+} // -----  end of method XLS_Sheet::operator =  -----
 
-XLS_Sheet& XLS_Sheet::operator=(XLS_Sheet&& rhs)
+XLS_Sheet &XLS_Sheet::operator=(XLS_Sheet &&rhs)
 {
     if (&rhs != this)
     {
@@ -418,9 +426,9 @@ XLS_Sheet& XLS_Sheet::operator=(XLS_Sheet&& rhs)
         rhs.content_ = nullptr;
     }
     return *this;
-}    // -----  end of method XLS_Sheet::operator =  -----
+} // -----  end of method XLS_Sheet::operator =  -----
 
-const std::string& XLS_Sheet::GetSheetNameFromInside() const
+const std::string &XLS_Sheet::GetSheetNameFromInside() const
 {
     // we need to go and read the cells from our sheet
     // and get the content of the first cell.
@@ -434,7 +442,7 @@ const std::string& XLS_Sheet::GetSheetNameFromInside() const
 
     auto file_closer = [](xlsxioreader file) { xlsxioread_close(file); };
     std::unique_ptr<xlsxio_read_struct, std::function<void(xlsxioreader)>> xlsxioread{
-        xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0), file_closer};
+        xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0), file_closer};
 
     auto sheet_closer = [](xlsxioreadersheet sheet_reader) { xlsxioread_sheet_close(sheet_reader); };
 
@@ -458,22 +466,34 @@ const std::string& XLS_Sheet::GetSheetNameFromInside() const
         }
     }
     return extended_sheet_name_;
-}    // -----  end of method XLS_Sheet::GetSheetNameFromInside  -----
+} // -----  end of method XLS_Sheet::GetSheetNameFromInside  -----
 
-XLS_Sheet::iterator XLS_Sheet::begin() { return {content_, sheet_name_mc_}; }    // -----  end of method XLS_Sheet::begin  -----
+XLS_Sheet::iterator XLS_Sheet::begin()
+{
+    return {content_, sheet_name_mc_};
+} // -----  end of method XLS_Sheet::begin  -----
 
-XLS_Sheet::const_iterator XLS_Sheet::begin() const { return {content_, sheet_name_mc_}; }    // -----  end of method XLS_Sheet::begin  -----
+XLS_Sheet::const_iterator XLS_Sheet::begin() const
+{
+    return {content_, sheet_name_mc_};
+} // -----  end of method XLS_Sheet::begin  -----
 
-XLS_Sheet::iterator XLS_Sheet::end() { return {}; }    // -----  end of method XLS_Sheet::begin  -----
+XLS_Sheet::iterator XLS_Sheet::end()
+{
+    return {};
+} // -----  end of method XLS_Sheet::begin  -----
 
-XLS_Sheet::const_iterator XLS_Sheet::end() const { return {}; }    // -----  end of method XLS_Sheet::begin  -----
+XLS_Sheet::const_iterator XLS_Sheet::end() const
+{
+    return {};
+} // -----  end of method XLS_Sheet::begin  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  XLS_Sheet::row_itor
 //      Method:  XLS_Sheet::row_itor
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-XLS_Sheet::row_itor::row_itor(const std::vector<char>* content, const std::string& sheet_name)
+XLS_Sheet::row_itor::row_itor(const std::vector<char> *content, const std::string &sheet_name)
     : content_{content}, sheet_name_mc_{sheet_name}
 {
     if (content == nullptr || sheet_name.empty())
@@ -482,7 +502,7 @@ XLS_Sheet::row_itor::row_itor(const std::vector<char>* content, const std::strin
         sheet_name_mc_ = {};
         return;
     }
-    xlsxioread_ = xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0);
+    xlsxioread_ = xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0);
 
     if (xlsxioread_ == nullptr)
     {
@@ -503,28 +523,25 @@ XLS_Sheet::row_itor::row_itor(const std::vector<char>* content, const std::strin
 
     this->operator++();
 
-}    // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
+} // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
 
-XLS_Sheet::row_itor::row_itor(const row_itor& rhs) : row_itor(rhs.content_, rhs.sheet_name_mc_)
+XLS_Sheet::row_itor::row_itor(const row_itor &rhs) : row_itor(rhs.content_, rhs.sheet_name_mc_)
 {
     while (current_row_ != rhs.current_row_)
     {
         this->operator++();
     }
-}    // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
+} // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
 
-XLS_Sheet::row_itor::row_itor(row_itor&& rhs) noexcept
-    : content_{rhs.content_},
-      xlsxioread_{rhs.xlsxioread_},
-      current_sheet_{rhs.current_sheet_},
-      sheet_name_mc_{std::move(rhs.sheet_name_mc_)},
-      current_row_{std::move(rhs.current_row_)}
+XLS_Sheet::row_itor::row_itor(row_itor &&rhs) noexcept
+    : content_{rhs.content_}, xlsxioread_{rhs.xlsxioread_}, current_sheet_{rhs.current_sheet_},
+      sheet_name_mc_{std::move(rhs.sheet_name_mc_)}, current_row_{std::move(rhs.current_row_)}
 {
     rhs.content_ = nullptr;
     rhs.xlsxioread_ = nullptr;
     rhs.current_sheet_ = nullptr;
 
-}    // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
+} // -----  end of method XLS_Sheet::row_itor::row_itor  (constructor)  -----
 
 XLS_Sheet::row_itor::~row_itor()
 {
@@ -537,9 +554,9 @@ XLS_Sheet::row_itor::~row_itor()
         xlsxioread_close(xlsxioread_);
     }
 
-}    // -----  end of method XLS_Sheet::XLS_Sheet  (destructor)  -----
+} // -----  end of method XLS_Sheet::XLS_Sheet  (destructor)  -----
 
-XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(const row_itor& rhs)
+XLS_Sheet::row_itor &XLS_Sheet::row_itor::operator=(const row_itor &rhs)
 {
     if (&rhs != this)
     {
@@ -557,7 +574,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(const row_itor& rhs)
         content_ = rhs.content_;
         sheet_name_mc_ = rhs.sheet_name_mc_;
 
-        xlsxioread_ = xlsxioread_open_memory(const_cast<char*>(content_->data()), content_->size(), 0);
+        xlsxioread_ = xlsxioread_open_memory(const_cast<char *>(content_->data()), content_->size(), 0);
 
         if (xlsxioread_ == nullptr || sheet_name_mc_.empty())
         {
@@ -583,7 +600,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(const row_itor& rhs)
     return *this;
 }
 
-XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(row_itor&& rhs) noexcept
+XLS_Sheet::row_itor &XLS_Sheet::row_itor::operator=(row_itor &&rhs) noexcept
 {
     if (&rhs != this)
     {
@@ -611,7 +628,7 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator=(row_itor&& rhs) noexcept
     return *this;
 }
 
-XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++()
+XLS_Sheet::row_itor &XLS_Sheet::row_itor::operator++()
 {
     if (current_sheet_ == nullptr)
     {
@@ -634,15 +651,15 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++()
     current_row_.clear();
 
     // let's build this just once
-    auto cell_deleter = [](XLSXIOCHAR* cell)
-    {
-        if (cell) free(cell);
+    auto cell_deleter = [](XLSXIOCHAR *cell) {
+        if (cell)
+            free(cell);
     };
 
     while (true)
     {
-        std::unique_ptr<XLSXIOCHAR, std::function<void(XLSXIOCHAR*)>> next_cell = {xlsxioread_sheet_next_cell(current_sheet_),
-                                                                                   cell_deleter};
+        std::unique_ptr<XLSXIOCHAR, std::function<void(XLSXIOCHAR *)>> next_cell = {
+            xlsxioread_sheet_next_cell(current_sheet_), cell_deleter};
         if (!next_cell)
         {
             break;
@@ -652,4 +669,4 @@ XLS_Sheet::row_itor& XLS_Sheet::row_itor::operator++()
     }
     current_row_ += '\n';
     return *this;
-}    // -----  end of method XLS_Sheet::row_itor::operator++  -----
+} // -----  end of method XLS_Sheet::row_itor::operator++  -----

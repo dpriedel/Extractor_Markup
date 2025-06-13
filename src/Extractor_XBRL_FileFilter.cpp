@@ -84,20 +84,24 @@ const auto GAAP_LEN{US_GAAP_NS.size()};
 const std::string US_GAAP_PFX{"us-gaap_"};
 const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 
-decltype(auto) MONTH_NAMES = std::experimental::make_array("", "January", "February", "March", "April", "May", "June", "July", "August",
-                                                           "September", "October", "November", "December");
+decltype(auto) MONTH_NAMES =
+    std::experimental::make_array("", "January", "February", "March", "April", "May", "June", "July", "August",
+                                  "September", "October", "November", "December");
 
 const std::string::size_type START_WITH{1000000};
 
-const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t(?:\[[^\t]+?\]\t)?\$? *([(-]? *?[.,0-9]+[)]?)[^\t]*\t)***"};
-const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+const boost::regex regex_value{
+    R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t(?:\[[^\t]+?\]\t)?\$? *([(-]? *?[.,0-9]+[)]?)[^\t]*\t)***"};
+const boost::regex regex_per_share{R"***(per.*?share)***",
+                                   boost::regex_constants::normal | boost::regex_constants::icase};
 const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
                                       boost::regex_constants::normal | boost::regex_constants::icase};
 
 // special case utility function to wrap map lookup for field names
 // returns a default value if not found OR value is empty.
 
-const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::string& key, const std::string& default_result)
+const std::string &FindOrDefault(const EM::Extractor_Labels &labels, const std::string &key,
+                                 const std::string &default_result)
 {
     if (labels.contains(key))
     {
@@ -114,12 +118,14 @@ const std::string& FindOrDefault(const EM::Extractor_Labels& labels, const std::
 //         Name:  FindAndExtractXLSContent
 //  Description:  find needed XLS content
 // =====================================================================================
-XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const& document_sections, const EM::FileName& document_name)
+XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const &document_sections,
+                                                 const EM::FileName &document_name)
 {
     static const boost::regex regex_finance_statements_bal{R"***(balance\s+sheet|financial position)***"};
     static const boost::regex regex_finance_statements_ops{
         R"***((?:(?:statement|statements)\s+?of.*?(?:oper|loss|income|earning|expense))|(?:income|loss|earning statement))***"};
-    static const boost::regex regex_finance_statements_cash{R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
+    static const boost::regex regex_finance_statements_cash{
+        R"***(((?:ment|ments)\s+?of.*?(?:cash\s*flow))|cash flows? state)***"};
 
     XLS_FinancialStatements financial_statements;
 
@@ -130,36 +136,30 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const& 
 
     financial_statements.outstanding_shares_ = ExtractXLSSharesOutstanding(*xls_file.begin());
 
-    auto bal_sheets = rng::find_if(xls_file,
-                                   [](const auto& x)
-                                   {
-                                       const auto& name = x.GetSheetNameFromInside();
-                                       return boost::regex_search(name, regex_finance_statements_bal);
-                                   });
+    auto bal_sheets = rng::find_if(xls_file, [](const auto &x) {
+        const auto &name = x.GetSheetNameFromInside();
+        return boost::regex_search(name, regex_finance_statements_bal);
+    });
     if (bal_sheets != rng::end(xls_file))
     {
         financial_statements.balance_sheet_.found_sheet_ = true;
         financial_statements.balance_sheet_.values_ = CollectXLSValues(*bal_sheets);
     }
 
-    auto stmt_of_ops = rng::find_if(xls_file,
-                                    [](const auto& x)
-                                    {
-                                        const auto& name = x.GetSheetNameFromInside();
-                                        return boost::regex_search(name, regex_finance_statements_ops);
-                                    });
+    auto stmt_of_ops = rng::find_if(xls_file, [](const auto &x) {
+        const auto &name = x.GetSheetNameFromInside();
+        return boost::regex_search(name, regex_finance_statements_ops);
+    });
     if (stmt_of_ops != rng::end(xls_file))
     {
         financial_statements.statement_of_operations_.found_sheet_ = true;
         financial_statements.statement_of_operations_.values_ = CollectXLSValues(*stmt_of_ops);
     }
 
-    auto cash_flows = rng::find_if(xls_file,
-                                   [](const auto& x)
-                                   {
-                                       const auto& name = x.GetSheetNameFromInside();
-                                       return boost::regex_search(name, regex_finance_statements_cash);
-                                   });
+    auto cash_flows = rng::find_if(xls_file, [](const auto &x) {
+        const auto &name = x.GetSheetNameFromInside();
+        return boost::regex_search(name, regex_finance_statements_cash);
+    });
     if (cash_flows != rng::end(xls_file))
     {
         financial_statements.cash_flows_.found_sheet_ = true;
@@ -173,7 +173,7 @@ XLS_FinancialStatements FindAndExtractXLSContent(EM::DocumentSectionList const& 
 //         Name:  ExtractXLSFilingData
 //  Description:  collect values from spreadsheet
 // =====================================================================================
-EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet)
+EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet &sheet)
 {
     // we're looking for lable/value pairs in the first 2 cells of each row.
     // value must be numeric.
@@ -187,7 +187,7 @@ EM::XLS_Values ExtractXLSFilingData(const XLS_Sheet& sheet)
 //         Name:  ExtractXLSSharesOutstanding
 //  Description:  find shares outstanding in worksheet
 // =====================================================================================
-int64_t ExtractXLSSharesOutstanding(const XLS_Sheet& xls_sheet)
+int64_t ExtractXLSSharesOutstanding(const XLS_Sheet &xls_sheet)
 {
     const std::string nbr_of_shares = R"***(\t(\b[1-9](?:[0-9.]{2,})\b)\t)***";
     const boost::regex::flag_type my_flags = {boost::regex_constants::normal | boost::regex_constants::icase};
@@ -253,9 +253,11 @@ int64_t ExtractXLSSharesOutstanding(const XLS_Sheet& xls_sheet)
                 shares.erase(pos, 1);
             }
         }
-        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding); ec != std::errc())
+        if (auto [p, ec] = std::from_chars(shares.data(), shares.data() + shares.size(), shares_outstanding);
+            ec != std::errc())
         {
-            throw ExtractorException(catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
+            throw ExtractorException(
+                catenate("Problem converting shares outstanding: ", std::make_error_code(ec).message(), '\n'));
         }
     }
     else
@@ -265,9 +267,9 @@ int64_t ExtractXLSSharesOutstanding(const XLS_Sheet& xls_sheet)
 
     spdlog::debug(catenate("Shares outstanding: ", shares_outstanding));
     return shares_outstanding;
-}    // -----  end of function ExtractXLSSharesOutstanding  -----
+} // -----  end of function ExtractXLSSharesOutstanding  -----
 
-EM::XLS_Values CollectXLSValues(const XLS_Sheet& sheet)
+EM::XLS_Values CollectXLSValues(const XLS_Sheet &sheet)
 {
     // for now, we're doing just a quick and dirty...
     // look for a label followed by a number in the same line
@@ -295,33 +297,30 @@ EM::XLS_Values CollectXLSValues(const XLS_Sheet& sheet)
 
     // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
 
-    EM::XLS_Values values =
-        sheet | rng::views::drop(multiplier_skips)    // first row contains sheet name and multiplier
-        | rng::views::filter(
-              [&match_values, &digits](const auto& a_row)
-              {
-                  return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) &&
-                         rng::any_of(match_values[2].str(), [&digits](char c) { return digits.find(c) != std::string::npos; });
-              }) |
-        rng::views::transform([&match_values](const auto& x) { return std::pair(match_values[1].str(), match_values[2].str()); }) |
-        rng::views::cache1 | rng::to<EM::XLS_Values>();
+    EM::XLS_Values values = sheet | rng::views::drop(multiplier_skips) // first row contains sheet name and multiplier
+                            | rng::views::filter([&match_values, &digits](const auto &a_row) {
+                                  return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) &&
+                                         rng::any_of(match_values[2].str(),
+                                                     [&digits](char c) { return digits.find(c) != std::string::npos; });
+                              }) |
+                            rng::views::transform([&match_values](const auto &x) {
+                                return std::pair(match_values[1].str(), match_values[2].str());
+                            }) |
+                            rng::views::cache1 | rng::to<EM::XLS_Values>();
 
     // now, for all values except 'per share', apply the multiplier.
 
-    rng::for_each(values, [&multiplier](auto& x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier.first); });
+    rng::for_each(values, [&multiplier](auto &x) { x.second = ApplyMultiplierAndCleanUpValue(x, multiplier.first); });
 
     // lastly, clean up the labels a little.
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
-    values = std::move(values) |
-             rng::actions::transform(
-                 [](auto& x)
-                 {
-                     x.first = CleanLabel(x.first.get());
-                     return x;
-                 }) |
-             rng::actions::remove_if([](auto& x) { return x.first.get().empty(); });
+    values = std::move(values) | rng::actions::transform([](auto &x) {
+                 x.first = CleanLabel(x.first.get());
+                 return x;
+             }) |
+             rng::actions::remove_if([](auto &x) { return x.first.get().empty(); });
 
     return values;
 } /* -----  end of method CollectStatementValues  ----- */
@@ -331,7 +330,7 @@ EM::XLS_Values CollectXLSValues(const XLS_Sheet& sheet)
 //  Description:
 // =====================================================================================
 
-std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry& value, const std::string& multiplier)
+std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry &value, const std::string &multiplier)
 {
     // if there is a multiplier, then apply it.
     // allow for decimal values.
@@ -375,10 +374,10 @@ std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry& value, const std
     }
     if (result.find('.') == std::string::npos)
     {
-        result += ".0";    // make everything look like a float
+        result += ".0"; // make everything look like a float
     }
     return result;
-}    // -----  end of function ApplyMultiplierAndCleanUpValue  -----
+} // -----  end of function ApplyMultiplierAndCleanUpValue  -----
 
 // ===  FUNCTION  ======================================================================
 //         Name:  ExtractMultiplier
@@ -400,11 +399,12 @@ std::pair<std::string, int64_t> ExtractMultiplier(std::string row)
         return {"000000000", 1000000000};
     }
     return {"", 1};
-}    // -----  end of function ExtractMultiplier  -----
+} // -----  end of function ExtractMultiplier  -----
 
-EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
+EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList &document_sections,
+                                       const EM::FileName &document_name)
 {
-    for (const auto& document : document_sections)
+    for (const auto &document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
@@ -416,9 +416,9 @@ EM::XBRLContent LocateInstanceDocument(const EM::DocumentSectionList& document_s
     return EM::XBRLContent{};
 }
 
-EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
+EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList &document_sections, const EM::FileName &document_name)
 {
-    for (const auto& document : document_sections)
+    for (const auto &document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
@@ -434,9 +434,9 @@ EM::XBRLContent LocateLabelDocument(const EM::DocumentSectionList& document_sect
 //         Name:  LocateXLSDocument
 //  Description:  find FinancialReport document if it exists
 // =====================================================================================
-EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList& document_sections, const EM::FileName& document_name)
+EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList &document_sections, const EM::FileName &document_name)
 {
-    for (const auto& document : document_sections)
+    for (const auto &document : document_sections)
     {
         auto file_name = FindFileName(document, document_name);
         if (file_name.get().extension() == ".xlsx")
@@ -466,11 +466,11 @@ EM::XLSContent LocateXLSDocument(const EM::DocumentSectionList& document_section
         }
     }
     return {};
-}    // -----  end of function LocateXLSDocument  -----
+} // -----  end of function LocateXLSDocument  -----
 
-EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
+EM::FilingData ExtractFilingData(const pugi::xml_document &instance_xml)
 {
-    auto top_level_node = instance_xml.first_child();    //  should be <xbrl> node.
+    auto top_level_node = instance_xml.first_child(); //  should be <xbrl> node.
 
     // next, some filing specific data from the XBRL portion of our document.
 
@@ -482,7 +482,8 @@ EM::FilingData ExtractFilingData(const pugi::xml_document& instance_xml)
 
     auto context_ID = ConvertPeriodEndDateToContextName(period_end_date);
 
-    return EM::FilingData{trading_symbol, period_end_date, context_ID, shares_outstanding.empty() ? "-1" : std::string{shares_outstanding}};
+    return EM::FilingData{trading_symbol, period_end_date, context_ID,
+                          shares_outstanding.empty() ? "-1" : std::string{shares_outstanding}};
 }
 
 // ===  FUNCTION  ======================================================================
@@ -495,7 +496,8 @@ std::vector<char> ExtractXLSData(EM::XLSContent xls_content)
     // and read the decoder's std::out into a charater vector.
     // No temp files involved.
 
-    redi::pstream out_in("uudecode -o /dev/stdout ", redi::pstreams::pstdin | redi::pstreams::pstdout | redi::pstreams::pstderr);
+    redi::pstream out_in("uudecode -o /dev/stdout ",
+                         redi::pstreams::pstdin | redi::pstreams::pstdout | redi::pstreams::pstderr);
     BOOST_ASSERT_MSG(out_in.is_open(), "Failed to open subprocess.");
 
     // we use a buffer and the readsome function so that we will get any
@@ -562,7 +564,8 @@ std::vector<char> ExtractXLSData(EM::XLSContent xls_content)
             if (out_in.eof())
             {
                 finished[1] = true;
-                if (!finished[0]) out_in.clear();
+                if (!finished[0])
+                    out_in.clear();
             }
         }
         if (!finished[0])
@@ -574,7 +577,8 @@ std::vector<char> ExtractXLSData(EM::XLSContent xls_content)
             if (out_in.eof())
             {
                 finished[0] = true;
-                if (!finished[1]) out_in.clear();
+                if (!finished[1])
+                    out_in.clear();
             }
         }
     }
@@ -583,7 +587,7 @@ std::vector<char> ExtractXLSData(EM::XLSContent xls_content)
 
     BOOST_ASSERT_MSG(return_code == 0, catenate("Problem decoding file: ", error_msg).c_str());
     return result;
-}    // -----  end of function ExtractXLSData  -----
+} // -----  end of function ExtractXLSData  -----
 
 std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
 
@@ -600,11 +604,11 @@ std::string ConvertPeriodEndDateToContextName(EM::sv period_end_date)
     return result;
 }
 
-std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_xml)
+std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document &instance_xml)
 {
     std::vector<EM::GAAP_Data> result;
 
-    auto top_level_node = instance_xml.first_child();    //  should be <xbrl> node.
+    auto top_level_node = instance_xml.first_child(); //  should be <xbrl> node.
 
     for (auto second_level_node : top_level_node)
     {
@@ -625,9 +629,10 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 
         // collect our data: name, context, units, decimals, value.
 
-        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_node.name() + GAAP_LEN), second_level_node.attribute("contextRef").value(),
-                             second_level_node.attribute("unitRef").value(), second_level_node.attribute("decimals").value(),
-                             second_level_node.child_value()};
+        EM::GAAP_Data fields{US_GAAP_PFX + (second_level_node.name() + GAAP_LEN),
+                             second_level_node.attribute("contextRef").value(),
+                             second_level_node.attribute("unitRef").value(),
+                             second_level_node.attribute("decimals").value(), second_level_node.child_value()};
 
         if (!(fields.value.empty() || fields.units.empty()))
         {
@@ -659,7 +664,7 @@ std::vector<EM::GAAP_Data> ExtractGAAPFields(const pugi::xml_document& instance_
 //  - retrieve the element value.
 //
 
-EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
+EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document &labels_xml)
 {
     auto top_level_node = labels_xml.first_child();
 
@@ -704,10 +709,11 @@ EM::Extractor_Labels ExtractFieldLabels(const pugi::xml_document& labels_xml)
     auto result = AssembleLookupTable(labels, locs, arcs);
 
     return result;
-}    // -----  end of function ExtractFieldLabels2  -----
+} // -----  end of function ExtractFieldLabels2  -----
 
-std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements(const pugi::xml_node& top_level_node, const std::string& label_link_name,
-                                                         const std::string& label_node_name)
+std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements(const pugi::xml_node &top_level_node,
+                                                         const std::string &label_link_name,
+                                                         const std::string &label_node_name)
 {
     std::vector<std::pair<EM::sv, EM::sv>> labels;
 
@@ -727,8 +733,8 @@ std::vector<std::pair<EM::sv, EM::sv>> FindLabelElements(const pugi::xml_node& t
     return labels;
 } /* -----  end of function FindLabelElements  ----- */
 
-std::map<EM::sv, EM::sv> FindLocElements(const pugi::xml_node& top_level_node, const std::string& label_link_name,
-                                         const std::string& loc_node_name)
+std::map<EM::sv, EM::sv> FindLocElements(const pugi::xml_node &top_level_node, const std::string &label_link_name,
+                                         const std::string &loc_node_name)
 {
     std::map<EM::sv, EM::sv> locs;
 
@@ -755,8 +761,8 @@ std::map<EM::sv, EM::sv> FindLocElements(const pugi::xml_node& top_level_node, c
     return locs;
 } /* -----  end of function FindLocElements  ----- */
 
-std::map<EM::sv, EM::sv> FindLabelArcElements(const pugi::xml_node& top_level_node, const std::string& label_link_name,
-                                              const std::string& arc_node_name)
+std::map<EM::sv, EM::sv> FindLabelArcElements(const pugi::xml_node &top_level_node, const std::string &label_link_name,
+                                              const std::string &arc_node_name)
 {
     std::map<EM::sv, EM::sv> arcs;
 
@@ -777,8 +783,8 @@ std::map<EM::sv, EM::sv> FindLabelArcElements(const pugi::xml_node& top_level_no
     return arcs;
 } /* -----  end of function FindLabelArcElements  ----- */
 
-EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>>& labels, const std::map<EM::sv, EM::sv>& locs,
-                                         const std::map<EM::sv, EM::sv>& arcs)
+EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM::sv>> &labels,
+                                         const std::map<EM::sv, EM::sv> &locs, const std::map<EM::sv, EM::sv> &arcs)
 {
     EM::Extractor_Labels result;
 
@@ -790,7 +796,8 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
             // stand-alone link
             continue;
         }
-        auto value = std::find_if(labels.begin(), labels.end(), [&link_to](const auto& e) { return e.first == link_to->second; });
+        auto value = std::find_if(labels.begin(), labels.end(),
+                                  [&link_to](const auto &e) { return e.first == link_to->second; });
         if (value == labels.end())
         {
             spdlog::debug(catenate("missing label: ", label).c_str());
@@ -801,11 +808,11 @@ EM::Extractor_Labels AssembleLookupTable(const std::vector<std::pair<EM::sv, EM:
     return result;
 } /* -----  end of function AssembleLookupTable  ----- */
 
-EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_xml)
+EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document &instance_xml)
 {
     EM::ContextPeriod result;
 
-    auto top_level_node = instance_xml.first_child();    //  should be <xbrl> node.
+    auto top_level_node = instance_xml.first_child(); //  should be <xbrl> node.
 
     // we need to look for possible namespace here.
     // some files use a namespace here but not elsewhere so we need to try a couple of thigs.
@@ -844,8 +851,8 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
     {
         // need to pull out begin/end values.
 
-        const char* start_ptr = nullptr;
-        const char* end_ptr = nullptr;
+        const char *start_ptr = nullptr;
+        const char *end_ptr = nullptr;
 
         auto period = second_level_node.child(period_label.c_str());
 
@@ -862,11 +869,12 @@ EM::ContextPeriod ExtractContextDefinitions(const pugi::xml_document& instance_x
             start_ptr = begin.child_value();
             end_ptr = end.child_value();
         }
-        if (auto [it, success] =
-                result.try_emplace(second_level_node.attribute("id").value(), EM::Extractor_TimePeriod{start_ptr, end_ptr});
+        if (auto [it, success] = result.try_emplace(second_level_node.attribute("id").value(),
+                                                    EM::Extractor_TimePeriod{start_ptr, end_ptr});
             !success)
         {
-            spdlog::debug(catenate("Can't insert value for label: ", second_level_node.attribute("id").value()).c_str());
+            spdlog::debug(
+                catenate("Can't insert value for label: ", second_level_node.attribute("id").value()).c_str());
         }
     }
 
@@ -891,10 +899,12 @@ EM::XBRLContent TrimExcessXML(EM::DocumentSection document)
 pugi::xml_document ParseXMLContent(EM::XBRLContent document)
 {
     pugi::xml_document doc;
-    auto result = doc.load_buffer(document.get().data(), document.get().size(), pugi::parse_default | pugi::parse_wnorm_attribute);
+    auto result = doc.load_buffer(document.get().data(), document.get().size(),
+                                  pugi::parse_default | pugi::parse_wnorm_attribute);
     if (!result)
     {
-        throw XBRLException{catenate("Error description: ", result.description(), "\nError offset: ", result.offset, '\n')};
+        throw XBRLException{
+            catenate("Error description: ", result.description(), "\nError offset: ", result.offset, '\n')};
     }
 
     return doc;
@@ -906,9 +916,9 @@ pugi::xml_document ParseXMLContent(EM::XBRLContent document)
  *  Description:
  * =====================================================================================
  */
-bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData& filing_fields,
-                  const std::vector<EM::GAAP_Data>& gaap_fields, const EM::Extractor_Labels& label_fields,
-                  const EM::ContextPeriod& context_fields, const std::string& schema_name, bool replace_DB_content)
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FilingData &filing_fields,
+                  const std::vector<EM::GAAP_Data> &gaap_fields, const EM::Extractor_Labels &label_fields,
+                  const EM::ContextPeriod &context_fields, const std::string &schema_name, bool replace_DB_content)
 {
     auto form_type = SEC_fields.at("form_type");
     EM::sv base_form_type{form_type};
@@ -932,10 +942,11 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     // since that may have changed (especially if we are processing an
     // amended form)
 
-    auto save_original_data_cmd = fmt::format(
-        "SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = {0} AND form_type = {1} AND period_ending = {2}",
-        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(filing_fields.period_end_date), schema_name);
+    auto save_original_data_cmd =
+        fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
+                    " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                    trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                    trxn.quote(filing_fields.period_end_date), schema_name);
     auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
@@ -969,7 +980,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
     }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d;    // need to start somewhere
+    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d; // need to start somewhere
 
     if (!amended_date_filed.empty())
     {
@@ -989,10 +1000,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format(
-            "DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+                                         " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                         trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                         trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
         trxn.exec(filing_ID_cmd);
     }
 
@@ -1003,24 +1014,26 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
         " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, '{10}', {12}, {13}) RETURNING filing_id",
         trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
         original_file_name.empty() ? "NULL" : trxn.quote(original_file_name),
-        filing_fields.trading_symbol.empty() ? "NULL" : trxn.quote(filing_fields.trading_symbol), trxn.quote(SEC_fields.at("sic")),
-        trxn.quote(base_form_type), original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
-        trxn.quote(filing_fields.period_end_date), trxn.quote(filing_fields.period_context_ID), filing_fields.shares_outstanding, "XBRL",
-        schema_name, amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
+        filing_fields.trading_symbol.empty() ? "NULL" : trxn.quote(filing_fields.trading_symbol),
+        trxn.quote(SEC_fields.at("sic")), trxn.quote(base_form_type),
+        original_date_filed.empty() ? "NULL" : trxn.quote(original_date_filed),
+        trxn.quote(filing_fields.period_end_date), trxn.quote(filing_fields.period_context_ID),
+        filing_fields.shares_outstanding, "XBRL", schema_name,
+        amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
         amended_date_filed.empty() ? "NULL" : trxn.quote(amended_date_filed));
     auto filing_ID = trxn.query_value<std::string>(filing_ID_cmd);
 
     // now, the goal of all this...save all the financial values for the given time period.
 
     int counter = 0;
-    auto inserter1{pqxx::stream_to::table(
-        trxn, {schema_name, "sec_xbrl_data"},
-        {"filing_id", "xbrl_label", "label", "value", "context_id", "period_begin", "period_end", "units", "decimals"})};
+    auto inserter1{pqxx::stream_to::table(trxn, {schema_name, "sec_xbrl_data"},
+                                          {"filing_id", "xbrl_label", "label", "value", "context_id", "period_begin",
+                                           "period_end", "units", "decimals"})};
     //    pqxx::stream_to inserter1{trxn, schema_name + ".sec_xbrl_data",
     //        std::vector<std::string>{"filing_ID", "xbrl_label", "label", "value", "context_ID", "period_begin",
     //            "period_end", "units", "decimals"}};
 
-    for (const auto& [label, context_ID, units, decimals, value] : gaap_fields)
+    for (const auto &[label, context_ID, units, decimals, value] : gaap_fields)
     {
         ++counter;
         inserter1.write_values(filing_ID, label, FindOrDefault(label_fields, label, "Missing Value"), value, context_ID,
@@ -1038,8 +1051,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields& SEC_fields, const EM::FilingData&
  *  Description:
  * =====================================================================================
  */
-bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_FinancialStatements& financial_statements,
-                      const std::string& schema_name, bool replace_DB_content)
+bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_FinancialStatements &financial_statements,
+                      const std::string &schema_name, bool replace_DB_content)
 {
     auto form_type = SEC_fields.at("form_type");
     EM::sv base_form_type{form_type};
@@ -1063,10 +1076,11 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     // since that may have changed (especially if we are processing an
     // amended form)
 
-    auto save_original_data_cmd = fmt::format(
-        "SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = {0} AND form_type = {1} AND period_ending = {2}",
-        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+    auto save_original_data_cmd =
+        fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
+                    " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                    trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                    trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
     auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
@@ -1099,10 +1113,10 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
         original_file_name = SEC_fields.at("file_name");
     }
 
-    //    std::cout << catenate("1 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ",
-    //    amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
+    //    std::cout << catenate("1 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, "
+    //    d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d;    // need to start somewhere
+    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d; // need to start somewhere
 
     if (!amended_date_filed.empty())
     {
@@ -1122,15 +1136,15 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format(
-            "DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+                                         " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                         trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                         trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
         trxn.exec(filing_ID_cmd);
     }
 
-    //    std::cout << catenate("2 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, " d: ",
-    //    amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
+    //    std::cout << catenate("2 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, "
+    //    d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
     auto filing_ID_cmd = fmt::format(
         "INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
@@ -1154,7 +1168,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     //    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
-    for (const auto& [label, value] : financial_statements.balance_sheet_.values_)
+    for (const auto &[label, value] : financial_statements.balance_sheet_.values_)
     {
         ++counter;
         inserter1.write_values(filing_ID, label.get(), value.get());
@@ -1162,11 +1176,12 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
 
     inserter1.complete();
 
-    auto inserter2{pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
+    auto inserter2{
+        pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
     //    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
-    for (const auto& [label, value] : financial_statements.statement_of_operations_.values_)
+    for (const auto &[label, value] : financial_statements.statement_of_operations_.values_)
     {
         ++counter;
         inserter2.write_values(filing_ID, label.get(), value.get());
@@ -1178,7 +1193,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields& SEC_fields, const XLS_Financi
     //    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
-    for (const auto& [label, value] : financial_statements.cash_flows_.values_)
+    for (const auto &[label, value] : financial_statements.cash_flows_.values_)
     {
         ++counter;
         inserter3.write_values(filing_ID, label.get(), value.get());

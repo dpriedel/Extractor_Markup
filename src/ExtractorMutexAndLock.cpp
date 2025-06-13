@@ -18,15 +18,15 @@
 
 #include <thread>
 
-bool ExtractMutex::AddEntry(const std::string& new_entry)
+bool ExtractMutex::AddEntry(const std::string &new_entry)
 {
     std::lock_guard<std::mutex> lk{m_};
     const auto [it, success] = active_forms_.insert(new_entry);
 
     return success;
-}    // -----  end of method ExtractMutex::AddEntry  -----
+} // -----  end of method ExtractMutex::AddEntry  -----
 
-void ExtractMutex::RemoveEntry(const std::string& entry)
+void ExtractMutex::RemoveEntry(const std::string &entry)
 {
     std::lock_guard<std::mutex> lk{m_};
 
@@ -37,14 +37,14 @@ void ExtractMutex::RemoveEntry(const std::string& entry)
     {
         active_forms_.erase(pos);
     }
-}    // -----  end of method ExtractMutex::RemoveEntry  -----
+} // -----  end of method ExtractMutex::RemoveEntry  -----
 
 //--------------------------------------------------------------------------------------
 //       Class:  ExtractLock
 //      Method:  ExtractLock
 // Description:  constructor
 //--------------------------------------------------------------------------------------
-ExtractLock::ExtractLock(ExtractMutex* extract_list, const std::string& locking_id)
+ExtractLock::ExtractLock(ExtractMutex *extract_list, const std::string &locking_id)
     : extract_list_{extract_list}, locking_id_{locking_id}, lock_is_active_{false}
 {
     // loop forever while trying to acquire our lock
@@ -59,7 +59,7 @@ ExtractLock::ExtractLock(ExtractMutex* extract_list, const std::string& locking_
             std::this_thread::sleep_for(std::chrono::milliseconds{20});
         }
     }
-}    // -----  end of method ExtractLock::ExtractLock  (constructor)  -----
+} // -----  end of method ExtractLock::ExtractLock  (constructor)  -----
 
 ExtractLock::~ExtractLock()
 {
@@ -67,4 +67,4 @@ ExtractLock::~ExtractLock()
     {
         extract_list_->RemoveEntry(locking_id_);
     }
-}    // -----  end of method ExtractLock::~ExtractLock  -----
+} // -----  end of method ExtractLock::~ExtractLock  -----

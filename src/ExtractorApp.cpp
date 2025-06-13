@@ -104,14 +104,14 @@ int wait_for_any(std::vector<std::future<T>> &vf, int continue_here, std::chrono
             }
             switch (vf[i].wait_for(std::chrono::seconds{0}))
             {
-                case std::future_status::ready:
-                    return i;
+            case std::future_status::ready:
+                return i;
 
-                case std::future_status::timeout:
-                    break;
+            case std::future_status::timeout:
+                break;
 
-                case std::future_status::deferred:
-                    throw std::runtime_error("wait_for_all(): deferred future");
+            case std::future_status::deferred:
+                throw std::runtime_error("wait_for_all(): deferred future");
             }
         }
         continue_here = 0;
@@ -134,8 +134,9 @@ int wait_for_any(std::vector<std::future<T>> &vf, int continue_here, std::chrono
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractorApp::ExtractorApp(int argc, char *argv[])
-    : mArgc{argc}, mArgv{argv} {} /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
+ExtractorApp::ExtractorApp(int argc, char *argv[]) : mArgc{argc}, mArgv{argv}
+{
+} /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -144,8 +145,9 @@ ExtractorApp::ExtractorApp(int argc, char *argv[])
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractorApp::ExtractorApp(const std::vector<std::string> &tokens)
-    : tokens_{tokens} {} /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
+ExtractorApp::ExtractorApp(const std::vector<std::string> &tokens) : tokens_{tokens}
+{
+} /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
 void ExtractorApp::ConfigureLogging()
 {
@@ -175,8 +177,10 @@ void ExtractorApp::ConfigureLogging()
     // we are running before 'CheckArgs' so we need to do a little editiing
     // ourselves.
 
-    const std::map<std::string, spdlog::level::level_enum> levels{
-        {"none", spdlog::level::off}, {"error", spdlog::level::err}, {"information", spdlog::level::info}, {"debug", spdlog::level::debug}};
+    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
+                                                                  {"error", spdlog::level::err},
+                                                                  {"information", spdlog::level::info},
+                                                                  {"debug", spdlog::level::debug}};
 
     auto which_level = levels.find(logging_level_);
     if (which_level != levels.end())
@@ -220,47 +224,52 @@ void ExtractorApp::SetupProgramOptions()
 {
     mNewOptions = std::make_unique<po::options_description>();
 
-    mNewOptions->add_options()("help,h", "produce help message")("begin-date", po::value<std::string>(&this->start_date_),
-                                                                 "retrieve files with dates greater than or equal to")(
+    mNewOptions->add_options()("help,h", "produce help message")(
+        "begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")(
         "end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")(
         "form-dir", po::value<fs::path>(&local_form_file_directory_i_), "directory of form files to be processed")
         //		("SS-form-dir",
         // po::value<fs::path>(&SS_export_directory_i_),	"directory to
         // write Excel data files to.")
-        ("HTML-forms-to-dir", po::value<fs::path>(&HTML_export_target_directory_i_), "directory to write exported HTML data files to.")(
-            "HTML-forms-from-dir", po::value<fs::path>(&HTML_export_source_directory_i_),
-            "directory to read exported HTML data files from.")("file,f", po::value<fs::path>(&single_file_to_process_i_),
-                                                                "single file to be processed.")(
+        ("HTML-forms-to-dir", po::value<fs::path>(&HTML_export_target_directory_i_),
+         "directory to write exported HTML data files to.")("HTML-forms-from-dir",
+                                                            po::value<fs::path>(&HTML_export_source_directory_i_),
+                                                            "directory to read exported HTML data files from.")(
+            "file,f", po::value<fs::path>(&single_file_to_process_i_), "single file to be processed.")(
             "replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true),
             "replace all DB content for each file. Default is 'false'")(
             "export-XLS-data", po::value<bool>(&export_XLS_files_)->default_value(false)->implicit_value(true),
             "export Excel data if any. Default is 'false'")(
             "export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true),
             "export problem HTML data if any. Default is 'false'")(
-            "UpdateSharesOutstanding", po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true),
-            "Update Shares outstanding value in DB.")("list-file", po::value<fs::path>(&list_of_files_to_process_path_i_),
+            "UpdateSharesOutstanding",
+            po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true),
+            "Update Shares outstanding value in DB.")("list-file",
+                                                      po::value<fs::path>(&list_of_files_to_process_path_i_),
                                                       "path to file with list of files to process.")(
             "log-level,l", po::value<std::string>(&logging_level_),
             "logging level. Must be 'none|error|information|debug'. Default is "
-            "'information'.")("mode,m", po::value<std::string>(&data_source_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")(
+            "'information'.")("mode,m", po::value<std::string>(&data_source_)->required(),
+                              "Must be either 'BOTH' or 'HTML' or 'XBRL'.")(
             "DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")(
             "form", po::value<std::string>(&form_)->default_value("10-Q"),
             "name of form type we are processing. May be comma-delimited list. "
             "Default is '10-Q'.")("CIK", po::value<std::string>(&CIK_),
                                   "Zero-padded-on-left 10 digit CIK[s] we are processing. May be "
-                                  "comma-delimited list. Default is all.")("SIC", po::value<std::string>(&SIC_),
-                                                                           "SIC we are processing. May be comma-delimited list. Default is "
-                                                                           "all.")("log-path", po::value<fs::path>(&log_file_path_name_i_),
-                                                                                   "path name for log file.")(
+                                  "comma-delimited list. Default is all.")(
+            "SIC", po::value<std::string>(&SIC_),
+            "SIC we are processing. May be comma-delimited list. Default is "
+            "all.")("log-path", po::value<fs::path>(&log_file_path_name_i_), "path name for log file.")(
             "max-files", po::value<int>(&max_forms_to_process_)->default_value(-1),
             "Maximun number of forms to process -- mainly for testing. Default "
             "of -1 means no limit.")("concurrent,k", po::value<int>(&max_at_a_time_)->default_value(-1),
                                      "Maximun number of concurrent processes. Default of -1 -- system "
                                      "defined.")(
             "filename-has-form", po::value<bool>(&filename_has_form_)->default_value(false)->implicit_value(true),
-            "form number is in file path. Default is 'false'")("resume-at", po::value<std::string>(&resume_at_this_filename_),
-                                                               "find this file name in list of files to process and resume "
-                                                               "processing there.");
+            "form number is in file path. Default is 'false'")(
+            "resume-at", po::value<std::string>(&resume_at_this_filename_),
+            "find this file name in list of files to process and resume "
+            "processing there.");
 } /* -----  end of method ExtractorApp::SetupProgramOptions  ----- */
 
 void ExtractorApp::ParseProgramOptions(const std::vector<std::string> &tokens)
@@ -335,9 +344,8 @@ bool ExtractorApp::CheckArgs()
 
     if (start_date_.empty() && stop_date_.empty())
     {
-        spdlog::info(
-            "Neither begin date nor end date specified. No date range "
-            "filtering to be done.");
+        spdlog::info("Neither begin date nor end date specified. No date range "
+                     "filtering to be done.");
     }
 
     if (!data_source_.empty())
@@ -421,8 +429,9 @@ bool ExtractorApp::CheckArgs()
         BuildListOfFilesToProcess();
     }
 
-    BOOST_ASSERT_MSG(NotAllEmpty(single_file_to_process_.get(), local_form_file_directory_.get(), list_of_files_to_process_),
-                     "No files to process found.");
+    BOOST_ASSERT_MSG(
+        NotAllEmpty(single_file_to_process_.get(), local_form_file_directory_.get(), list_of_files_to_process_),
+        "No files to process found.");
 
     BuildFilterList();
 
@@ -441,7 +450,8 @@ bool ExtractorApp::CheckArgs()
     {
         BOOST_ASSERT_MSG(!HTML_export_source_directory_.get().empty(), "Must specify HTML export source directory.");
         BOOST_ASSERT_MSG(!HTML_export_target_directory_.get().empty(), "Must specify HTML export target directory.");
-        html_hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
+        html_hierarchy_converter_ =
+            ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
     }
 
     if (update_shares_outstanding_)
@@ -450,11 +460,11 @@ bool ExtractorApp::CheckArgs()
     }
 
     return true;
-}    // -----  end of method ExtractorApp::CheckArgs  -----
+} // -----  end of method ExtractorApp::CheckArgs  -----
 
 void ExtractorApp::BuildListOfFilesToProcess()
 {
-    list_of_files_to_process_.clear();    //  in case of reprocessing.
+    list_of_files_to_process_.clear(); //  in case of reprocessing.
 
     file_list_data_ = LoadDataFileForUse(list_of_files_to_process_path_);
 
@@ -549,14 +559,16 @@ std::tuple<int, int, int> ExtractorApp::Run()
 
     auto [success_counter, skipped_counter, error_counter] = counters;
 
-    spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
-                          ". Errors: ", error_counter, "."));
+    spdlog::info(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
+                          ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
 
     return counters;
 } /* -----  end of method ExtractorApp::Run  ----- */
 
-std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &file_name,
-                                                                 const EM::DocumentSectionList &sections, std::atomic<int> *forms_processed)
+std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_Header_fields &SEC_fields,
+                                                                 const EM::FileName &file_name,
+                                                                 const EM::DocumentSectionList &sections,
+                                                                 std::atomic<int> *forms_processed)
 {
     bool use_file{true};
     for (const auto &filter : filters_)
@@ -645,18 +657,20 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(const EM::FileName &i
 
         if (use_file.value() == FileMode::e_XLS)
         {
-            return LoadSingleFileToDB_XLS(file_content, document_sections, SEC_data.GetHeader(), SEC_fields, input_file_name);
+            return LoadSingleFileToDB_XLS(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
+                                          input_file_name);
         }
         if (use_file.value() == FileMode::e_XBRL)
         {
             return LoadSingleFileToDB_XBRL(file_content, document_sections, SEC_fields, input_file_name);
         }
-        return LoadSingleFileToDB_HTML(file_content, document_sections, SEC_data.GetHeader(), SEC_fields, input_file_name);
+        return LoadSingleFileToDB_HTML(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
+                                       input_file_name);
     }
     catch (const std::system_error &e)
     {
-        spdlog::error(
-            catenate("System error while processing file: ", input_file_name.get().string(), ". ", e.what(), " Processing stopped."));
+        spdlog::error(catenate("System error while processing file: ", input_file_name.get().string(), ". ", e.what(),
+                               " Processing stopped."));
         throw;
     }
     catch (const std::exception &e)
@@ -668,15 +682,19 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB(const EM::FileName &i
 } /* -----  end of method ExtractorApp::LoadSingleFileToDB  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XLS(const EM::FileContent &file_content,
-                                                               const EM::DocumentSectionList &document_sections, EM::sv sec_header,
-                                                               const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name)
+                                                               const EM::DocumentSectionList &document_sections,
+                                                               EM::sv sec_header,
+                                                               const EM::SEC_Header_fields &SEC_fields,
+                                                               const EM::FileName &input_file_name)
 {
     // TODO: check for and handle exporting spreadsheets
     //
     auto the_tables = FindAndExtractXLSContent(document_sections, input_file_name);
-    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", input_file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.has_data(),
+                     catenate("Can't find required XLS financial tables: ", input_file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", input_file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0,
+                     catenate("Can't find any data fields in tables: ", input_file_name.get()).c_str());
 
     //        did_load = true;
     bool did_load = LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
@@ -703,8 +721,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const EM::FileCo
     auto context_data = ExtractContextDefinitions(instance_xml);
     auto label_data = ExtractFieldLabels(labels_xml);
 
-    bool did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts",
-                                 replace_DB_content_);
+    bool did_load = LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
+                                 schema_prefix_ + "unified_extracts", replace_DB_content_);
 
     if (did_load)
     {
@@ -714,13 +732,15 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_XBRL(const EM::FileCo
 } /* -----  end of method ExtractorApp::LoadSingleFileToDB_XBRL  ----- */
 
 std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileContent &file_content,
-                                                                const EM::DocumentSectionList &document_sections, EM::sv sec_header,
+                                                                const EM::DocumentSectionList &document_sections,
+                                                                EM::sv sec_header,
                                                                 const EM::SEC_Header_fields &SEC_fields,
                                                                 const EM::FileName &input_file_name)
 {
     if (update_shares_outstanding_)
     {
-        UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts", input_file_name);
+        UpdateOutstandingShares(so_, document_sections, SEC_fields, form_list_, schema_prefix_ + "unified_extracts",
+                                input_file_name);
         return {1, 0, 0};
     }
 
@@ -734,9 +754,11 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileCo
     }
 
     auto the_tables = FindAndExtractFinancialStatements(so_, &document_sections, form_list_, input_file_name);
-    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", input_file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.has_data(),
+                     catenate("Can't find required HTML financial tables: ", input_file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", input_file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0,
+                     catenate("Can't find any data fields in tables: ", input_file_name.get()).c_str());
 
     //        did_load = true;
     bool did_load = LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
@@ -747,7 +769,8 @@ std::tuple<int, int, int> ExtractorApp::LoadSingleFileToDB_HTML(const EM::FileCo
     return {0, 1, 0};
 } /* -----  end of method ExtractorApp::LoadSingleFileToDB_HTML  ----- */
 
-bool ExtractorApp::ExportHtmlFromSingleFile(const EM::DocumentSectionList &sections, const EM::FileName &file_name, EM::sv sec_header)
+bool ExtractorApp::ExportHtmlFromSingleFile(const EM::DocumentSectionList &sections, const EM::FileName &file_name,
+                                            EM::sv sec_header)
 {
     // reuse top level logic from financial statements.
     // we don't need to actually isolate the financial data, just be sure it's
@@ -760,22 +783,20 @@ bool ExtractorApp::ExportHtmlFromSingleFile(const EM::DocumentSectionList &secti
     static const boost::regex regex_cash_flow{R"***((?:statement|statements)\s+?of\s+?cash\sflow)***",
                                               boost::regex_constants::normal | boost::regex_constants::icase};
 
-    auto regex_document_filter(
-        [](const auto &html_info)
+    auto regex_document_filter([](const auto &html_info) {
+        auto html_val = html_info.html_.get();
+        if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_finance_statements))
         {
-            auto html_val = html_info.html_.get();
-            if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_finance_statements))
+            if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_operations))
             {
-                if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_operations))
+                if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_cash_flow))
                 {
-                    if (boost::regex_search(html_val.cbegin(), html_val.cend(), regex_cash_flow))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
-            return false;
-        });
+        }
+        return false;
+    });
 
     HTML_FromFile htmls{&sections, file_name};
 
@@ -835,7 +856,7 @@ bool ExtractorApp::ExportHtmlFromSingleFile(const EM::DocumentSectionList &secti
     spdlog::info(catenate("Unable to find any form content in file: ", file_name.get()));
 
     return false;
-}    // -----  end of method ExtractorApp::ExportHtmlFromSingleFile  -----
+} // -----  end of method ExtractorApp::ExportHtmlFromSingleFile  -----
 
 std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 {
@@ -845,16 +866,18 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
 
     std::atomic<int> forms_processed{0};
 
-    auto process_file([this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto &file_name)
-                      { Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, EM::FileName{file_name}); });
+    auto process_file(
+        [this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto &file_name) {
+            Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, EM::FileName{file_name});
+        });
 
     ranges::for_each(list_of_files_to_process_, process_file);
 
     return {success_counter, skipped_counter, error_counter};
 } /* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
 
-void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success_counter, int &skipped_counter, int &error_counter,
-                                 const EM::FileName &file_name)
+void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success_counter, int &skipped_counter,
+                                 int &error_counter, const EM::FileName &file_name)
 {
     if (fs::is_regular_file(file_name.get()))
     {
@@ -884,8 +907,9 @@ void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success
 
             if (auto use_file = this->ApplyFilters(SEC_fields, file_name, document_sections, forms_processed); use_file)
             {
-                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value()) ? ++success_counter
-                                                                                                               : ++skipped_counter;
+                LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value())
+                    ? ++success_counter
+                    : ++skipped_counter;
             }
             else
             {
@@ -899,7 +923,8 @@ void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success
             ++error_counter;
             spdlog::error(catenate("Max files reached: ", file_name.get(), ". ", e.what()));
             spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter),
-                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
+                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
+                                   ". Errors: ", error_counter, "."));
             throw;
         }
         catch (const std::system_error &e)
@@ -909,7 +934,8 @@ void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success
             ++error_counter;
             spdlog::error(catenate("Problem processing file: ", file_name.get(), ". ", e.what()));
             spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter),
-                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
+                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
+                                   ". Errors: ", error_counter, "."));
             throw;
         }
         catch (const std::exception &e)
@@ -917,7 +943,8 @@ void ExtractorApp::Do_SingleFile(std::atomic<int> *forms_processed, int &success
             ++error_counter;
             spdlog::error(catenate("Problem processing file: ", file_name.get(), ". ", e.what()));
             spdlog::error(catenate("Processed: ", (success_counter + skipped_counter + error_counter),
-                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
+                                   " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
+                                   ". Errors: ", error_counter, "."));
         }
     }
 } /* -----  end of method ExtractorApp::Do_SingleFile  ----- */
@@ -931,22 +958,23 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
     std::atomic<int> forms_processed{0};
 
     auto process_file(
-        [this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto &dir_ent)
-        {
+        [this, &forms_processed, &success_counter, &skipped_counter, &error_counter](const auto &dir_ent) {
             if (dir_ent.status().type() == fs::file_type::regular)
             {
-                Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, EM::FileName{dir_ent.path()});
+                Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter,
+                              EM::FileName{dir_ent.path()});
             }
         });
 
-    ranges::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()), fs::recursive_directory_iterator(), process_file);
+    ranges::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()),
+                     fs::recursive_directory_iterator(), process_file);
 
     return {success_counter, skipped_counter, error_counter};
 } /* -----  end of method ExtractorApp::ProcessDirectory  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
-                                          const EM::DocumentSectionList &sections, EM::sv sec_header, FileMode file_mode,
-                                          std::mutex *db_mutex)
+                                          const EM::DocumentSectionList &sections, EM::sv sec_header,
+                                          FileMode file_mode, std::mutex *db_mutex)
 {
     spdlog::info(catenate("Loading contents from file: ", file_name.get()));
 
@@ -962,14 +990,17 @@ bool ExtractorApp::LoadFileFromFolderToDB(const EM::FileName &file_name, const E
 } /* -----  end of method ExtractorApp::LoadFileFromFolderToDB  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_XLS(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
-                                              const EM::DocumentSectionList &sections, EM::sv sec_header, std::mutex *db_mutex)
+                                              const EM::DocumentSectionList &sections, EM::sv sec_header,
+                                              std::mutex *db_mutex)
 {
     // TODO: check for and handle exporting spreadsheets.
 
     auto the_tables = FindAndExtractXLSContent(sections, file_name);
-    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.has_data(),
+                     catenate("Can't find required XLS financial tables: ", file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0,
+                     catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
     if (db_mutex == nullptr)
     {
         return LoadDataToDB_XLS(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
@@ -995,16 +1026,17 @@ bool ExtractorApp::LoadFileFromFolderToDB_XBRL(const EM::FileName &file_name, co
 
     if (db_mutex == nullptr)
     {
-        return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts",
-                            replace_DB_content_);
+        return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
+                            schema_prefix_ + "unified_extracts", replace_DB_content_);
     }
     std::lock_guard<std::mutex> lock(*db_mutex);
-    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data, schema_prefix_ + "unified_extracts",
-                        replace_DB_content_);
+    return LoadDataToDB(SEC_fields, filing_data, gaap_data, label_data, context_data,
+                        schema_prefix_ + "unified_extracts", replace_DB_content_);
 } /* -----  end of method ExtractorApp::LoadFileFromFolderToDB_XBRL  ----- */
 
 bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName &file_name, const EM::SEC_Header_fields &SEC_fields,
-                                               const EM::DocumentSectionList &sections, EM::sv sec_header, std::mutex *db_mutex)
+                                               const EM::DocumentSectionList &sections, EM::sv sec_header,
+                                               std::mutex *db_mutex)
 {
     if (update_shares_outstanding_)
     {
@@ -1018,9 +1050,11 @@ bool ExtractorApp::LoadFileFromFolderToDB_HTML(const EM::FileName &file_name, co
     }
 
     auto the_tables = FindAndExtractFinancialStatements(so_, &sections, form_list_, file_name);
-    BOOST_ASSERT_MSG(the_tables.has_data(), catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.has_data(),
+                     catenate("Can't find required HTML financial tables: ", file_name.get()).c_str());
 
-    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0, catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
+    BOOST_ASSERT_MSG(the_tables.ValuesTotal() > 0,
+                     catenate("Can't find any data fields in tables: ", file_name.get()).c_str());
     if (db_mutex == nullptr)
     {
         return LoadDataToDB(SEC_fields, the_tables, schema_prefix_ + "unified_extracts", replace_DB_content_);
@@ -1063,8 +1097,9 @@ std::tuple<int, int, int> ExtractorApp::LoadFileAsync(const EM::FileName &file_n
     {
         try
         {
-            LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value(), db_mutex) ? ++success_counter
-                                                                                                                     : ++skipped_counter;
+            LoadFileFromFolderToDB(file_name, SEC_fields, document_sections, sec_header, use_file.value(), db_mutex)
+                ? ++success_counter
+                : ++skipped_counter;
         }
         catch (const pqxx::failure &e)
         {
@@ -1111,7 +1146,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     std::exception_ptr ep{nullptr};
 
-    std::tuple<int, int, int> counters{0, 0, 0};    // success, skips, errors
+    std::tuple<int, int, int> counters{0, 0, 0}; // success, skips, errors
 
     std::atomic<int> forms_processed{0};
 
@@ -1134,7 +1169,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
         // queue up our tasks up to the limit.
 
         tasks.emplace_back(std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-                                      EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &db_mutex));
+                                      EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed,
+                                      &db_mutex));
     }
 
     int continue_here{0};
@@ -1162,7 +1198,8 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
             spdlog::error(e.what());
             auto ec = e.code();
-            spdlog::error(catenate("Category: ", ec.category().name(), ". Value: ", ec.value(), ". Message: ", ec.message()));
+            spdlog::error(
+                catenate("Category: ", ec.category().name(), ". Value: ", ec.value(), ". Message: ", ec.message()));
             counters = AddTs(counters, {0, 0, 1});
 
             // OK, let's be sure this propagates
@@ -1220,8 +1257,9 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
         if (current_file < list_of_files_to_process_.size())
         {
-            tasks[ready_task] = std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
-                                           EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &db_mutex);
+            tasks[ready_task] =
+                std::async(std::launch::async, &ExtractorApp::LoadFileAsync, this,
+                           EM::FileName{list_of_files_to_process_[current_file]}, &forms_processed, &db_mutex);
             continue_here = (ready_task + 1) % max_at_a_time_;
             ready_task = -1;
         }
@@ -1278,19 +1316,18 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDBConcurrently()
 
     if (ep)
     {
-        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
-                               ". Errors: ", error_counter, "."));
+        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
+                               ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
         std::rethrow_exception(ep);
     }
 
     if (ExtractorApp::had_signal_)
     {
-        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter, ". Skips: ", skipped_counter,
-                               ". Errors: ", error_counter, "."));
-        throw std::runtime_error(
-            "Received keyboard interrupt.  Processing "
-            "manually terminated after loading: " +
-            std::to_string(success_counter) + " files.");
+        spdlog::error(catenate("Processed: ", SumT(counters), " files. Successes: ", success_counter,
+                               ". Skips: ", skipped_counter, ". Errors: ", error_counter, "."));
+        throw std::runtime_error("Received keyboard interrupt.  Processing "
+                                 "manually terminated after loading: " +
+                                 std::to_string(success_counter) + " files.");
     }
 
     // if we return successfully, let's just restore the default
@@ -1316,4 +1353,4 @@ void ExtractorApp::HandleSignal(int signal)
 void ExtractorApp::Shutdown()
 {
     spdlog::info(catenate("\n\n*** End run ", LocalDateTimeAsString(std::chrono::system_clock::now()), " ***\n"));
-}    // -----  end of method ExtractorApp::Shutdown  -----
+} // -----  end of method ExtractorApp::Shutdown  -----

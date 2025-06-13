@@ -82,7 +82,8 @@ static const char *NONE = "none";
 // NOTE: position of '-' in regex is important
 
 const boost::regex regex_value{R"***(^([()"'A-Za-z ,.-]+)[^\t]*\t\$?\s*([(-]? ?[.,0-9]+[)]?)[^\t]*\t)***"};
-const boost::regex regex_per_share{R"***(per.*?share)***", boost::regex_constants::normal | boost::regex_constants::icase};
+const boost::regex regex_per_share{R"***(per.*?share)***",
+                                   boost::regex_constants::normal | boost::regex_constants::icase};
 const boost::regex regex_dollar_mults{R"***([(][^)]*?in (thousands|millions|billions|dollars).*?[)])***",
                                       boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -112,7 +113,8 @@ void FinancialStatements::PrepareTableContent()
     if (!statement_of_operations_.empty())
     {
         statement_of_operations_.lines_ = split_string<EM::sv>(statement_of_operations_.parsed_data_, '\n');
-        statement_of_operations_.values_ = CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.multiplier_s_);
+        statement_of_operations_.values_ =
+            CollectStatementValues(statement_of_operations_.lines_, statement_of_operations_.multiplier_s_);
     }
     if (!cash_flows_.empty())
     {
@@ -122,11 +124,15 @@ void FinancialStatements::PrepareTableContent()
     if (!stockholders_equity_.empty())
     {
         stockholders_equity_.lines_ = split_string<EM::sv>(stockholders_equity_.parsed_data_, '\n');
-        stockholders_equity_.values_ = CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.multiplier_s_);
+        stockholders_equity_.values_ =
+            CollectStatementValues(stockholders_equity_.lines_, stockholders_equity_.multiplier_s_);
     }
 } /* -----  end of method FinancialStatements::PrepareTableContent  ----- */
 
-bool FinancialStatements::ValidateContent() { return false; } /* -----  end of method FinancialStatements::ValidateContent  ----- */
+bool FinancialStatements::ValidateContent()
+{
+    return false;
+} /* -----  end of method FinancialStatements::ValidateContent  ----- */
 /*
  * ===  FUNCTION
  * ====================================================================== Name:
@@ -151,7 +157,8 @@ EM::AnchorContent FindFinancialContentTopLevelAnchor(EM::HTMLContent financial_c
         R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
 
-    auto found_it = rng::find_if(anchors, [](const auto &anchor) { return AnchorFilterUsingRegex(regex_finance_statements, anchor); });
+    auto found_it = rng::find_if(
+        anchors, [](const auto &anchor) { return AnchorFilterUsingRegex(regex_finance_statements, anchor); });
     if (found_it == anchors.end())
     {
         return {};
@@ -165,15 +172,15 @@ EM::AnchorContent FindFinancialContentTopLevelAnchor(EM::HTMLContent financial_c
         return dest_anchor->anchor_content_;
     }
     return {};
-}    // -----  end of function FindFinancialContentTopLevelAnchor  -----
+} // -----  end of function FindFinancialContentTopLevelAnchor  -----
 /*
  * ===  FUNCTION
  * ====================================================================== Name:
  * FindFinancialContentUsingAnchors Description:
  * =====================================================================================
  */
-std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors(EM::DocumentSectionList const *document_sections,
-                                                                                         EM::FileName document_name)
+std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsingAnchors(
+    EM::DocumentSectionList const *document_sections, EM::FileName document_name)
 {
     // sometimes we don't have a top level anchor but we do have
     // anchors for individual statements.
@@ -182,7 +189,8 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
         R"***((?:<a>|<a |<a\n).*?(?:financ.+?statement)|(?:financ.+?information)|(?:financial.*?position).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex regex_finance_statements_bal{R"***((?:<a>|<a |<a\n).*?(?:balance\s+sheet).*?</a)***",
-                                                           boost::regex_constants::normal | boost::regex_constants::icase};
+                                                           boost::regex_constants::normal |
+                                                               boost::regex_constants::icase};
     static const boost::regex regex_finance_statements_ops{
         R"***((?:<a>|<a |<a\n).*?((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning)).*?</a)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -191,34 +199,31 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
         boost::regex_constants::normal | boost::regex_constants::icase};
 
     std::vector<boost::regex const *> document_anchor_regexs{&regex_finance_statements, &regex_finance_statements_cash,
-                                                             &regex_finance_statements_ops, &regex_finance_statements_bal};
+                                                             &regex_finance_statements_ops,
+                                                             &regex_finance_statements_bal};
 
-    auto anchor_filter_matcher(
-        [&document_anchor_regexs](const auto &anchor)
-        {
-            return rng::any_of(document_anchor_regexs,
-                               [&anchor](const boost::regex *regex) { return AnchorFilterUsingRegex(*regex, anchor); });
-        });
+    auto anchor_filter_matcher([&document_anchor_regexs](const auto &anchor) {
+        return rng::any_of(document_anchor_regexs,
+                           [&anchor](const boost::regex *regex) { return AnchorFilterUsingRegex(*regex, anchor); });
+    });
 
-    auto look_for_top_level(
-        [&anchor_filter_matcher](auto html)
+    auto look_for_top_level([&anchor_filter_matcher](auto html) {
+        AnchorsFromHTML anchors(html.html_);
+        int found_one{0};
+        for (const auto &anchor : anchors)
         {
-            AnchorsFromHTML anchors(html.html_);
-            int found_one{0};
-            for (const auto &anchor : anchors)
+            if (anchor_filter_matcher(anchor))
             {
-                if (anchor_filter_matcher(anchor))
+                ++found_one;
+                if (found_one > 2)
                 {
-                    ++found_one;
-                    if (found_one > 2)
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
+        }
 
-            return found_one > 2;
-        });
+        return found_one > 2;
+    });
 
     HTML_FromFile htmls{document_sections, document_name};
 
@@ -240,22 +245,21 @@ std::optional<std::pair<EM::HTMLContent, EM::FileName>> FindFinancialContentUsin
 AnchorsFromHTML::iterator FindDestinationAnchor(const AnchorData &financial_anchor, const AnchorsFromHTML &anchors)
 {
     EM::sv looking_for = financial_anchor.href_;
-    looking_for.remove_prefix(1);    // need to skip '#'
+    looking_for.remove_prefix(1); // need to skip '#'
 
-    auto do_compare(
-        [&looking_for](const auto &anchor)
+    auto do_compare([&looking_for](const auto &anchor) {
+        // need case insensitive compare
+        // found this on StackOverflow (but modified for my use)
+        // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+
+        if (looking_for.size() != anchor.name_.size())
         {
-            // need case insensitive compare
-            // found this on StackOverflow (but modified for my use)
-            // (https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c)
+            return false;
+        }
 
-            if (looking_for.size() != anchor.name_.size())
-            {
-                return false;
-            }
-
-            return rng::equal(looking_for, anchor.name_, [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
-        });
+        return rng::equal(looking_for, anchor.name_,
+                          [](unsigned char a, unsigned char b) { return tolower(a) == tolower(b); });
+    });
     auto found_it = rng::find_if(anchors, do_compare);
     if (found_it == anchors.end())
     {
@@ -282,11 +286,12 @@ MultDataList FindDollarMultipliers(const AnchorList &financial_anchors)
 
     MultDataList multipliers;
 
-    boost::cmatch matches;    // using string_view so it's cmatch instead of smatch
+    boost::cmatch matches; // using string_view so it's cmatch instead of smatch
 
     for (const auto &a : financial_anchors)
     {
-        if (bool found_it = boost::regex_search(a.anchor_content_.get().begin(), a.html_document_.get().end(), matches, regex_dollar_mults);
+        if (bool found_it = boost::regex_search(a.anchor_content_.get().begin(), a.html_document_.get().end(), matches,
+                                                regex_dollar_mults);
             found_it)
         {
             std::string multiplier(matches[1].first, matches[1].length());
@@ -343,7 +348,8 @@ bool BalanceSheetFilter(EM::sv table)
     //    static const boost::regex
     //    liabilities{R"***((?:current|total)[^\t]+?liabilities[^\t]*\t)***",
     //        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex assets{R"***(total[^\t]+?asset[^\t]*\t)***", boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex assets{R"***(total[^\t]+?asset[^\t]*\t)***",
+                                     boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex liabilities{R"***(total[^\t]+?liabilities[^\t]*\t)***",
                                           boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex equity{
@@ -374,8 +380,9 @@ bool StatementOfOperationsFilter(EM::sv table)
     //    const boost::regex expenses{R"***(other
     //    income|(?:(?:operating|total).*?(?:expense|costs)))***",
     //        boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex expenses{R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
-                                       boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex expenses{
+        R"***((?:operat|total|general|administ)[^\t]*?(?:expense|costs|loss|admin|general)[^\t]*\t)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex net_income{R"***(net[^\t]*?(?:gain|loss|income|earning)[^\t]*\t)***",
                                          boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex shares_outstanding{
@@ -401,8 +408,9 @@ bool CashFlowsFilter(EM::sv table)
     static const boost::regex operating{
         R"***(operating activities|(?:cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?operating)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
-    static const boost::regex investing{R"***(cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?investing[^\t]*\t)***",
-                                        boost::regex_constants::normal | boost::regex_constants::icase};
+    static const boost::regex investing{
+        R"***(cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?investing[^\t]*\t)***",
+        boost::regex_constants::normal | boost::regex_constants::icase};
     static const boost::regex financing{
         R"***(financing activities|(?:cash (?:flow[s]?|used|provided)[^\t]*?(?:from|in|by)[^\t]+?financing)[^\t]*\t)***",
         boost::regex_constants::normal | boost::regex_constants::icase};
@@ -456,8 +464,9 @@ bool StockholdersEquityFilter(EM::sv table)
  */
 bool ApplyStatementFilter(const std::vector<const boost::regex *> &regexs, EM::sv table, int matches_needed)
 {
-    auto matcher([table](const boost::regex *regex)
-                 { return boost::regex_search(table.begin(), table.end(), *regex, boost::regex_constants::match_not_dot_newline); });
+    auto matcher([table](const boost::regex *regex) {
+        return boost::regex_search(table.begin(), table.end(), *regex, boost::regex_constants::match_not_dot_newline);
+    });
     int how_many_matches = rng::count_if(regexs, matcher);
 
     if (how_many_matches < matches_needed)
@@ -490,7 +499,8 @@ bool ApplyStatementFilter(const std::vector<const boost::regex *> &regexs, EM::s
  * FindFinancialStatements Description:
  * =====================================================================================
  */
-FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding &so, EM::DocumentSectionList const *document_sections,
+FinancialStatements FindAndExtractFinancialStatements(const SharesOutstanding &so,
+                                                      EM::DocumentSectionList const *document_sections,
                                                       const std::vector<std::string> &forms, EM::FileName document_name)
 {
     // we use a 2-phase scan.
@@ -582,36 +592,40 @@ FinancialStatements ExtractFinancialStatements(EM::HTMLContent financial_content
 
     FinancialStatements the_tables;
 
-    auto balance_sheet = rng::find_if(tables, [](const auto &x) { return BalanceSheetFilter(x.current_table_parsed_); });
+    auto balance_sheet =
+        rng::find_if(tables, [](const auto &x) { return BalanceSheetFilter(x.current_table_parsed_); });
     if (balance_sheet != tables.end())
     {
         the_tables.balance_sheet_.parsed_data_ = balance_sheet->current_table_parsed_;
         the_tables.balance_sheet_.raw_data_ = balance_sheet.TableContent();
 
-        auto statement_of_ops = rng::find_if(tables, [](const auto &x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
+        auto statement_of_ops =
+            rng::find_if(tables, [](const auto &x) { return StatementOfOperationsFilter(x.current_table_parsed_); });
         if (statement_of_ops != tables.end())
         {
             the_tables.statement_of_operations_.parsed_data_ = statement_of_ops->current_table_parsed_;
             the_tables.statement_of_operations_.raw_data_ = statement_of_ops.TableContent();
 
-            auto cash_flows = rng::find_if(tables, [](const auto &x) { return CashFlowsFilter(x.current_table_parsed_); });
+            auto cash_flows =
+                rng::find_if(tables, [](const auto &x) { return CashFlowsFilter(x.current_table_parsed_); });
             if (cash_flows != tables.end())
             {
                 the_tables.cash_flows_.parsed_data_ = cash_flows->current_table_parsed_;
                 the_tables.cash_flows_.raw_data_ = cash_flows.TableContent();
 
-                auto data_starts_at =
-                    std::min({the_tables.balance_sheet_.raw_data_.get().data(), the_tables.statement_of_operations_.raw_data_.get().data(),
-                              the_tables.cash_flows_.raw_data_.get().data()},
-                             [](auto lhs, auto rhs) { return lhs < rhs; });
+                auto data_starts_at = std::min({the_tables.balance_sheet_.raw_data_.get().data(),
+                                                the_tables.statement_of_operations_.raw_data_.get().data(),
+                                                the_tables.cash_flows_.raw_data_.get().data()},
+                                               [](auto lhs, auto rhs) { return lhs < rhs; });
                 the_tables.financial_statements_begin_ = data_starts_at;
 
-                auto data_ends_at =
-                    std::max({the_tables.balance_sheet_.raw_data_.get().data() + the_tables.balance_sheet_.raw_data_.get().size(),
-                              the_tables.statement_of_operations_.raw_data_.get().data() +
-                                  the_tables.statement_of_operations_.raw_data_.get().size(),
-                              the_tables.cash_flows_.raw_data_.get().data() + the_tables.cash_flows_.raw_data_.get().size()},
-                             [](auto lhs, auto rhs) { return lhs < rhs; });
+                auto data_ends_at = std::max(
+                    {the_tables.balance_sheet_.raw_data_.get().data() +
+                         the_tables.balance_sheet_.raw_data_.get().size(),
+                     the_tables.statement_of_operations_.raw_data_.get().data() +
+                         the_tables.statement_of_operations_.raw_data_.get().size(),
+                     the_tables.cash_flows_.raw_data_.get().data() + the_tables.cash_flows_.raw_data_.get().size()},
+                    [](auto lhs, auto rhs) { return lhs < rhs; });
                 the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
 
                 //                auto stockholders_equity =
@@ -644,7 +658,8 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors(EM::HTMLContent finan
     static const boost::regex regex_balance_sheet{R"***((?:balance\s+sheet)|(?:financial.*?position))***",
                                                   boost::regex_constants::normal | boost::regex_constants::icase};
 
-    the_tables.balance_sheet_ = FindStatementContent<BalanceSheet>(financial_content, anchors, regex_balance_sheet, BalanceSheetFilter);
+    the_tables.balance_sheet_ =
+        FindStatementContent<BalanceSheet>(financial_content, anchors, regex_balance_sheet, BalanceSheetFilter);
     if (the_tables.balance_sheet_.empty())
     {
         return the_tables;
@@ -653,8 +668,8 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors(EM::HTMLContent finan
     static const boost::regex regex_operations{R"***((?:statement|statements)\s+?of.*?(?:oper|loss|income|earning))***",
                                                boost::regex_constants::normal | boost::regex_constants::icase};
 
-    the_tables.statement_of_operations_ =
-        FindStatementContent<StatementOfOperations>(financial_content, anchors, regex_operations, StatementOfOperationsFilter);
+    the_tables.statement_of_operations_ = FindStatementContent<StatementOfOperations>(
+        financial_content, anchors, regex_operations, StatementOfOperationsFilter);
     if (the_tables.statement_of_operations_.empty())
     {
         return the_tables;
@@ -663,7 +678,8 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors(EM::HTMLContent finan
     static const boost::regex regex_cash_flow{R"***((?:cash\s+flow)|(?:statement.+?cash)|(?:cashflow))***",
                                               boost::regex_constants::normal | boost::regex_constants::icase};
 
-    the_tables.cash_flows_ = FindStatementContent<CashFlows>(financial_content, anchors, regex_cash_flow, CashFlowsFilter);
+    the_tables.cash_flows_ =
+        FindStatementContent<CashFlows>(financial_content, anchors, regex_cash_flow, CashFlowsFilter);
     if (the_tables.cash_flows_.empty())
     {
         return the_tables;
@@ -679,15 +695,16 @@ FinancialStatements ExtractFinancialStatementsUsingAnchors(EM::HTMLContent finan
     EM::AnchorContent top_level_anchor = FindFinancialContentTopLevelAnchor(financial_content, anchors);
     if (!top_level_anchor.get().empty())
     {
-        auto data_starts_at =
-            std::min({top_level_anchor.get().data(), the_tables.balance_sheet_.raw_data_.get().data(),
-                      the_tables.statement_of_operations_.raw_data_.get().data(), the_tables.cash_flows_.raw_data_.get().data()},
-                     [](auto lhs, auto rhs) { return lhs < rhs; });
+        auto data_starts_at = std::min({top_level_anchor.get().data(), the_tables.balance_sheet_.raw_data_.get().data(),
+                                        the_tables.statement_of_operations_.raw_data_.get().data(),
+                                        the_tables.cash_flows_.raw_data_.get().data()},
+                                       [](auto lhs, auto rhs) { return lhs < rhs; });
         the_tables.financial_statements_begin_ = data_starts_at;
 
         auto data_ends_at = std::max(
             {the_tables.balance_sheet_.raw_data_.get().data() + the_tables.balance_sheet_.raw_data_.get().size(),
-             the_tables.statement_of_operations_.raw_data_.get().data() + the_tables.statement_of_operations_.raw_data_.get().size(),
+             the_tables.statement_of_operations_.raw_data_.get().data() +
+                 the_tables.statement_of_operations_.raw_data_.get().size(),
              the_tables.cash_flows_.raw_data_.get().data() + the_tables.cash_flows_.raw_data_.get().size()},
             [](auto lhs, auto rhs) { return lhs < rhs; });
         the_tables.financial_statements_len_ = data_ends_at - data_starts_at;
@@ -712,7 +729,7 @@ bool AnchorFilterUsingRegex(const boost::regex &stmt_anchor_regex, const AnchorD
     const auto &anchor_val = an_anchor.anchor_content_.get();
 
     return boost::regex_search(anchor_val.cbegin(), anchor_val.cend(), stmt_anchor_regex);
-}    // -----  end of function AnchorFilterUsingRegex  -----
+} // -----  end of function AnchorFilterUsingRegex  -----
 
 // ===  FUNCTION
 // ======================================================================
@@ -722,9 +739,11 @@ bool AnchorFilterUsingRegex(const boost::regex &stmt_anchor_regex, const AnchorD
 AnchorData FindAnchorUsingFilter(const AnchorsFromHTML &anchors, const boost::regex &stmt_anchor_regex)
 {
     auto the_data =
-        anchors |
-        rng::views::filter([stmt_anchor_regex](const auto &anchor) { return AnchorFilterUsingRegex(stmt_anchor_regex, anchor); }) |
-        rng::views::transform([&anchors](const auto &anchor) { return FindDestinationAnchor(anchor, anchors); }) | rng::views::take(1);
+        anchors | rng::views::filter([stmt_anchor_regex](const auto &anchor) {
+            return AnchorFilterUsingRegex(stmt_anchor_regex, anchor);
+        }) |
+        rng::views::transform([&anchors](const auto &anchor) { return FindDestinationAnchor(anchor, anchors); }) |
+        rng::views::take(1);
 
     AnchorData the_anchor;
     if (!the_data.empty())
@@ -732,7 +751,7 @@ AnchorData FindAnchorUsingFilter(const AnchorsFromHTML &anchors, const boost::re
         the_anchor = *the_data.front();
     }
     return the_anchor;
-}    // -----  end of function FindAnchorUsingFilter  -----
+} // -----  end of function FindAnchorUsingFilter  -----
 
 // ===  FUNCTION
 // ======================================================================
@@ -740,7 +759,8 @@ AnchorData FindAnchorUsingFilter(const AnchorsFromHTML &anchors, const boost::re
 //  Description:
 // =====================================================================================
 
-std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLContent financial_content, const AnchorData &the_anchor,
+std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLContent financial_content,
+                                                                     const AnchorData &the_anchor,
                                                                      StmtTypeFilter stmt_type_filter)
 {
     if (the_anchor.anchor_content_.get().empty())
@@ -752,8 +772,10 @@ std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLCon
     const char *anchor_begin = anchor_content_val.data();
 
     TablesFromHTML tables{EM::HTMLContent{
-        EM::sv{anchor_content_val.data(), financial_content.get().size() - (anchor_content_val.data() - financial_content.get().data())}}};
-    auto stmt_tbl = rng::find_if(tables, [&stmt_type_filter](const auto &x) { return stmt_type_filter(x.current_table_parsed_); });
+        EM::sv{anchor_content_val.data(),
+               financial_content.get().size() - (anchor_content_val.data() - financial_content.get().data())}}};
+    auto stmt_tbl =
+        rng::find_if(tables, [&stmt_type_filter](const auto &x) { return stmt_type_filter(x.current_table_parsed_); });
     if (stmt_tbl != tables.end())
     {
         return {stmt_tbl};
@@ -762,7 +784,7 @@ std::optional<TablesFromHTML::iterator> FindStatementTableFromAnchor(EM::HTMLCon
     {
         return {};
     }
-}    // -----  end of function FindStatementTableFromAnchor  -----
+} // -----  end of function FindStatementTableFromAnchor  -----
 void FinancialStatements::FindAndStoreMultipliers()
 {
     //    if (balance_sheet_.has_anchor())
@@ -822,8 +844,9 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements &financial_statemen
     int how_many_matches{0};
     boost::smatch matches;
 
-    if (bool found_it = boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
-                                            financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults);
+    if (bool found_it =
+            boost::regex_search(financial_statements.balance_sheet_.parsed_data_.cbegin(),
+                                financial_statements.balance_sheet_.parsed_data_.cend(), matches, regex_dollar_mults);
         found_it)
     {
         const auto &[mult_s, mult] = TranslateMultiplier(matches[1].str());
@@ -833,7 +856,8 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements &financial_statemen
         spdlog::debug(catenate("Balance sheet multiplier: ", mult_s));
     }
     if (bool found_it = boost::regex_search(financial_statements.statement_of_operations_.parsed_data_.cbegin(),
-                                            financial_statements.statement_of_operations_.parsed_data_.cend(), matches, regex_dollar_mults);
+                                            financial_statements.statement_of_operations_.parsed_data_.cend(), matches,
+                                            regex_dollar_mults);
         found_it)
     {
         const auto &[mult_s, mult] = TranslateMultiplier(matches[1].str());
@@ -842,8 +866,9 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements &financial_statemen
         ++how_many_matches;
         spdlog::debug(catenate("Statement of Ops multiplier: ", mult_s));
     }
-    if (bool found_it = boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
-                                            financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults);
+    if (bool found_it =
+            boost::regex_search(financial_statements.cash_flows_.parsed_data_.cbegin(),
+                                financial_statements.cash_flows_.parsed_data_.cend(), matches, regex_dollar_mults);
         found_it)
     {
         const auto &[mult_s, mult] = TranslateMultiplier(matches[1].str());
@@ -862,10 +887,10 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements &financial_statemen
 
         boost::cmatch matches;
 
-        if (bool found_it =
-                boost::regex_search(financial_statements.financial_statements_begin_,
-                                    financial_statements.financial_statements_begin_ + financial_statements.financial_statements_len_,
-                                    matches, regex_dollar_mults);
+        if (bool found_it = boost::regex_search(financial_statements.financial_statements_begin_,
+                                                financial_statements.financial_statements_begin_ +
+                                                    financial_statements.financial_statements_len_,
+                                                matches, regex_dollar_mults);
             found_it)
         {
             EM::sv multiplier(matches[1].str());
@@ -924,7 +949,8 @@ void FinancialStatements::FindSharesOutstanding(const SharesOutstanding &so, EM:
  * CreateMultiplierListWhenNoAnchors Description:
  * =====================================================================================
  */
-MultDataList CreateMultiplierListWhenNoAnchors(const std::vector<EM::DocumentSection> &document_sections, EM::FileName document_name)
+MultDataList CreateMultiplierListWhenNoAnchors(const std::vector<EM::DocumentSection> &document_sections,
+                                               EM::FileName document_name)
 {
     static const boost::regex table{R"***(<table)***", boost::regex_constants::normal | boost::regex_constants::icase};
 
@@ -959,14 +985,13 @@ EM::Extractor_Values CollectStatementValues(const std::vector<EM::sv> &lines, co
     // contains at least 1 digit.
 
     EM::Extractor_Values values =
-        lines |
-        rng::views::filter(
-            [&match_values, &digits](const auto &a_line)
-            {
-                return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) &&
-                       rng::any_of(match_values[2].str(), [&digits](char c) { return digits.find(c) != std::string::npos; });
-            }) |
-        rng::views::transform([&match_values](const auto &x) { return std::pair(match_values[1].str(), match_values[2].str()); }) |
+        lines | rng::views::filter([&match_values, &digits](const auto &a_line) {
+            return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) &&
+                   rng::any_of(match_values[2].str(),
+                               [&digits](char c) { return digits.find(c) != std::string::npos; });
+        }) |
+        rng::views::transform(
+            [&match_values](const auto &x) { return std::pair(match_values[1].str(), match_values[2].str()); }) |
         rng::views::cache1 | rng::to<EM::Extractor_Values>();
 
     // now, for all values except 'per share', apply the multiplier.
@@ -978,13 +1003,10 @@ EM::Extractor_Values CollectStatementValues(const std::vector<EM::sv> &lines, co
     // it's possible that cleaning a label field could have caused it to becomre
     // empty
 
-    values = std::move(values) |
-             rng::actions::transform(
-                 [](auto x)
-                 {
-                     x.first = CleanLabel(x.first);
-                     return x;
-                 }) |
+    values = std::move(values) | rng::actions::transform([](auto x) {
+                 x.first = CleanLabel(x.first);
+                 return x;
+             }) |
              rng::actions::remove_if([](auto &x) { return x.first.empty(); });
 
     return values;
@@ -1040,18 +1062,30 @@ std::string ApplyMultiplierAndCleanUpValue(const EM::Extracted_Value &value, con
     }
     if (result.find('.') == std::string::npos)
     {
-        result += ".0";    // make everything look like a float
+        result += ".0"; // make everything look like a float
     }
     return result;
-}    // -----  end of function ApplyMultiplierAndCleanUpValue  -----
+} // -----  end of function ApplyMultiplierAndCleanUpValue  -----
 
-bool BalanceSheet::ValidateContent() { return false; } /* -----  end of method BalanceSheet::ValidateContent  ----- */
+bool BalanceSheet::ValidateContent()
+{
+    return false;
+} /* -----  end of method BalanceSheet::ValidateContent  ----- */
 
-bool StatementOfOperations::ValidateContent() { return false; } /* -----  end of method StatementOfOperations::ValidateContent  ----- */
+bool StatementOfOperations::ValidateContent()
+{
+    return false;
+} /* -----  end of method StatementOfOperations::ValidateContent  ----- */
 
-bool CashFlows::ValidateContent() { return false; } /* -----  end of method CashFlows::ValidateContent  ----- */
+bool CashFlows::ValidateContent()
+{
+    return false;
+} /* -----  end of method CashFlows::ValidateContent  ----- */
 
-bool StockholdersEquity::ValidateContent() { return false; } /* -----  end of method StockholdersEquity::ValidateContent  ----- */
+bool StockholdersEquity::ValidateContent()
+{
+    return false;
+} /* -----  end of method StockholdersEquity::ValidateContent  ----- */
 
 /*
  * ===  FUNCTION
@@ -1059,8 +1093,8 @@ bool StockholdersEquity::ValidateContent() { return false; } /* -----  end of me
  * LoadDataToDB Description:
  * =====================================================================================
  */
-bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatements &financial_statements, const std::string &schema_name,
-                  bool replace_DB_content)
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatements &financial_statements,
+                  const std::string &schema_name, bool replace_DB_content)
 {
     auto form_type = SEC_fields.at("form_type");
     EM::sv base_form_type{form_type};
@@ -1085,11 +1119,11 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     // since that may have changed (especially if we are processing an
     // amended form)
 
-    auto save_original_data_cmd = fmt::format(
-        "SELECT date_filed, file_name, amended_date_filed, "
-        "amended_file_name FROM {3}.sec_filing_id WHERE"
-        " cik = {0} AND form_type = {1} AND period_ending = {2}",
-        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+    auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, "
+                                              "amended_file_name FROM {3}.sec_filing_id WHERE"
+                                              " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                              trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                              trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
     auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
@@ -1123,7 +1157,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d;    // need to start somewhere
+    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d; // need to start somewhere
 
     if (!amended_date_filed.empty())
     {
@@ -1143,10 +1177,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format(
-            "DELETE FROM {3}.sec_filing_id WHERE"
-            " cik = {0} AND form_type = {1} AND period_ending = {2}",
-            trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type), trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+                                         " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                         trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                         trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
         trxn.exec(filing_ID_cmd);
     }
 
@@ -1182,7 +1216,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
 
     inserter1.complete();
 
-    auto inserter2{pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
+    auto inserter2{
+        pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
     //    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
@@ -1219,8 +1254,8 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
 // =====================================================================================
 
 int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSectionList &document_sections,
-                            const EM::SEC_Header_fields &fields, const std::vector<std::string> &forms, const std::string &schema_name,
-                            EM::FileName file_name)
+                            const EM::SEC_Header_fields &fields, const std::vector<std::string> &forms,
+                            const std::string &schema_name, EM::FileName file_name)
 {
     int entries_updated{0};
 
@@ -1235,35 +1270,36 @@ int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSecti
         pqxx::connection cnxn{"dbname=sec_extracts user=extractor_pg"};
         pqxx::work trxn{cnxn};
 
-        auto check_for_existing_content_cmd = fmt::format(
-            "SELECT count(*) FROM {3}.sec_filing_id WHERE"
-            " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
-            "data_source = 'HTML'",
-            trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")), trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name));
+        auto check_for_existing_content_cmd =
+            fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+                        " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
+                        "data_source = 'HTML'",
+                        trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
+                        trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name));
         auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
 
         if (have_data)
         {
-            auto query_cmd = fmt::format(
-                "SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
-                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
-                "data_source = 'HTML'",
-                trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")), trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name));
+            auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
+                                         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
+                                         "data_source = 'HTML'",
+                                         trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
+                                         trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name));
             auto row1 = trxn.exec(query_cmd).one_row();
             int64_t DB_shares = row1[0].as<int64_t>();
 
             if (DB_shares != file_shares)
             {
-                auto update_cmd = fmt::format(
-                    "UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
-                    " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
-                    "data_source = 'HTML'",
-                    trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")), trxn.esc(fields.at("quarter_ending")),
-                    trxn.esc(schema_name), file_shares);
+                auto update_cmd =
+                    fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
+                                " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
+                                "data_source = 'HTML'",
+                                trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
+                                trxn.esc(fields.at("quarter_ending")), trxn.esc(schema_name), file_shares);
                 auto row2 = trxn.exec(update_cmd);
                 trxn.commit();
-                spdlog::info(catenate("Updated DB for file: ", file_name.get(), ". Changed shares outstanding from: ", DB_shares,
-                                      " to: ", file_shares));
+                spdlog::info(catenate("Updated DB for file: ", file_name.get(),
+                                      ". Changed shares outstanding from: ", DB_shares, " to: ", file_shares));
                 ++entries_updated;
             }
             else
@@ -1281,4 +1317,4 @@ int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSecti
         spdlog::debug(catenate("Can't find financial content for file: ", file_name.get()));
     }
     return entries_updated;
-}    // -----  end of function UpdateOutstandingShares  -----
+} // -----  end of function UpdateOutstandingShares  -----

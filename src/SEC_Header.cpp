@@ -54,11 +54,12 @@ void SEC_Header::UseData(EM::FileContent file_content)
     const boost::regex regex_SEC_header{R"***(^<SEC-HEADER>.+?</SEC-HEADER>$)***"};
     boost::cmatch results;
 
-    bool found_it = boost::regex_search(file_content.get().cbegin(), file_content.get().cend(), results, regex_SEC_header);
+    bool found_it =
+        boost::regex_search(file_content.get().cbegin(), file_content.get().cend(), results, regex_SEC_header);
     BOOST_ASSERT_MSG(found_it, "Can't find SEC Header");
 
     header_data_ = EM::sv(results[0].first, results[0].length());
-}    // -----  end of method SEC_Header::UseData  -----
+} // -----  end of method SEC_Header::UseData  -----
 
 void SEC_Header::ExtractHeaderFields()
 {
@@ -69,7 +70,7 @@ void SEC_Header::ExtractHeaderFields()
     ExtractQuarterEnding();
     ExtractFileName();
     ExtractCompanyName();
-}    // -----  end of method SEC_Header::ExtractHeaderFields  -----
+} // -----  end of method SEC_Header::ExtractHeaderFields  -----
 
 void SEC_Header::ExtractCIK()
 {
@@ -81,7 +82,7 @@ void SEC_Header::ExtractCIK()
     BOOST_ASSERT_MSG(found_it, "Can't find CIK in SEC Header");
 
     parsed_header_data_["cik"] = results.str(1);
-}    // -----  end of method SEC_Header::ExtractCIK  -----
+} // -----  end of method SEC_Header::ExtractCIK  -----
 
 void SEC_Header::ExtractSIC()
 {
@@ -100,11 +101,12 @@ void SEC_Header::ExtractSIC()
     {
         parsed_header_data_["sic"] = "unknown";
     }
-}    // -----  end of method SEC_Header::ExtractSIC  -----
+} // -----  end of method SEC_Header::ExtractSIC  -----
 
 void SEC_Header::ExtractFormType()
 {
-    const boost::regex ex{R"***(^CONFORMED SUBMISSION TYPE:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
+    const boost::regex ex{R"***(^CONFORMED SUBMISSION TYPE:\s+(.+?)$)***",
+                          boost::regex_constants::match_not_dot_newline};
 
     boost::cmatch results;
     bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
@@ -117,7 +119,7 @@ void SEC_Header::ExtractFormType()
 
     parsed_header_data_["form_type"] =
         results.str(1) | rng::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
-}    // -----  end of method SEC_Header::ExtractFormNumber  -----
+} // -----  end of method SEC_Header::ExtractFormNumber  -----
 
 void SEC_Header::ExtractDateFiled()
 {
@@ -130,7 +132,7 @@ void SEC_Header::ExtractDateFiled()
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
     parsed_header_data_["date_filed"] = date::format("%F", the_date);
-}    // -----  end of method SEC_Header::ExtractDateFiled  -----
+} // -----  end of method SEC_Header::ExtractDateFiled  -----
 
 void SEC_Header::ExtractQuarterEnding()
 {
@@ -143,7 +145,7 @@ void SEC_Header::ExtractQuarterEnding()
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
     parsed_header_data_["quarter_ending"] = date::format("%F", the_date);
-}    // -----  end of method SEC_Header::ExtractQuarterEnded  -----
+} // -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
 void SEC_Header::ExtractFileName()
 {
@@ -155,11 +157,12 @@ void SEC_Header::ExtractFileName()
     BOOST_ASSERT_MSG(found_it, "Can't find 'file name' in SEC Header");
 
     parsed_header_data_["file_name"] = results.str(1) + ".txt";
-}    // -----  end of method SEC_Header::ExtractFileName  -----
+} // -----  end of method SEC_Header::ExtractFileName  -----
 
 void SEC_Header::ExtractCompanyName()
 {
-    const boost::regex ex{R"***(^\s+COMPANY CONFORMED NAME:\s+(.+?)$)***", boost::regex_constants::match_not_dot_newline};
+    const boost::regex ex{R"***(^\s+COMPANY CONFORMED NAME:\s+(.+?)$)***",
+                          boost::regex_constants::match_not_dot_newline};
 
     boost::cmatch results;
     bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
@@ -167,4 +170,4 @@ void SEC_Header::ExtractCompanyName()
     BOOST_ASSERT_MSG(found_it, "Can't find 'company name' in SEC Header");
 
     parsed_header_data_["company_name"] = results.str(1);
-}    // -----  end of method SEC_Header::ExtractCompanyName  -----
+} // -----  end of method SEC_Header::ExtractCompanyName  -----

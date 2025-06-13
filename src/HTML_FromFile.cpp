@@ -45,7 +45,7 @@
  *--------------------------------------------------------------------------------------
  */
 
-HTML_FromFile::HTML_FromFile(EM::DocumentSectionList const* document_sections, EM::FileName document_name)
+HTML_FromFile::HTML_FromFile(EM::DocumentSectionList const *document_sections, EM::FileName document_name)
     : document_sections_{document_sections}, document_name_{document_name}
 {
 } /* -----  end of method HTML_FromFile::HTML_FromFile  (constructor)  ----- */
@@ -62,9 +62,15 @@ HTML_FromFile::const_iterator HTML_FromFile::begin() const
     return it;
 } /* -----  end of method HTML_FromFile::begin  ----- */
 
-HTML_FromFile::iterator HTML_FromFile::end() { return {}; } /* -----  end of method HTML_FromFile::end  ----- */
+HTML_FromFile::iterator HTML_FromFile::end()
+{
+    return {};
+} /* -----  end of method HTML_FromFile::end  ----- */
 
-HTML_FromFile::const_iterator HTML_FromFile::end() const { return {}; } /* -----  end of method HTML_FromFile::end  ----- */
+HTML_FromFile::const_iterator HTML_FromFile::end() const
+{
+    return {};
+} /* -----  end of method HTML_FromFile::end  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -73,7 +79,7 @@ HTML_FromFile::const_iterator HTML_FromFile::end() const { return {}; } /* -----
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-HTML_FromFile::html_itor::html_itor(EM::DocumentSectionList const* document_sections, EM::FileName document_name)
+HTML_FromFile::html_itor::html_itor(EM::DocumentSectionList const *document_sections, EM::FileName document_name)
     : document_sections_{document_sections}, document_name_{document_name}
 {
     for (++current_doc_; current_doc_ < document_sections_->size(); ++current_doc_)
@@ -90,7 +96,7 @@ HTML_FromFile::html_itor::html_itor(EM::DocumentSectionList const* document_sect
     current_doc_ = -1;
 } /* -----  end of method HTML_FromFile::html_itor::HTML_FromFile::html_itor  (constructor)  ----- */
 
-HTML_FromFile::html_itor& HTML_FromFile::html_itor::operator++()
+HTML_FromFile::html_itor &HTML_FromFile::html_itor::operator++()
 {
     for (++current_doc_; current_doc_ < document_sections_->size(); ++current_doc_)
     {

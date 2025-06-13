@@ -68,9 +68,15 @@ TablesFromHTML::const_iterator TablesFromHTML::begin() const
     return it;
 } /* -----  end of method TablesFromHTML::begin  ----- */
 
-TablesFromHTML::iterator TablesFromHTML::end() { return {}; } /* -----  end of method TablesFromHTML::end  ----- */
+TablesFromHTML::iterator TablesFromHTML::end()
+{
+    return {};
+} /* -----  end of method TablesFromHTML::end  ----- */
 
-TablesFromHTML::const_iterator TablesFromHTML::end() const { return {}; } /* -----  end of method TablesFromHTML::end  ----- */
+TablesFromHTML::const_iterator TablesFromHTML::end() const
+{
+    return {};
+} /* -----  end of method TablesFromHTML::end  ----- */
 
 /*
  *--------------------------------------------------------------------------------------
@@ -79,7 +85,7 @@ TablesFromHTML::const_iterator TablesFromHTML::end() const { return {}; } /* ---
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-TablesFromHTML::table_itor::table_itor(TablesFromHTML const* tables) : tables_{tables}
+TablesFromHTML::table_itor::table_itor(TablesFromHTML const *tables) : tables_{tables}
 {
     if (tables_ == nullptr)
     {
@@ -101,7 +107,7 @@ TablesFromHTML::table_itor::table_itor(TablesFromHTML const* tables) : tables_{t
     }
 } /* -----  end of method TablesFromHTML::table_itor::table_itor  (constructor)  ----- */
 
-TablesFromHTML::table_itor& TablesFromHTML::table_itor::operator++()
+TablesFromHTML::table_itor &TablesFromHTML::table_itor::operator++()
 {
     if (tables_ == nullptr)
     {
@@ -148,13 +154,13 @@ std::optional<TableData> TablesFromHTML::table_itor::FindNextTable()
             }
             spdlog::debug("Little or no HTML found in table...Skipping.");
         }
-        catch (AssertionException& e)
+        catch (AssertionException &e)
         {
             // let's ignore it and continue.
 
             spdlog::debug(catenate("Problem processing HTML table: ", e.what()).c_str());
         }
-        catch (HTMLException& e)
+        catch (HTMLException &e)
         {
             // let's ignore it and continue.
 
@@ -169,7 +175,7 @@ std::optional<TableData> TablesFromHTML::table_itor::FindNextTable()
     }
     tables_->found_all_tables_ = true;
     return std::nullopt;
-}    // -----  end of method TablesFromHTML::table_itor::FindNextTable  -----
+} // -----  end of method TablesFromHTML::table_itor::FindNextTable  -----
 
 bool TablesFromHTML::table_itor::TableHasMarkup(EM::TableContent table)
 {
@@ -179,7 +185,7 @@ bool TablesFromHTML::table_itor::TableHasMarkup(EM::TableContent table)
     //    auto have_div = table.find("</div>") != std::string::npos;
 
     return have_td && have_tr;
-}    // -----  end of method TablesFromHTML::table_itor::TableHasMarkup  -----
+} // -----  end of method TablesFromHTML::table_itor::TableHasMarkup  -----
 
 std::string TablesFromHTML::table_itor::CollectTableContent(EM::TableContent a_table)
 {
@@ -223,7 +229,7 @@ std::string TablesFromHTML::table_itor::CollectTableContent(EM::TableContent a_t
     return clean_table_data;
 } /* -----  end of function TablesFromHTML::table_itor::CollectTableContent  ----- */
 
-std::string TablesFromHTML::table_itor::ExtractTextDataFromTable(CNode& a_table)
+std::string TablesFromHTML::table_itor::ExtractTextDataFromTable(CNode &a_table)
 {
     std::string table_text;
     table_text.reserve(START_WITH);
@@ -296,7 +302,7 @@ std::string TablesFromHTML::table_itor::ExtractTextDataFromTable(CNode& a_table)
     return table_text;
 } /* -----  end of function TablesFromHTML::table_itor::ExtractTextDataFromTable  ----- */
 
-std::string TablesFromHTML::table_itor::FilterFoundHTML(const std::string& new_row_data)
+std::string TablesFromHTML::table_itor::FilterFoundHTML(const std::string &new_row_data)
 {
     // at this point, I do not want any line breaks or returns from source data.
     // (I'll add them where I want them.)
