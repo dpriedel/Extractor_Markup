@@ -34,7 +34,6 @@
 #ifndef _EXTRACTOR_UTILS_INC_
 #define _EXTRACTOR_UTILS_INC_
 
-#include <date/tz.h>
 #include <fmt/format.h>
 
 #include <boost/assert.hpp>
@@ -75,19 +74,19 @@ template <> struct fmt::formatter<std::filesystem::path> : formatter<std::string
     template <typename FormatContext> auto format(const std::filesystem::path &p, FormatContext &ctx) const
     {
         std::string f_name = p.string();
-        return formatter<std::string>::format(f_name, ctx);
+        return fmt::format_to(ctx.out(), "{}", p.string());
     }
 };
 
 // custom fmtlib formatter for date year_month_day
 
-template <> struct fmt::formatter<date::year_month_day> : formatter<std::string>
+template <> struct fmt::formatter<std::chrono::year_month_day> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
-    template <typename FormatContext> auto format(date::year_month_day d, FormatContext &ctx) const
+    template <typename FormatContext> auto format(std::chrono::year_month_day d, FormatContext &ctx) const
     {
-        std::string s_date = date::format("%Y-%m-%d", d);
-        return formatter<std::string>::format(s_date, ctx);
+        std::string s_date = std::format("%Y-%m-%d", d);
+        return fmt::format_to(ctx.out(), "{}", d);
     }
 };
 
@@ -127,19 +126,18 @@ template <typename... Ts> auto SumT(const std::tuple<Ts...> &t)
     return std::apply(z_, t);
 }
 
-// utility to convert a date::year_month_day to a string
-// using Howard Hinnant's date library
+// utility to convert a std::chrono::year_month_day to a string
 
 inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
 {
-    auto t = date::make_zoned(date::current_zone(), a_date_time);
-    std::string ts = date::format("%a, %b %d, %Y at %I:%M:%S %p %Z", t);
+    auto t = std::chrono::zoned_time(std::chrono::current_zone(), a_date_time);
+    std::string ts = std::format("%a, %b %d, %Y at %I:%M:%S %p %Z", t);
     return ts;
 }
 
 // seems we do this a lot too.
 
-date::year_month_day StringToDateYMD(const std::string &input_format, const std::string &the_date);
+std::chrono::year_month_day StringToDateYMD(const std::string &input_format, const std::string &the_date);
 
 std::string LoadDataFileForUse(const EM::FileName &file_name);
 
@@ -336,7 +334,7 @@ struct NeedToUpdateDBContent
 
 struct FileIsWithinDateRange
 {
-    FileIsWithinDateRange(const date::year_month_day &begin_date, const date::year_month_day &end_date)
+    FileIsWithinDateRange(const std::chrono::year_month_day &begin_date, const std::chrono::year_month_day &end_date)
         : begin_date_{begin_date}, end_date_{end_date}
     {
     }
@@ -345,8 +343,8 @@ struct FileIsWithinDateRange
 
     const std::string filter_name_{"FileIsWithinDateRange"};
 
-    const date::year_month_day begin_date_;
-    const date::year_month_day end_date_;
+    const std::chrono::year_month_day begin_date_;
+    const std::chrono::year_month_day end_date_;
 };
 
 struct ConvertInputHierarchyToOutputHierarchy

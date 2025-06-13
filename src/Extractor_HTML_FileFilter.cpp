@@ -75,7 +75,7 @@ namespace rng = ranges;
 #include <pqxx/stream_to>
 
 using namespace std::string_literals;
-using namespace date::literals;
+using namespace std::chrono_literals;
 
 static const char *NONE = "none";
 
@@ -1157,7 +1157,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     }
 
     auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    date::year_month_day date_filed_amended = 1900_y / 1 / 1_d; // need to start somewhere
+    std::chrono::year_month_day date_filed_amended = 1900y / 1 / 1d; // need to start somewhere
 
     if (!amended_date_filed.empty())
     {

@@ -34,12 +34,9 @@
 #include "SEC_Header.h"
 
 #include <boost/regex.hpp>
-#include <iostream>
 #include <range/v3/action/transform.hpp>
 
 namespace rng = ranges;
-
-#include <date/date.h>
 
 #include "Extractor_Utils.h"
 
@@ -131,7 +128,7 @@ void SEC_Header::ExtractDateFiled()
     BOOST_ASSERT_MSG(found_it, "Can't find 'date filed' in SEC Header");
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
-    parsed_header_data_["date_filed"] = date::format("%F", the_date);
+    parsed_header_data_["date_filed"] = std::format("%F", the_date);
 } // -----  end of method SEC_Header::ExtractDateFiled  -----
 
 void SEC_Header::ExtractQuarterEnding()
@@ -144,7 +141,7 @@ void SEC_Header::ExtractQuarterEnding()
     BOOST_ASSERT_MSG(found_it, "Can't find 'quarter ending' in SEC Header");
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
-    parsed_header_data_["quarter_ending"] = date::format("%F", the_date);
+    parsed_header_data_["quarter_ending"] = std::format("%F", the_date);
 } // -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
 void SEC_Header::ExtractFileName()
