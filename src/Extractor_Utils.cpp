@@ -39,6 +39,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stacktrace>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
@@ -577,6 +578,7 @@ namespace boost {
 
 void assertion_failed_msg(char const *expr, char const *msg,
                           char const *function, char const *file, long line) {
+  std::cout << std::stacktrace::current() << std::endl;
   throw AssertionException(catenate(
       "\n*** Assertion failed *** test: ", expr, " in function: ", function,
       " from file: ", file, " at line: ", line, ".\nassertion msg: ", msg));
@@ -590,6 +592,7 @@ void assertion_failed_msg(char const *expr, char const *msg,
  */
 void assertion_failed(char const *expr, char const *function, char const *file,
                       long line) {
+  std::cout << std::stacktrace::current() << std::endl;
   throw AssertionException(catenate("\n*** Assertion failed *** test: ", expr,
                                     " in function: ", function,
                                     " from file: ", file, " at line: ", line));
