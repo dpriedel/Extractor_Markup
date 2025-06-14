@@ -73,7 +73,6 @@ CFG_LIB := -lpthread \
 		-lspdlog \
 		-lgumbo \
 		-lgq \
-		-ldate-tz \
 		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
@@ -111,7 +110,6 @@ CFG_LIB := -lpthread \
 		-lspdlog \
 		-lgumbo \
 		-lgq \
-		-ldate-tz \
 		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
