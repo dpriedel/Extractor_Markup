@@ -49,8 +49,6 @@
 
 namespace rng = ranges;
 
-#include <fmt/chrono.h>
-#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include <pqxx/pqxx>
