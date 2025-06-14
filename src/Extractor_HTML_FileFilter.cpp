@@ -41,8 +41,7 @@
 #include <algorithm>
 #include <boost/regex.hpp>
 #include <cctype>
-#include <charconv>
-#include <iostream>
+#include <format>
 #include <range/v3/action/remove_if.hpp>
 #include <range/v3/action/transform.hpp>
 #include <range/v3/algorithm/any_of.hpp>
@@ -60,15 +59,12 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/transform.hpp>
-#include <system_error>
 
 #include "HTML_FromFile.h"
-#include "SEC_Header.h"
 #include "TablesFromFile.h"
 
 namespace rng = ranges;
 
-#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include <pqxx/pqxx>
@@ -308,7 +304,7 @@ MultDataList FindDollarMultipliers(const AnchorList &financial_anchors)
  * TranslateMultiplier Description:
  * =====================================================================================
  */
-std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier)
+std::pair<std::string, int> TranslateMultiplier(const std::string &multiplier)
 {
     std::string mplier;
     rng::transform(multiplier, rng::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); });
@@ -893,8 +889,7 @@ void FindAndStoreMultipliersUsingContent(FinancialStatements &financial_statemen
                                                 matches, regex_dollar_mults);
             found_it)
         {
-            EM::sv multiplier(matches[1].str());
-            const auto &[mult_s, value] = TranslateMultiplier(multiplier);
+            const auto &[mult_s, value] = TranslateMultiplier(matches[1].str());
             mult = value;
             multiplier_s = mult_s;
             spdlog::debug(catenate("Found generic multiplier: ", multiplier_s, " Filling in with it."));
@@ -1119,11 +1114,14 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     // since that may have changed (especially if we are processing an
     // amended form)
 
-    auto save_original_data_cmd = fmt::format("SELECT date_filed, file_name, amended_date_filed, "
+    auto save_original_data_cmd = std::format("SELECT date_filed, file_name, amended_date_filed, "
                                               "amended_file_name FROM {3}.sec_filing_id WHERE"
                                               " cik = {0} AND form_type = {1} AND period_ending = {2}",
                                               trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                                               trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+
+    spdlog::debug("\n*** save original data cmd: {}\n", save_original_data_cmd);
+
     auto saved_original_data = trxn.exec(save_original_data_cmd);
 
     std::string original_date_filed;
@@ -1169,7 +1167,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
         return false;
     }
 
-    if (replace_DB_content || form_type.ends_with("_A") && date_filed > date_filed_amended)
+    if (replace_DB_content || (form_type.ends_with("_A") && date_filed > date_filed_amended))
     {
         if (form_type.ends_with("_A"))
         {
@@ -1177,14 +1175,17 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
-                                         " cik = {0} AND form_type = {1} AND period_ending = {2}",
-                                         trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
-                                         trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
-        trxn.exec(filing_ID_cmd);
+        auto delete_for_filing_ID_cmd = std::format("DELETE FROM {3}.sec_filing_id WHERE"
+                                                    " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                                    trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                                    trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+
+        spdlog::debug("\n*** delete data for filing ID cmd: {}\n", delete_for_filing_ID_cmd);
+
+        trxn.exec(delete_for_filing_ID_cmd);
     }
 
-    auto filing_ID_cmd = fmt::format(
+    auto filing_ID_cmd = std::format(
         "INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
         "period_ending,"
@@ -1198,6 +1199,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
         amended_file_name.empty() ? "NULL" : trxn.quote(amended_file_name),
         amended_date_filed.empty() ? "NULL" : trxn.quote(amended_date_filed));
     // std::cout << filing_ID_cmd << '\n';
+    spdlog::debug("\n*** insert data for filing ID cmd: {}\n", filing_ID_cmd);
     auto filing_ID = trxn.query_value<std::string>(filing_ID_cmd);
 
     // now, the goal of all this...save all the financial values for the given
@@ -1208,6 +1210,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     //    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
+    spdlog::debug("\n*** inserting balance sheet data\n");
     for (const auto &[label, value] : financial_statements.balance_sheet_.values_)
     {
         ++counter;
@@ -1221,6 +1224,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     //    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
+    spdlog::debug("\n*** inserting stmt of ops data\n");
     for (const auto &[label, value] : financial_statements.statement_of_operations_.values_)
     {
         ++counter;
@@ -1233,6 +1237,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     //    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
     //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
+    spdlog::debug("\n*** inserting cash flow data\n");
     for (const auto &[label, value] : financial_statements.cash_flows_.values_)
     {
         ++counter;
@@ -1271,7 +1276,7 @@ int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSecti
         pqxx::work trxn{cnxn};
 
         auto check_for_existing_content_cmd =
-            fmt::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
+            std::format("SELECT count(*) FROM {3}.sec_filing_id WHERE"
                         " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
                         "data_source = 'HTML'",
                         trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
@@ -1280,7 +1285,7 @@ int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSecti
 
         if (have_data)
         {
-            auto query_cmd = fmt::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
+            auto query_cmd = std::format("SELECT shares_outstanding FROM {3}.sec_filing_id WHERE"
                                          " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
                                          "data_source = 'HTML'",
                                          trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),
@@ -1291,7 +1296,7 @@ int UpdateOutstandingShares(const SharesOutstanding &so, const EM::DocumentSecti
             if (DB_shares != file_shares)
             {
                 auto update_cmd =
-                    fmt::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
+                    std::format("UPDATE {3}.sec_filing_id SET shares_outstanding = {4} WHERE"
                                 " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}' AND "
                                 "data_source = 'HTML'",
                                 trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")),

@@ -39,12 +39,9 @@
 #ifndef _EXTRACTOR_HTML_FILEFILTER_
 #define _EXTRACTOR_HTML_FILEFILTER_
 
-#include <algorithm>
 #include <boost/regex.hpp>
-#include <map>
 #include <optional>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "AnchorsFromHTML.h"
@@ -220,7 +217,7 @@ inline bool operator<(const MultiplierData &lhs, const MultiplierData &rhs)
 
 using MultDataList = std::vector<MultiplierData>;
 
-std::pair<std::string, int> TranslateMultiplier(EM::sv multiplier);
+std::pair<std::string, int> TranslateMultiplier(const std::string &multiplier);
 
 // bool FinancialDocumentFilter (const HtmlInfo& html_info);
 

@@ -38,8 +38,9 @@
 #include "Extractor_XBRL_FileFilter.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
-#include <experimental/array>
+#include <format>
 #include <iostream>
 #include <range/v3/action/remove_if.hpp>
 #include <range/v3/action/transform.hpp>
@@ -63,7 +64,6 @@
 
 namespace rng = ranges;
 
-#include <fmt/core.h>
 #include <pstreams/pstream.h>
 #include <spdlog/spdlog.h>
 
@@ -82,9 +82,8 @@ const auto GAAP_LEN{US_GAAP_NS.size()};
 const std::string US_GAAP_PFX{"us-gaap_"};
 const auto GAAP_PFX_LEN{US_GAAP_PFX.size()};
 
-decltype(auto) MONTH_NAMES =
-    std::experimental::make_array("", "January", "February", "March", "April", "May", "June", "July", "August",
-                                  "September", "October", "November", "December");
+decltype(auto) MONTH_NAMES = std::array{"",     "January", "February",  "March",   "April",    "May",     "June",
+                                        "July", "August",  "September", "October", "November", "December"};
 
 const std::string::size_type START_WITH{1000000};
 
@@ -941,7 +940,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FilingData 
     // amended form)
 
     auto save_original_data_cmd =
-        fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
+        std::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
                     " cik = {0} AND form_type = {1} AND period_ending = {2}",
                     trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                     trxn.quote(filing_fields.period_end_date), schema_name);
@@ -998,14 +997,14 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FilingData 
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+        auto filing_ID_cmd = std::format("DELETE FROM {3}.sec_filing_id WHERE"
                                          " cik = {0} AND form_type = {1} AND period_ending = {2}",
                                          trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                                          trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
         trxn.exec(filing_ID_cmd);
     }
 
-    auto filing_ID_cmd = fmt::format(
+    auto filing_ID_cmd = std::format(
         "INSERT INTO {11}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, period_context_id,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"
@@ -1075,7 +1074,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
     // amended form)
 
     auto save_original_data_cmd =
-        fmt::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
+        std::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
                     " cik = {0} AND form_type = {1} AND period_ending = {2}",
                     trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                     trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
@@ -1134,7 +1133,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
             amended_file_name = SEC_fields.at("file_name");
         }
 
-        auto filing_ID_cmd = fmt::format("DELETE FROM {3}.sec_filing_id WHERE"
+        auto filing_ID_cmd = std::format("DELETE FROM {3}.sec_filing_id WHERE"
                                          " cik = {0} AND form_type = {1} AND period_ending = {2}",
                                          trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                                          trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
@@ -1143,7 +1142,7 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
 
     //    std::cout << catenate("2 a: ", original_date_filed, " b: ", original_file_name, " c: ", amended_date_filed, "
     //    d: ", amended_file_name, " e: ", SEC_fields.at("date_filed"), " f: ", SEC_fields.at("file_name"), '\n');
-    auto filing_ID_cmd = fmt::format(
+    auto filing_ID_cmd = std::format(
         "INSERT INTO {9}.sec_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending,"
         " shares_outstanding, data_source, amended_file_name, amended_date_filed)"

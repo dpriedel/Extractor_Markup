@@ -31,6 +31,8 @@
 /* You should have received a copy of the GNU General Public License */
 /* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include <iostream>
+
 #include "SEC_Header.h"
 
 #include <boost/regex.hpp>
@@ -128,7 +130,7 @@ void SEC_Header::ExtractDateFiled()
     BOOST_ASSERT_MSG(found_it, "Can't find 'date filed' in SEC Header");
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
-    parsed_header_data_["date_filed"] = std::format(":%F", the_date);
+    parsed_header_data_["date_filed"] = std::format("{:%F}", the_date);
 } // -----  end of method SEC_Header::ExtractDateFiled  -----
 
 void SEC_Header::ExtractQuarterEnding()
@@ -141,7 +143,7 @@ void SEC_Header::ExtractQuarterEnding()
     BOOST_ASSERT_MSG(found_it, "Can't find 'quarter ending' in SEC Header");
 
     auto the_date = StringToDateYMD("%Y%m%d", results.str(1));
-    parsed_header_data_["quarter_ending"] = std::format(":%F", the_date);
+    parsed_header_data_["quarter_ending"] = std::format("{:%F}", the_date);
 } // -----  end of method SEC_Header::ExtractQuarterEnded  -----
 
 void SEC_Header::ExtractFileName()

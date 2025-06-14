@@ -34,8 +34,6 @@
 #ifndef _EXTRACTOR_UTILS_INC_
 #define _EXTRACTOR_UTILS_INC_
 
-#include <fmt/format.h>
-
 #include <boost/assert.hpp>
 #include <chrono>
 #include <filesystem>
@@ -63,27 +61,27 @@ concept has_string = requires(T t) { t.string(); };
 
 // custom fmtlib formatter for filesytem paths
 
-template <> struct fmt::formatter<std::filesystem::path> : formatter<std::string>
+template <> struct std::formatter<std::filesystem::path> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
     template <typename FormatContext> auto format(const std::filesystem::path &p, FormatContext &ctx) const
     {
         std::string f_name = p.string();
-        return fmt::format_to(ctx.out(), "{}", p.string());
+        return std::format_to(ctx.out(), "{}", p.string());
     }
 };
 
 // custom fmtlib formatter for date year_month_day
 
-template <> struct fmt::formatter<std::chrono::year_month_day> : formatter<std::string>
-{
-    // parse is inherited from formatter<string_view>.
-    template <typename FormatContext> auto format(std::chrono::year_month_day d, FormatContext &ctx) const
-    {
-        std::string s_date = std::format(":%Y-%m-%d", d);
-        return fmt::format_to(ctx.out(), "{}", d);
-    }
-};
+// template <> struct std::formatter<std::chrono::year_month_day> : formatter<std::string>
+// {
+//     // parse is inherited from formatter<string_view>.
+//     template <typename FormatContext> auto format(std::chrono::year_month_day d, FormatContext &ctx) const
+//     {
+//         std::string s_date = std::format("{:%Y-%m-%d}", d);
+//         return std::format_to(ctx.out(), "{}", d);
+//     }
+// };
 
 template <typename... Ts> inline std::string catenate(Ts &&...ts)
 {
@@ -97,7 +95,7 @@ template <typename... Ts> inline std::string catenate(Ts &&...ts)
         f_string.append("{}");
     }
 
-    return fmt::vformat(f_string, fmt::make_format_args(ts...));
+    return std::vformat(f_string, std::make_format_args(ts...));
 }
 
 // let's add tuples...
@@ -126,7 +124,7 @@ template <typename... Ts> auto SumT(const std::tuple<Ts...> &t)
 inline std::string LocalDateTimeAsString(std::chrono::system_clock::time_point a_date_time)
 {
     auto t = std::chrono::zoned_time(std::chrono::current_zone(), a_date_time);
-    std::string ts = std::format(":%a, %b %d, %Y at %I:%M:%S %p %Z", t);
+    std::string ts = std::format("{:%a, %b %d, %Y at %I:%M:%S %p %Z}", t);
     return ts;
 }
 
