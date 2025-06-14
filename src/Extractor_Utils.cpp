@@ -65,7 +65,7 @@ std::chrono::year_month_day StringToDateYMD(const std::string &input_format, con
 {
     std::istringstream in{the_date};
     std::chrono::sys_days tp;
-    std::chrono::from_stream(in, input_format.data(), tp);
+    std::chrono::from_stream(in, input_format.c_str(), tp);
     BOOST_ASSERT_MSG(!in.fail() && !in.bad(),
                      catenate("Unable to parse given date: ", the_date, " with format: ", input_format).c_str());
     std::chrono::year_month_day result = tp;

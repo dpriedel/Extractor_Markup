@@ -38,16 +38,11 @@
 
 #include <boost/assert.hpp>
 #include <chrono>
-#include <ctime>
-#include <exception>
 #include <filesystem>
-#include <functional>
-#include <map>
-#include <sstream>
+#include <format>
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <typeinfo>
 #include <vector>
 
 #include "Extractor.h"

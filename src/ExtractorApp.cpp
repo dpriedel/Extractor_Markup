@@ -59,7 +59,6 @@
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
 #include "SEC_Header.h"
-#include "date/tz.h"
 #include "spdlog/async.h"
 #include "spdlog/sinks/basic_file_sink.h"
 
