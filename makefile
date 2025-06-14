@@ -76,7 +76,6 @@ CFG_LIB := -lpthread \
 		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
-		-lfmt \
 		-lzip \
 		-lpugixml
 
@@ -113,7 +112,6 @@ CFG_LIB := -lpthread \
 		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
-		-lfmt \
 		-lzip \
 		-lpugixml
 
