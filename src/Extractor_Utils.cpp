@@ -39,15 +39,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <range/v3/algorithm/find.hpp>
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/view/split.hpp>
-#include <range/v3/view/transform.hpp>
-#include <range/v3/view/trim.hpp>
+#include <ranges>
 #include <sstream>
 #include <stacktrace>
 
-namespace rng = ranges;
+namespace rng = std::ranges;
 
 #include <spdlog/spdlog.h>
 

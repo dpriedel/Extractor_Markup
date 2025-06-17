@@ -44,24 +44,6 @@
 #include <format>
 #include <ranges>
 
-// #include <range/v3/action/remove_if.hpp>
-// #include <range/v3/action/transform.hpp>
-// #include <range/v3/algorithm/any_of.hpp>
-// #include <range/v3/algorithm/count_if.hpp>
-// #include <range/v3/algorithm/equal.hpp>
-// #include <range/v3/algorithm/find.hpp>
-// #include <range/v3/algorithm/find_if.hpp>
-// #include <range/v3/algorithm/for_each.hpp>
-// #include <range/v3/algorithm/remove_copy.hpp>
-// #include <range/v3/algorithm/transform.hpp>
-// #include <range/v3/iterator/insert_iterators.hpp>
-// #include <range/v3/range/conversion.hpp>
-// #include <range/v3/view/cache1.hpp>
-// #include <range/v3/view/concat.hpp>
-// #include <range/v3/view/filter.hpp>
-// #include <range/v3/view/take.hpp>
-// #include <range/v3/view/transform.hpp>
-
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
@@ -309,7 +291,7 @@ MultDataList FindDollarMultipliers(const AnchorList &financial_anchors)
 std::pair<std::string, int> TranslateMultiplier(const std::string &multiplier)
 {
     std::string mplier;
-    rng::transform(multiplier, rng::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); });
+    rng::transform(multiplier, std::back_inserter(mplier), [](unsigned char c) { return std::tolower(c); });
 
     if (mplier == "thousands")
     {
@@ -737,14 +719,14 @@ bool AnchorFilterUsingRegex(const boost::regex &stmt_anchor_regex, const AnchorD
 AnchorData FindAnchorUsingFilter(const AnchorsFromHTML &anchors, const boost::regex &stmt_anchor_regex)
 {
     auto the_data =
-        anchors | rng::views::filter([stmt_anchor_regex](const auto &anchor) {
+        anchors | rng::views::filter([&stmt_anchor_regex](const auto &anchor) {
             return AnchorFilterUsingRegex(stmt_anchor_regex, anchor);
         }) |
         rng::views::transform([&anchors](const auto &anchor) { return FindDestinationAnchor(anchor, anchors); }) |
         rng::views::take(1);
 
     AnchorData the_anchor;
-    if (!the_data.empty())
+    if (!rng::empty(the_data))
     {
         the_anchor = *the_data.front();
     }
@@ -974,22 +956,19 @@ EM::Extractor_Values CollectStatementValues(const std::vector<EM::sv> &lines, co
     // NOTE the use of 'cache1' below.  This is ** REQUIRED ** to get correct
     // behavior.  without it, some items are dropped, some are duplicated.
 
-    boost::cmatch match_values;
-
+    // Replaced problematic range-v3 pipeline with explicit loop to correctly handle match_values.
     const std::string digits{"0123456789"};
-
-    // if we find a label/value pair, we need to check that the value actually
-    // contains at least 1 digit.
-
-    EM::Extractor_Values values =
-        lines | rng::views::filter([&match_values, &digits](const auto &a_line) {
-            return boost::regex_search(a_line.cbegin(), a_line.cend(), match_values, regex_value) &&
-                   rng::any_of(match_values[2].str(),
-                               [&digits](char c) { return digits.find(c) != std::string::npos; });
-        }) |
-        rng::views::transform(
-            [&match_values](const auto &x) { return std::pair(match_values[1].str(), match_values[2].str()); }) |
-        rng::views::cache1 | rng::to<EM::Extractor_Values>();
+    EM::Extractor_Values values;
+    for (const auto &a_line : lines)
+    {
+        boost::cmatch current_match_values;
+        if (boost::regex_search(a_line.cbegin(), a_line.cend(), current_match_values, regex_value) &&
+            rng::any_of(current_match_values[2].str(),
+                        [&digits](char c) { return digits.find(c) != std::string::npos; }))
+        {
+            values.emplace_back(current_match_values[1].str(), current_match_values[2].str());
+        }
+    }
 
     // now, for all values except 'per share', apply the multiplier.
 
@@ -1000,11 +979,11 @@ EM::Extractor_Values CollectStatementValues(const std::vector<EM::sv> &lines, co
     // it's possible that cleaning a label field could have caused it to becomre
     // empty
 
-    values = std::move(values) | rng::actions::transform([](auto x) {
-                 x.first = CleanLabel(x.first);
-                 return x;
-             }) |
-             rng::actions::remove_if([](auto &x) { return x.first.empty(); });
+    for (auto &x : values)
+    {
+        x.first = CleanLabel(x.first);
+    }
+    std::erase_if(values, [](auto &x) { return x.first.empty(); });
 
     return values;
 } /* -----  end of method CollectStatementValues  ----- */
@@ -1023,7 +1002,7 @@ std::string ApplyMultiplierAndCleanUpValue(const EM::Extracted_Value &value, con
     // convert all values to floats.
 
     std::string result;
-    rng::remove_copy(value.second, rng::back_inserter(result), ',');
+    rng::remove_copy(value.second, std::back_inserter(result), ',');
     if (result.ends_with(')'))
     {
         result.resize(result.size() - 1);
