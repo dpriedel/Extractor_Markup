@@ -34,6 +34,7 @@
 #define EXTRACTOR_H_
 
 #include <filesystem>
+#include <format>
 #include <map>
 #include <string>
 #include <string_view>
@@ -155,22 +156,6 @@ private:
 
 }; // -----  end of class UniqType  -----
 
-template <typename T, typename Uniqueifier>
-std::ostream &operator<<(std::ostream &os, const UniqType<T, Uniqueifier> &a_type)
-{
-    os << a_type.get();
-    return os;
-}
-
-template <typename T, typename Uniqueifier>
-std::istream &operator>>(std::istream &is, const UniqType<T, Uniqueifier> &a_type)
-{
-    T temp;
-    is >> temp;
-    a_type = temp;
-    return is;
-}
-
 using sv = std::string_view;
 using SEC_Header_fields = std::map<std::string, std::string>;
 using std::filesystem::path;
@@ -233,11 +218,53 @@ using DocumentSectionList = std::vector<DocumentSection>;
 
 namespace EM = Extractor;
 
+// required by boost program_options to parse inputs
+
+template <typename T, typename Uniqueifier>
+std::ostream &operator<<(std::ostream &os, const EM::UniqType<T, Uniqueifier> &a_type)
+{
+    os << a_type.get();
+    return os;
+}
+
+template <typename T, typename Uniqueifier>
+std::istream &operator>>(std::istream &is, const EM::UniqType<T, Uniqueifier> &a_type)
+{
+    T temp;
+    is >> temp;
+    a_type = temp;
+    return is;
+}
+
 //  seems to be needed by boost program options
 
 template <typename T, typename Uniqueifier> inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
 {
     return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
 }
+
+// The formatter code below is from Gemini
+//
+// Define a concept to check if a type is formattable
+template <typename T>
+concept Formattable = requires(T val, std::format_context ctx) {
+    { std::formatter<T>{}.format(val, ctx) } -> std::same_as<decltype(ctx.out())>;
+};
+
+// Custom std::formatter for UniqType
+template <typename T, typename Uniqueifier>
+    requires Formattable<T>
+struct std::formatter<EM::UniqType<T, Uniqueifier>> : std::formatter<T>
+{
+    // The parse method is inherited from std::formatter<T>, which handles the format specifiers
+    // for the underlying type T.
+
+    // The format method then formats the underlying value.
+    template <typename FormatContext>
+    auto format(const EM::UniqType<T, Uniqueifier> &unique_type, FormatContext &ctx) const
+    {
+        return std::formatter<T>::format(unique_type.get(), ctx);
+    }
+};
 
 #endif /* end of include guard: EXTRACTOR_H_ */
