@@ -42,28 +42,30 @@
 #include <boost/regex.hpp>
 #include <cctype>
 #include <format>
-#include <range/v3/action/remove_if.hpp>
-#include <range/v3/action/transform.hpp>
-#include <range/v3/algorithm/any_of.hpp>
-#include <range/v3/algorithm/count_if.hpp>
-#include <range/v3/algorithm/equal.hpp>
-#include <range/v3/algorithm/find.hpp>
-#include <range/v3/algorithm/find_if.hpp>
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/algorithm/remove_copy.hpp>
-#include <range/v3/algorithm/transform.hpp>
-#include <range/v3/iterator/insert_iterators.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/cache1.hpp>
-#include <range/v3/view/concat.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/take.hpp>
-#include <range/v3/view/transform.hpp>
+#include <ranges>
+
+// #include <range/v3/action/remove_if.hpp>
+// #include <range/v3/action/transform.hpp>
+// #include <range/v3/algorithm/any_of.hpp>
+// #include <range/v3/algorithm/count_if.hpp>
+// #include <range/v3/algorithm/equal.hpp>
+// #include <range/v3/algorithm/find.hpp>
+// #include <range/v3/algorithm/find_if.hpp>
+// #include <range/v3/algorithm/for_each.hpp>
+// #include <range/v3/algorithm/remove_copy.hpp>
+// #include <range/v3/algorithm/transform.hpp>
+// #include <range/v3/iterator/insert_iterators.hpp>
+// #include <range/v3/range/conversion.hpp>
+// #include <range/v3/view/cache1.hpp>
+// #include <range/v3/view/concat.hpp>
+// #include <range/v3/view/filter.hpp>
+// #include <range/v3/view/take.hpp>
+// #include <range/v3/view/transform.hpp>
 
 #include "HTML_FromFile.h"
 #include "TablesFromFile.h"
 
-namespace rng = ranges;
+namespace rng = std::ranges;
 
 #include <spdlog/spdlog.h>
 
