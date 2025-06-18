@@ -47,10 +47,7 @@
 #include <iterator>
 #include <map>
 #include <pqxx/pqxx>
-#include <range/v3/action/transform.hpp>
-#include <range/v3/algorithm/find.hpp>
-#include <range/v3/algorithm/find_if.hpp>
-#include <range/v3/algorithm/for_each.hpp>
+#include <ranges>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -64,6 +61,8 @@
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
+
+namespace rng = std::ranges;
 
 // This ctype facet does NOT classify spaces and tabs as whitespace
 // from cppreference example
@@ -379,7 +378,7 @@ bool ExtractorApp::CheckArgs()
         // we can't have the '/' character in it.  Our Collect program replaces the
         // '/' with '_' so we do the same here.
 
-        form_ |= ranges::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
+        rng::transform(form_, form_.begin(), [](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
         form_list_ = split_string<std::string>(form_, ",");
     }
 
@@ -478,7 +477,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
         return;
     }
 
-    auto pos = ranges::find(list_of_files_to_process_, resume_at_this_filename_);
+    auto pos = rng::find(list_of_files_to_process_, resume_at_this_filename_);
     BOOST_ASSERT_MSG(pos != std::end(list_of_files_to_process_),
                      catenate("File: ", resume_at_this_filename_, " not found in list of files.").c_str());
 
@@ -799,7 +798,7 @@ bool ExtractorApp::ExportHtmlFromSingleFile(const EM::DocumentSectionList &secti
 
     HTML_FromFile htmls{&sections, file_name};
 
-    auto financial_content = ranges::find_if(htmls, regex_document_filter);
+    auto financial_content = rng::find_if(htmls, regex_document_filter);
     if (financial_content == htmls.end())
     {
         spdlog::info(catenate("Unable to find financial content in file: ", file_name.get(), " Looking for forms..."));
@@ -870,7 +869,7 @@ std::tuple<int, int, int> ExtractorApp::LoadFilesFromListToDB()
             Do_SingleFile(&forms_processed, success_counter, skipped_counter, error_counter, EM::FileName{file_name});
         });
 
-    ranges::for_each(list_of_files_to_process_, process_file);
+    rng::for_each(list_of_files_to_process_, process_file);
 
     return {success_counter, skipped_counter, error_counter};
 } /* -----  end of method ExtractorApp::LoadFilesFromListToDB  ----- */
@@ -965,8 +964,8 @@ std::tuple<int, int, int> ExtractorApp::ProcessDirectory()
             }
         });
 
-    ranges::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()),
-                     fs::recursive_directory_iterator(), process_file);
+    rng::for_each(fs::recursive_directory_iterator(local_form_file_directory_.get()),
+                  fs::recursive_directory_iterator(), process_file);
 
     return {success_counter, skipped_counter, error_counter};
 } /* -----  end of method ExtractorApp::ProcessDirectory  ----- */
