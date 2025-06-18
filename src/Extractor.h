@@ -218,6 +218,11 @@ using DocumentSectionList = std::vector<DocumentSection>;
 
 namespace EM = Extractor;
 
+template <typename T, typename Uniqueifier> inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
+{
+    return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
+}
+
 // required by boost program_options to parse inputs
 
 template <typename T, typename Uniqueifier>
@@ -234,13 +239,6 @@ std::istream &operator>>(std::istream &is, const EM::UniqType<T, Uniqueifier> &a
     is >> temp;
     a_type = temp;
     return is;
-}
-
-//  seems to be needed by boost program options
-
-template <typename T, typename Uniqueifier> inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
-{
-    return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
 }
 
 // The formatter code below is from Gemini
