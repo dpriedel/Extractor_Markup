@@ -186,7 +186,7 @@ public:
 // use concepts to restrict to strings and string_views.
 
 template <typename T>
-inline std::vector<T> split_string(EM::sv string_data, char delim)
+inline std::vector<T> split_string(const T &string_data, char delim)
     requires std::is_same_v<T, std::string> || std::is_same_v<T, EM::sv>
 {
     std::vector<T> results;
