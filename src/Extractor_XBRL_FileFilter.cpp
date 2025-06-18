@@ -37,32 +37,17 @@
 
 #include "Extractor_XBRL_FileFilter.h"
 
-#include <algorithm>
+#include <algorithm> // For std::ranges algorithms like find_if, for_each, remove, remove_copy, transform, any_of
 #include <array>
 #include <chrono>
 #include <format>
 #include <iostream>
-#include <range/v3/action/remove_if.hpp>
-#include <range/v3/action/transform.hpp>
-#include <range/v3/algorithm/any_of.hpp>
-#include <range/v3/algorithm/count_if.hpp>
-#include <range/v3/algorithm/equal.hpp>
-#include <range/v3/algorithm/find.hpp>
-#include <range/v3/algorithm/find_if.hpp>
-#include <range/v3/algorithm/for_each.hpp>
-#include <range/v3/algorithm/remove.hpp>
-#include <range/v3/algorithm/remove_copy.hpp>
-#include <range/v3/algorithm/transform.hpp>
-#include <range/v3/iterator/insert_iterators.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/cache1.hpp>
-#include <range/v3/view/drop.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/transform.hpp>
+#include <iterator> // For std::back_inserter
+#include <ranges>   // For std::ranges and views
 
 #include "Extractor_Utils.h"
 
-namespace rng = ranges;
+namespace rng = std::ranges; // Alias std::ranges to rng
 
 #include <pstreams/pstream.h>
 #include <spdlog/spdlog.h>
@@ -206,7 +191,7 @@ int64_t ExtractXLSSharesOutstanding(const XLS_Sheet &xls_sheet)
 
     for (auto row : xls_sheet | rng::views::drop(multiplier_skips))
     {
-        row |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
+        rng::transform(row, row.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
         if (row.find("outstanding") == std::string::npos)
         {
@@ -227,10 +212,7 @@ int64_t ExtractXLSSharesOutstanding(const XLS_Sheet &xls_sheet)
         // need to replace any commas we might have.
 
         auto shares_no_commas = rng::remove(shares, ',');
-        if (shares_no_commas != shares.end())
-        {
-            shares.erase(shares_no_commas);
-        }
+        shares.erase(shares_no_commas.begin(), shares_no_commas.end());
 
         if (multiplier.second > 1)
         {
@@ -288,22 +270,20 @@ EM::XLS_Values CollectXLSValues(const XLS_Sheet &sheet)
         }
     }
 
-    boost::smatch match_values;
-
     const std::string digits{"0123456789"};
 
-    // if we find a label/value pair, we need to check that the value actually contains at least 1 digit.
-
-    EM::XLS_Values values = sheet | rng::views::drop(multiplier_skips) // first row contains sheet name and multiplier
-                            | rng::views::filter([&match_values, &digits](const auto &a_row) {
-                                  return boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value) &&
-                                         rng::any_of(match_values[2].str(),
-                                                     [&digits](char c) { return digits.find(c) != std::string::npos; });
-                              }) |
-                            rng::views::transform([&match_values](const auto &x) {
-                                return std::pair(match_values[1].str(), match_values[2].str());
-                            }) |
-                            rng::views::cache1 | rng::to<EM::XLS_Values>();
+    EM::XLS_Values values;
+    for (const auto &a_row : sheet | rng::views::drop(multiplier_skips))
+    {
+        boost::smatch match_values;
+        if (boost::regex_search(a_row.cbegin(), a_row.cend(), match_values, regex_value))
+        {
+            if (rng::any_of(match_values[2].str(), [&digits](char c) { return digits.find(c) != std::string::npos; }))
+            {
+                values.emplace_back(match_values[1].str(), match_values[2].str());
+            }
+        }
+    }
 
     // now, for all values except 'per share', apply the multiplier.
 
@@ -313,11 +293,13 @@ EM::XLS_Values CollectXLSValues(const XLS_Sheet &sheet)
     // one more thing...
     // it's possible that cleaning a label field could have caused it to becomre empty
 
-    values = std::move(values) | rng::actions::transform([](auto &x) {
-                 x.first = CleanLabel(x.first.get());
-                 return x;
-             }) |
-             rng::actions::remove_if([](auto &x) { return x.first.get().empty(); });
+    for (auto &x : values)
+    {
+        x.first = CleanLabel(x.first.get());
+    }
+
+    auto new_end = rng::remove_if(values, [](auto &x) { return x.first.get().empty(); });
+    values.erase(new_end.begin(), new_end.end());
 
     return values;
 } /* -----  end of method CollectStatementValues  ----- */
@@ -335,7 +317,7 @@ std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry &value, const std
     // convert all values to floats.
 
     std::string result;
-    rng::remove_copy(value.second.get(), rng::back_inserter(result), ',');
+    rng::remove_copy(value.second.get(), std::back_inserter(result), ',');
     if (result.ends_with(')'))
     {
         result.resize(result.size() - 1);
@@ -382,7 +364,7 @@ std::string ApplyMultiplierAndCleanUpValue(const EM::XLS_Entry &value, const std
 // =====================================================================================
 std::pair<std::string, int64_t> ExtractMultiplier(std::string row)
 {
-    row |= rng::actions::transform([](unsigned char c) { return std::tolower(c); });
+    rng::transform(row, row.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (row.find("thousands") != std::string::npos)
     {
         return {"000", 1000};
@@ -1026,9 +1008,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FilingData 
     auto inserter1{pqxx::stream_to::table(trxn, {schema_name, "sec_xbrl_data"},
                                           {"filing_id", "xbrl_label", "label", "value", "context_id", "period_begin",
                                            "period_end", "units", "decimals"})};
-    //    pqxx::stream_to inserter1{trxn, schema_name + ".sec_xbrl_data",
-    //        std::vector<std::string>{"filing_ID", "xbrl_label", "label", "value", "context_ID", "period_begin",
-    //            "period_end", "units", "decimals"}};
 
     for (const auto &[label, context_ID, units, decimals, value] : gaap_fields)
     {
@@ -1162,8 +1141,6 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
 
     int counter = 0;
     auto inserter1{pqxx::stream_to::table(trxn, {schema_name, "sec_bal_sheet_data"}, {"filing_id", "label", "value"})};
-    //    pqxx::stream_to inserter1{trxn, schema_name + ".sec_bal_sheet_data",
-    //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto &[label, value] : financial_statements.balance_sheet_.values_)
     {
@@ -1175,8 +1152,6 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
 
     auto inserter2{
         pqxx::stream_to::table(trxn, {schema_name, "sec_stmt_of_ops_data"}, {"filing_id", "label", "value"})};
-    //    pqxx::stream_to inserter2{trxn, schema_name + ".sec_stmt_of_ops_data",
-    //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto &[label, value] : financial_statements.statement_of_operations_.values_)
     {
@@ -1187,8 +1162,6 @@ bool LoadDataToDB_XLS(const EM::SEC_Header_fields &SEC_fields, const XLS_Financi
     inserter2.complete();
 
     auto inserter3{pqxx::stream_to::table(trxn, {schema_name, "sec_cash_flows_data"}, {"filing_id", "label", "value"})};
-    //    pqxx::stream_to inserter3{trxn, schema_name + ".sec_cash_flows_data",
-    //        std::vector<std::string>{"filing_ID", "label", "value"}};
 
     for (const auto &[label, value] : financial_statements.cash_flows_.values_)
     {
