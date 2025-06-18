@@ -492,7 +492,7 @@ std::vector<char> ExtractXLSData(EM::XLSContent xls_content)
     // it seems it's possible to have uuencoded data with 'short' lines
     // so, we need to be sure each line is 61 bytes long.
 
-    auto lines = split_string<EM::sv>(xls_content.get(), '\n');
+    auto lines = split_string<EM::sv>(xls_content.get(), "\n");
     for (auto line : lines)
     {
         out_in.write(line.data(), line.size());

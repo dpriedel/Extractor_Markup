@@ -186,11 +186,11 @@ public:
 // use concepts to restrict to strings and string_views.
 
 template <typename T>
-inline std::vector<T> split_string(const T &string_data, char delim)
-    requires std::is_same_v<T, std::string> || std::is_same_v<T, EM::sv>
+inline std::vector<T> split_string(std::string_view string_data, std::string_view delim)
+    requires std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>
 {
     std::vector<T> results;
-    for (auto it = 0; it != T::npos; ++it)
+    for (size_t it = 0; it < string_data.size(); ++it)
     {
         auto pos = string_data.find(delim, it);
         if (pos != T::npos)

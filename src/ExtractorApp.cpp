@@ -380,19 +380,19 @@ bool ExtractorApp::CheckArgs()
         // '/' with '_' so we do the same here.
 
         form_ |= ranges::actions::transform([](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
-        form_list_ = split_string<std::string>(form_, ',');
+        form_list_ = split_string<std::string>(form_, ",");
     }
 
     if (!CIK_.empty())
     {
-        CIK_list_ = split_string<std::string>(CIK_, ',');
+        CIK_list_ = split_string<std::string>(CIK_, ",");
         BOOST_ASSERT_MSG(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }),
                          "All CIKs must be 10 digits in length.");
     }
 
     if (!SIC_.empty())
     {
-        SIC_list_ = split_string<std::string>(SIC_, ',');
+        SIC_list_ = split_string<std::string>(SIC_, ",");
     }
 
     if (!single_file_to_process_.get().empty())
@@ -469,7 +469,7 @@ void ExtractorApp::BuildListOfFilesToProcess()
 
     // could be a million files so use list of string_views
 
-    list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, '\n');
+    list_of_files_to_process_ = split_string<EM::sv>(file_list_data_, "\n");
 
     spdlog::info(catenate("Found: ", list_of_files_to_process_.size(), " files in list."));
 
