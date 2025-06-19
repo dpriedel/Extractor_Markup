@@ -56,8 +56,11 @@
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
 #include "SEC_Header.h"
+
 #include "spdlog/async.h"
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h" // Include for console sink
+#include "spdlog/spdlog.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -102,14 +105,14 @@ int wait_for_any(std::vector<std::future<T>> &vf, int continue_here, std::chrono
             }
             switch (vf[i].wait_for(std::chrono::seconds{0}))
             {
-            case std::future_status::ready:
-                return i;
+                case std::future_status::ready:
+                    return i;
 
-            case std::future_status::timeout:
-                break;
+                case std::future_status::timeout:
+                    break;
 
-            case std::future_status::deferred:
-                throw std::runtime_error("wait_for_all(): deferred future");
+                case std::future_status::deferred:
+                    throw std::runtime_error("wait_for_all(): deferred future");
             }
         }
         continue_here = 0;
@@ -149,27 +152,41 @@ ExtractorApp::ExtractorApp(const std::vector<std::string> &tokens) : tokens_{tok
 
 void ExtractorApp::ConfigureLogging()
 {
-    // we need to set log level if specified and also log file.
+    // this logging code comes from gemini
+
+    spdlog::init_thread_pool(8192, 1);
 
     if (!log_file_path_name_.get().empty())
     {
-        // if we are running inside our test harness, logging may already by
-        // running so we don't want to clobber it.
-        // different tests may use different names.
-
-        auto logger_name = log_file_path_name_.get().filename();
-        logger_ = spdlog::get(logger_name);
-        if (!logger_)
+        fs::path log_dir = log_file_path_name_.get().parent_path();
+        if (!fs::exists(log_dir))
         {
-            fs::path log_dir = log_file_path_name_.get().parent_path();
-            if (!fs::exists(log_dir))
-            {
-                fs::create_directories(log_dir);
-            }
-
-            logger_ = spdlog::basic_logger_mt<spdlog::async_factory>(logger_name, log_file_path_name_.get().c_str());
-            spdlog::set_default_logger(logger_);
+            fs::create_directories(log_dir);
         }
+
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_.get(), true);
+
+        auto async_logger = std::make_shared<spdlog::async_logger>(
+            "async_file_logger",
+            spdlog::sinks_init_list{file_sink},
+            spdlog::thread_pool(),
+            spdlog::async_overflow_policy::block // Or spdlog::async_overflow_policy::discard_log_msg
+        );
+
+        spdlog::set_default_logger(async_logger);
+    }
+    else
+    {
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+        // 3. Create an asynchronous logger using the console sink.
+        auto async_logger =
+            std::make_shared<spdlog::async_logger>("async_console_logger", // Name for the console logger
+                                                   spdlog::sinks_init_list{console_sink},
+                                                   spdlog::thread_pool(),
+                                                   spdlog::async_overflow_policy::block);
+
+        spdlog::set_default_logger(async_logger);
     }
 
     // we are running before 'CheckArgs' so we need to do a little editiing
@@ -184,6 +201,10 @@ void ExtractorApp::ConfigureLogging()
     if (which_level != levels.end())
     {
         spdlog::set_level(which_level->second);
+    }
+    else
+    {
+        spdlog::set_level(spdlog::level::info);
     }
 }
 
@@ -1351,4 +1372,9 @@ void ExtractorApp::HandleSignal(int signal)
 void ExtractorApp::Shutdown()
 {
     spdlog::info(catenate("\n\n*** End run ", LocalDateTimeAsString(std::chrono::system_clock::now()), " ***\n"));
+
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // Give time for async processing
+
+    spdlog::shutdown(); // Ensure all messages are flushed
+
 } // -----  end of method ExtractorApp::Shutdown  -----
