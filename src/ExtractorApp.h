@@ -73,7 +73,7 @@ public:
     ExtractorApp(const ExtractorApp &rhs) = delete;
     ExtractorApp(ExtractorApp &&rhs) = delete;
 
-    ~ExtractorApp() = default;
+    ~ExtractorApp();
 
     ExtractorApp &operator=(const ExtractorApp &rhs) = delete;
     ExtractorApp &operator=(ExtractorApp &&rhs) = delete;
@@ -150,6 +150,8 @@ protected:
 
 private:
     static void HandleSignal(int signal);
+
+    std::shared_ptr<spdlog::logger> original_logger_;
 
     // ====================  DATA MEMBERS  =======================================
 

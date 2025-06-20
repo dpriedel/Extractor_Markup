@@ -137,6 +137,7 @@ int wait_for_any(std::vector<std::future<T>> &vf, int continue_here, std::chrono
  */
 ExtractorApp::ExtractorApp(int argc, char *argv[]) : mArgc{argc}, mArgv{argv}
 {
+    original_logger_ = spdlog::default_logger();
 } /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
 /*
@@ -148,7 +149,20 @@ ExtractorApp::ExtractorApp(int argc, char *argv[]) : mArgc{argc}, mArgv{argv}
  */
 ExtractorApp::ExtractorApp(const std::vector<std::string> &tokens) : tokens_{tokens}
 {
+    original_logger_ = spdlog::default_logger();
 } /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
+
+ExtractorApp::~ExtractorApp()
+{
+    if (spdlog::get("Extractor_logger"))
+    {
+        spdlog::drop("Extractor_logger");
+    }
+    if (original_logger_)
+    {
+        spdlog::set_default_logger(original_logger_);
+    }
+} /* -----  end of method ExtractorApp::~ExtractorApp  (destructor)  ----- */
 
 void ExtractorApp::ConfigureLogging()
 {
@@ -156,18 +170,18 @@ void ExtractorApp::ConfigureLogging()
 
     spdlog::init_thread_pool(8192, 1);
 
-    if (!log_file_path_name_.get().empty())
+    if (!log_file_path_name_i_.empty())
     {
-        fs::path log_dir = log_file_path_name_.get().parent_path();
+        fs::path log_dir = log_file_path_name_i_.parent_path();
         if (!fs::exists(log_dir))
         {
             fs::create_directories(log_dir);
         }
 
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_.get(), true);
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_i_, true);
 
         auto async_logger = std::make_shared<spdlog::async_logger>(
-            "async_file_logger",
+            "Extractor_logger",
             spdlog::sinks_init_list{file_sink},
             spdlog::thread_pool(),
             spdlog::async_overflow_policy::block // Or spdlog::async_overflow_policy::discard_log_msg
@@ -180,11 +194,10 @@ void ExtractorApp::ConfigureLogging()
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
         // 3. Create an asynchronous logger using the console sink.
-        auto async_logger =
-            std::make_shared<spdlog::async_logger>("async_console_logger", // Name for the console logger
-                                                   spdlog::sinks_init_list{console_sink},
-                                                   spdlog::thread_pool(),
-                                                   spdlog::async_overflow_policy::block);
+        auto async_logger = std::make_shared<spdlog::async_logger>("Extractor_logger", // Name for the console logger
+                                                                   spdlog::sinks_init_list{console_sink},
+                                                                   spdlog::thread_pool(),
+                                                                   spdlog::async_overflow_policy::block);
 
         spdlog::set_default_logger(async_logger);
     }
@@ -1375,6 +1388,6 @@ void ExtractorApp::Shutdown()
 
     std::this_thread::sleep_for(std::chrono::seconds(2)); // Give time for async processing
 
-    spdlog::shutdown(); // Ensure all messages are flushed
+    // spdlog::shutdown(); // Ensure all messages are flushed
 
 } // -----  end of method ExtractorApp::Shutdown  -----
