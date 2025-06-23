@@ -437,17 +437,18 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields,
     std::string check_for_existing_content_cmd;
     if (mode_ == "BOTH")
     {
-        check_for_existing_content_cmd =
-            std::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
-                        "WHERE"
-                        " cik = {0} AND form_type = {1} AND period_ending = {2}",
-                        trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
-                        trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
+        // check_for_existing_content_cmd =
+        //     std::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
+        check_for_existing_content_cmd = std::format("SELECT file_name FROM {3}unified_extracts.sec_filing_id "
+                                                     "WHERE"
+                                                     " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                                     trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                                                     trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_);
     }
     else
     {
         check_for_existing_content_cmd =
-            std::format("SELECT count(*) AS how_many FROM {3}unified_extracts.sec_filing_id "
+            std::format("SELECT file_name FROM {3}unified_extracts.sec_filing_id "
                         "WHERE"
                         " cik = {0} AND form_type = {1} AND period_ending = {2} AND "
                         "data_source = {4}",
@@ -455,15 +456,16 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields,
                         trxn.quote(SEC_fields.at("quarter_ending")), schema_prefix_, trxn.quote(mode_));
     }
 
-    auto have_data = trxn.query_value<int>(check_for_existing_content_cmd);
+    auto have_data =
+        trxn.query_value<std::string>(catenate("SELECT COALESCE((", check_for_existing_content_cmd, "), '(0 rows)')"));
     trxn.commit();
 
-    if (have_data != 0 && !replace_DB_content_ && !form_type.ends_with("_A"))
+    if (have_data != "(0 rows)" && !replace_DB_content_ && !form_type.ends_with("_A"))
     {
-        // simple case here
+        // for possible debugging use, let's show where the data came from.
 
-        spdlog::info(
-            catenate("Skipping: Form data exists and Replace not specifed for file: ", SEC_fields.at("file_name")));
+        spdlog::info(catenate("Skipping: Form data exists and Replace not specifed for file: ",
+                              SEC_fields.at("file_name"), ". Prior source: ", have_data));
         return false;
     }
 
@@ -472,7 +474,7 @@ bool NeedToUpdateDBContent::operator()(const EM::SEC_Header_fields &SEC_fields,
     // we do that by checking for an amended_date_filed value in the DB
     // then, is our current amended_date_filed newer.
 
-    if (have_data != 0 && !replace_DB_content_ && form_type.ends_with("_A"))
+    if (have_data != "(0 rows)" && !replace_DB_content_ && form_type.ends_with("_A"))
     {
         check_for_existing_content_cmd =
             std::format("SELECT amended_date_filed FROM {3}unified_extracts.sec_filing_id WHERE"
