@@ -19,8 +19,8 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.73_gcc-10
-GCCDIR := /extra/gcc/gcc-10
+BOOSTDIR := /extra/boost/boost-1.88_gcc-15
+GCCDIR := /extra/gcc/gcc-15
 CPP := $(GCCDIR)/bin/g++
 
 # If no configuration is specified, "Debug" will be used
@@ -33,7 +33,7 @@ endif
 OUTFILE := XBRL_Extract
 
 CFG_INC := -I./src \
-		-I$(BOOSTDIR)
+		-isystem$(BOOSTDIR)
 
 RPATH_LIB := -Wl,-rpath,$(GCCDIR)/lib64 -Wl,-rpath,$(BOOSTDIR)/lib -Wl,-rpath,/usr/local/lib
 
@@ -54,13 +54,6 @@ SRCS := $(SRCS1) $(SRCS2) # $(SRCS3)
 
 VPATH := $(SDIR1):$(SDIR2) # :$(SDIR3h)
 
-#
-# Configuration: DEBUG
-#
-ifeq "$(CFG)" "Debug"
-
-OUTDIR=ExtractDebug
-
 # use libzip NOT libminizip
 #
 CFG_LIB := -lpthread \
@@ -72,7 +65,6 @@ CFG_LIB := -lpthread \
 		-lspdlog \
 		-lgumbo \
 		-lgq \
-		-lfmt \
 		-lxlsxio_read \
 		-L/usr/lib \
 		-lexpat \
@@ -86,8 +78,15 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 
 OBJS=$(OBJS1) $(OBJS2) # $(OBJS3)
 DEPS=$(OBJS:.o=.d)
+#
+# Configuration: DEBUG
+#
+ifeq "$(CFG)" "Debug"
 
-COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++2a -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_FMT_EXTERNAL -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+OUTDIR=ExtractDebug
+
+
+COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++26 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_USE_STD_FORMAT -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	DEBUG configuration
@@ -111,7 +110,8 @@ OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++2a -fconcepts -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+# COMPILE=$(CPP) -c  -x c++  -O3  -std=c++26 -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++26 -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
