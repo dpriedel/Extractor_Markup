@@ -47,7 +47,6 @@
 #include <iterator>
 #include <map>
 #include <pqxx/pqxx>
-#include <ranges>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -57,7 +56,6 @@
 #include "Extractor_XBRL_FileFilter.h"
 #include "SEC_Header.h"
 
-#include "spdlog/async.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h" // Include for console sink
 #include "spdlog/spdlog.h"
@@ -168,8 +166,6 @@ void ExtractorApp::ConfigureLogging()
 {
     // this logging code comes from gemini
 
-    spdlog::init_thread_pool(8192, 1);
-
     if (!log_file_path_name_i_.empty())
     {
         fs::path log_dir = log_file_path_name_i_.parent_path();
@@ -180,26 +176,19 @@ void ExtractorApp::ConfigureLogging()
 
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_i_, true);
 
-        auto async_logger = std::make_shared<spdlog::async_logger>(
-            "Extractor_logger",
-            spdlog::sinks_init_list{file_sink},
-            spdlog::thread_pool(),
-            spdlog::async_overflow_policy::block // Or spdlog::async_overflow_policy::discard_log_msg
-        );
+        auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", file_sink);
 
-        spdlog::set_default_logger(async_logger);
+        spdlog::set_default_logger(app_logger);
     }
     else
     {
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
         // 3. Create an asynchronous logger using the console sink.
-        auto async_logger = std::make_shared<spdlog::async_logger>("Extractor_logger", // Name for the console logger
-                                                                   spdlog::sinks_init_list{console_sink},
-                                                                   spdlog::thread_pool(),
-                                                                   spdlog::async_overflow_policy::block);
+        auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", // Name for the console logger
+                                                           console_sink);
 
-        spdlog::set_default_logger(async_logger);
+        spdlog::set_default_logger(app_logger);
     }
 
     // we are running before 'CheckArgs' so we need to do a little editiing
@@ -381,7 +370,7 @@ bool ExtractorApp::CheckArgs()
     if (!DB_mode_.empty())
     {
         BOOST_ASSERT_MSG(DB_mode_ == "test" || DB_mode_ == "live", "DB-mode must be: 'test' or 'live'.");
-        schema_prefix_ = (DB_mode_ == "test" ? "" : "live_");
+        schema_prefix_ = (DB_mode_ == "test" ? "test_" : "live_");
     }
 
     //  the user may specify multiple form types in a comma delimited list. We
