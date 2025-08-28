@@ -5,11 +5,11 @@
 -- see link below for hints
 -- https://wiki.postgresql.org/wiki/Don%27t_Do_This
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data
+CREATE TABLE test_unified_extracts.filing_data
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     company_name TEXT DEFAULT NULL,
     symbol TEXT DEFAULT NULL,
@@ -26,13 +26,13 @@ CREATE TABLE live_unified_extracts.filing_data
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_total_assets CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_total_assets CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_total_assets
+CREATE TABLE test_unified_extracts.filing_data_total_assets
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -41,13 +41,13 @@ CREATE TABLE live_unified_extracts.filing_data_total_assets
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_total_assets OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_total_assets OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_total_liabilities CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_total_liabilities CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_total_liabilities
+CREATE TABLE test_unified_extracts.filing_data_total_liabilities
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -56,13 +56,13 @@ CREATE TABLE live_unified_extracts.filing_data_total_liabilities
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_total_liabilities OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_total_liabilities OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_total_revenue CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_total_revenue CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_total_revenue
+CREATE TABLE test_unified_extracts.filing_data_total_revenue
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -71,13 +71,13 @@ CREATE TABLE live_unified_extracts.filing_data_total_revenue
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_total_revenue OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_total_revenue OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_operating_expenses CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_operating_expenses CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_operating_expenses
+CREATE TABLE test_unified_extracts.filing_data_operating_expenses
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -86,13 +86,13 @@ CREATE TABLE live_unified_extracts.filing_data_operating_expenses
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_operating_expenses OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_operating_expenses OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_net_income CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_net_income CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_net_income
+CREATE TABLE test_unified_extracts.filing_data_net_income
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -101,13 +101,13 @@ CREATE TABLE live_unified_extracts.filing_data_net_income
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_net_income OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_net_income OWNER TO extractor_pg;
 
-DROP TABLE IF EXISTS live_unified_extracts.filing_data_interest_expense CASCADE;
+DROP TABLE IF EXISTS test_unified_extracts.filing_data_interest_expense CASCADE;
 
-CREATE TABLE live_unified_extracts.filing_data_interest_expense
+CREATE TABLE test_unified_extracts.filing_data_interest_expense
 (
-    filing_id BIGINT REFERENCES live_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
+    filing_id BIGINT REFERENCES test_unified_extracts.sec_filing_id (filing_id) ON DELETE CASCADE,
     cik TEXT NOT NULL,
     form_type TEXT NOT NULL,
     period_ending DATE NOT NULL,
@@ -116,4 +116,4 @@ CREATE TABLE live_unified_extracts.filing_data_interest_expense
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_unified_extracts.filing_data_interest_expense OWNER TO extractor_pg;
+ALTER TABLE test_unified_extracts.filing_data_interest_expense OWNER TO extractor_pg;
