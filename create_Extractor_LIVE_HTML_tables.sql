@@ -25,7 +25,7 @@ CREATE TABLE live_html_extracts.sec_filing_id
     PRIMARY KEY (cik, form_type, period_ending)
 );
 
-ALTER TABLE live_html_extracts.sec_filing_id OWNER TO data_updater_pg;
+ALTER TABLE live_html_extracts.sec_filing_id OWNER TO extractor_pg;
 
 
 DROP TABLE IF EXISTS live_html_extracts.sec_bal_sheet_data;
@@ -49,7 +49,7 @@ CREATE TABLE live_html_extracts.sec_bal_sheet_data
     PRIMARY KEY (filing_data_id)
 );
 
-ALTER TABLE live_html_extracts.sec_bal_sheet_data OWNER TO data_updater_pg;
+ALTER TABLE live_html_extracts.sec_bal_sheet_data OWNER TO extractor_pg;
 
 DROP TRIGGER IF EXISTS tsv_update ON live_html_extracts.sec_bal_sheet_data;
 
@@ -76,7 +76,7 @@ CREATE TABLE live_html_extracts.sec_stmt_of_ops_data
     PRIMARY KEY (filing_data_id)
 );
 
-ALTER TABLE live_html_extracts.sec_stmt_of_ops_data OWNER TO data_updater_pg;
+ALTER TABLE live_html_extracts.sec_stmt_of_ops_data OWNER TO extractor_pg;
 
 DROP TRIGGER IF EXISTS tsv_update ON live_html_extracts.sec_stmt_of_ops_data;
 
@@ -103,7 +103,7 @@ CREATE TABLE live_html_extracts.sec_cash_flows_data
     PRIMARY KEY (filing_data_id)
 );
 
-ALTER TABLE live_html_extracts.sec_cash_flows_data OWNER TO data_updater_pg;
+ALTER TABLE live_html_extracts.sec_cash_flows_data OWNER TO extractor_pg;
 
 DROP TRIGGER IF EXISTS tsv_update ON live_html_extracts.sec_cash_flows_data;
 
