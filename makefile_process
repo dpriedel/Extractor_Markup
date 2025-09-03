@@ -78,7 +78,9 @@ CFG_LIB := -lpthread -ltbb \
 		-lpugixml \
 		-lpq \
 		-L/usr/local/lib \
-		-lpqxx
+		-lpqxx \
+		-L/usr/local/lib/tbb_lib \
+		-ltbb
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))

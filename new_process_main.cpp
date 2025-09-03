@@ -82,6 +82,24 @@ void CheckArgs()
     fs::create_directories(output_directory.get());
 }
 
+// This ctype facet does NOT classify spaces and tabs as whitespace
+// from cppreference example
+
+struct line_only_whitespace : std::ctype<char>
+{
+    static const mask *make_table()
+    {
+        // make a copy of the "C" locale table
+        static std::vector<mask> v(classic_table(), classic_table() + table_size);
+        v['\t'] &= ~space; // tab will not be classified as whitespace
+        v[' '] &= ~space;  // space will not be classified as whitespace
+        return &v[0];
+    }
+    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs)
+    {
+    }
+};
+
 int main(int argc, const char *argv[])
 {
     spdlog::set_level(spdlog::level::debug);
