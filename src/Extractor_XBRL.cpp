@@ -35,6 +35,7 @@
 /* along with Extractor_Markup.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <boost/date_time/gregorian/gregorian.hpp>
+#include <format>
 #include <fstream>
 #include <iostream>
 // #include <boost/format.hpp>
@@ -46,7 +47,7 @@ namespace bg = boost::gregorian;
 
 #include "Extractor_XBRL.h"
 #include "SEC_Header.h"
-#include "fmt/core.h"
+// #include "fmt/core.h"
 
 // let's try the pugi XML parser.
 // since we already have the document in memory, we'll just
@@ -91,12 +92,12 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields &fields)
     // for now, let's assume we are going to to a full replace of the data for each filing.
 
     auto filing_ID_cmd =
-        fmt::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
+        std::format("DELETE FROM xbrl_extracts.extractor_filing_id WHERE"
                     " cik = '{0}' AND form_type = '{1}' AND period_ending = '{2}'",
                     trxn.esc(fields.at("cik")), trxn.esc(fields.at("form_type")), trxn.esc(period_end_date));
     trxn.exec(filing_ID_cmd);
 
-    filing_ID_cmd = fmt::format(
+    filing_ID_cmd = std::format(
         "INSERT INTO xbrl_extracts.extractor_filing_id"
         " (cik, company_name, file_name, symbol, sic, form_type, date_filed, period_ending, shares_outstanding)"
         " VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}') RETURNING filing_ID",
@@ -128,7 +129,7 @@ void ParseTheXML(EM::sv document, const EM::SEC_Header_fields &fields)
         //            << second_level_nodes.attribute("contextRef").value() ;
         //        std::cout << std::endl;
         ++counter;
-        auto detail_cmd = fmt::format("INSERT INTO xbrl_extracts.extractor_filing_data"
+        auto detail_cmd = std::format("INSERT INTO xbrl_extracts.extractor_filing_data"
                                       " (filing_ID, xbrl_label, xbrl_value) VALUES ('{0}', '{1}', '{2}')",
                                       trxn.esc(filing_ID), trxn.esc(second_level_nodes.name()),
                                       trxn.esc(second_level_nodes.child_value()));
