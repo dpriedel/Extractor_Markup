@@ -37,6 +37,8 @@
 #ifndef EXTRACTORS_
 #define EXTRACTORS_
 
+#include <CLI/CLI.hpp>
+
 #include <boost/program_options.hpp>
 #include <cstddef>
 #include <variant>
@@ -54,6 +56,7 @@ std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, E
 struct XLS_data
 {
     explicit XLS_data(const po::variables_map &args);
+    explicit XLS_data(CLI::App &app);
     void UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName output_directory,
                       const EM::SEC_Header_fields &fields);
     std::vector<char> ConvertDataAndWriteToDisk(EM::FileName output_file_name, EM::sv content);
@@ -76,5 +79,6 @@ using FilterTypes = std::variant<XLS_data, Count_XLS>;
 using FilterList = std::vector<FilterTypes>;
 
 FilterList SelectExtractors(const po::variables_map &args);
+FilterList SelectExtractors(CLI::App &app);
 
 #endif /* end of include guard:  _EXTRACTORS__*/

@@ -83,6 +83,29 @@ FilterList SelectExtractors(const po::variables_map &args)
     return filters;
 } /* -----  end of function SelectExtractors  ----- */
 
+FilterList SelectExtractors(CLI::App &app)
+{
+    // NOTE: we can have an arbitrary number of filters selected.
+
+    FilterList filters;
+
+    //    filters.emplace_back(XBRL_data{});
+    //    filters.emplace_back(XBRL_Label_data{});
+    filters.emplace_back(XLS_data{app});
+    //    filters.emplace_back(DocumentCounter{});
+
+    //    filters.emplace_back(HTM_data{});
+    //    filters.emplace_back(Count_SS{});
+    //    filters.emplace_back(Form_data{args});
+    //    filters.emplace_back(BalanceSheet_data{});
+    //    filters.emplace_back(FinancialStatements_data{});
+    //    filters.emplace_back(Multiplier_data{args});
+    //    filters.emplace_back(Shares_data{args});
+    //    filters.emplace_back(OutstandingShares_data{args});
+    //    filters.emplace_back(OutstandingSharesUpdater{args});
+    return filters;
+} /* -----  end of function SelectExtractors  ----- */
+
 std::optional<EM::SEC_Header_fields> FilterFiles(EM::FileContent file_content, EM::sv form_type, const int MAX_FILES,
                                                  std::atomic<int> &files_processed)
 {
@@ -115,6 +138,16 @@ XLS_data::XLS_data(const po::variables_map &args)
         }
     }
     hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, args["output-dir"].as<EM::FileName>());
+}
+
+XLS_data::XLS_data(CLI::App &app)
+{
+    EM::FileName source_prefix;
+    if (auto input_directory = app.get_option("form-dir"); input_directory)
+    {
+        source_prefix = input_directory->as<EM::FileName>();
+    }
+    hierarchy_converter_ = ConvertInputHierarchyToOutputHierarchy(source_prefix, app["output-dir"]->as<EM::FileName>());
 }
 
 void XLS_data::UseExtractor(EM::FileName file_name, EM::FileContent file_content, EM::FileName output_directory,
@@ -213,7 +246,7 @@ std::vector<char> XLS_data::ConvertDataAndWriteToDisk(EM::FileName output_file_n
     // it seems it's possible to have uuencoded data with 'short' lines
     // so, we need to be sure each line is 61 bytes long.
 
-    auto lines = split_string<EM::sv>(content, '\n');
+    auto lines = split_string<EM::sv>(content, "\n");
     for (auto line : lines)
     {
         temp_file.write(line.data(), line.size());
@@ -283,7 +316,7 @@ std::vector<char> XLS_data::ConvertDataToString(EM::sv content)
     // it seems it's possible to have uuencoded data with 'short' lines
     // so, we need to be sure each line is 61 bytes long.
 
-    auto lines = split_string<EM::sv>(content, '\n');
+    auto lines = split_string<EM::sv>(content, "\n");
     for (auto line : lines)
     {
         out_in.write(line.data(), line.size());
