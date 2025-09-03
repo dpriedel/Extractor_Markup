@@ -1,6 +1,5 @@
--- this will create tables and related structures for
--- the SEC database which is extracted from the files
--- downloaded from the SEC FTP server.
+-- this will create and index table for the form files
+-- downloaded from the SEC EDGAR FTP server.
 
 -- see link below for hints
 -- https://wiki.postgresql.org/wiki/Don%27t_Do_This
@@ -17,16 +16,15 @@ CREATE TABLE test_forms_index.sec_form_index
     alternate_id2 TEXT DEFAULT NULL,
     company_name TEXT NOT NULL,
     file_name TEXT DEFAULT NULL,
-    amended_file_name TEXT DEFAULT NULL,
     symbol TEXT DEFAULT NULL,
     sic TEXT NOT NULL,
     form_type TEXT NOT NULL,
     date_filed DATE DEFAULT NULL,
-    amended_date_filed DATE DEFAULT NULL,
     period_ending DATE NOT NULL,
     period_context_id TEXT DEFAULT NULL,
-    shares_outstanding NUMERIC DEFAULT -1,
-    data_source TEXT NOT NULL,
+    has_html BOOL NOT NULL,
+    has_xml BOOL NOT NULL,
+    has_xls BOOL NOT NULL,
     UNIQUE (cik, form_type, period_ending),
     PRIMARY KEY (cik, form_type, period_ending)
 );
