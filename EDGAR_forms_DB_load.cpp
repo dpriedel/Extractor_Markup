@@ -1,10 +1,11 @@
-#include <CLI/CLI.hpp>
 #include <execution>
 #include <filesystem>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
@@ -20,23 +21,112 @@ void CheckArgs();
 std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
                                                   bool file_name_has_form, const std::string &form_type);
 
-CLI::App app{"Process SEC EDGAR files and extract specified data."};
+argparse::ArgumentParser app("program_name");
 
-EM::FileName input_directory;
-EM::FileName output_directory;
-EM::FileName file_list;
-std::string form_type;
-int MAX_FILES{-1};
-bool file_name_has_form{false};
-
-void SetupProgramOptions()
+struct Options
 {
-    app.add_option("-f,--form", form_type, "Name of form type[s] we are processing")->required();
-    app.add_option("--form-dir", input_directory, "Directory of form files to be processed");
-    app.add_option("--list-file", file_list, "Path to file with list of files to process.");
-    app.add_option("-o,--output-dir", output_directory, "Top level directory to save outputs to")->required();
-    app.add_option("--max-files", MAX_FILES, "Maximum number of files to extract. Default of -1 means no limit.");
-    app.add_flag("--path-has-form", file_name_has_form, "Form number is part of file path.");
+    std::vector<std::string> forms_;
+    EM::FileName input_directory_;
+    EM::FileName output_directory_;
+    EM::FileName file_list_;
+    EM::FileName log_file_path_name_;
+    std::string logging_level_{"information"};
+    std::string DB_mode_{"test"};
+    int max_files_{-1};
+    bool replace_DB_content_{false};
+    bool file_name_has_form_{false};
+} program_options;
+
+void SetupProgramOptions(Options &program_options)
+{
+
+    // Forms option with custom parsing for comma-separated values
+    app.add_argument("-f", "--forms")
+        .help("Name of form type[s] we are processing. Process all if not specified.")
+        .nargs(argparse::nargs_pattern::any)
+        .action([&program_options](const std::string &str) {
+            std::stringstream ss(str);
+            std::string item;
+            while (std::getline(ss, item, ','))
+            {
+                program_options.forms_.push_back(item);
+            }
+        });
+
+    app.add_argument("--list-file").help("Path to file with list of files to process.").required();
+
+    app.add_argument("--max-files")
+        .help("Maximum number of files to extract. Default of -1 means no limit.")
+        .nargs(1)
+        .scan<'i', int>();
+
+    app.add_argument("--log-path")
+        .help("path name for log file.")
+        .nargs(1)
+        .scan<'s', std::string>(); // scan for string type
+
+    app.add_argument("-l", "--log-level")
+        .help("logging level. Must be 'none|error|information|debug'. Default is 'information'.")
+        .default_value(std::string("information"))
+        .nargs(1);
+
+    app.add_argument("-R", "--replace-DB-content")
+        .help("replace all DB content for each file. Default is 'false'")
+        .default_value(false)
+        .implicit_value(true)
+        .nargs(0);
+
+    app.add_argument("--DB-mode")
+        .help("Must be either 'test' or 'live'. Default is 'test'.")
+        .default_value(std::string("test"))
+        .nargs(1);
+}
+void ConfigureLogging(Options &program_options)
+{
+    // // this logging code comes from gemini
+    //
+    // if (!program_options.log_file_path_name_.empty())
+    // {
+    //     fs::path log_dir = log_file_path_name_i_.parent_path();
+    //     if (!fs::exists(log_dir))
+    //     {
+    //         fs::create_directories(log_dir);
+    //     }
+    //
+    //     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_i_, true);
+    //
+    //     auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", file_sink);
+    //
+    //     spdlog::set_default_logger(app_logger);
+    // }
+    // else
+    // {
+    //     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    //
+    //     // 3. Create an asynchronous logger using the console sink.
+    //     auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", // Name for the console logger
+    //                                                        console_sink);
+    //
+    //     spdlog::set_default_logger(app_logger);
+    // }
+    //
+    // // we are running before 'CheckArgs' so we need to do a little editiing
+    // // ourselves.
+    //
+    // const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
+    //                                                               {"error", spdlog::level::err},
+    //                                                               {"information", spdlog::level::info},
+    //                                                               {"debug", spdlog::level::debug}};
+    //
+    // auto which_level = levels.find(logging_level_);
+    // if (which_level != levels.end())
+    // {
+    //     spdlog::set_level(which_level->second);
+    // }
+    // else
+    // {
+    //     spdlog::set_level(spdlog::level::info);
+    // }
 }
 
 void ParseProgramOptions(int argc, const char *argv[])
@@ -52,7 +142,7 @@ void ParseProgramOptions(int argc, const char *argv[])
     }
 }
 
-void CheckArgs()
+void CheckArgs(Options &program_options)
 {
     if (!input_directory.get().empty() && !fs::exists(input_directory.get()))
     {
@@ -115,9 +205,9 @@ int main(int argc, const char *argv[])
 
     try
     {
-        SetupProgramOptions();
+        SetupProgramOptions(program_options);
         ParseProgramOptions(argc, argv);
-        CheckArgs();
+        CheckArgs(program_options);
 
         auto the_filters = SelectExtractors(app);
 
