@@ -54,7 +54,8 @@ namespace Extractor
 //  distinguisable
 // =====================================================================================
 
-template <typename T, typename Uniqueifier> class UniqType
+template <typename T, typename Uniqueifier>
+class UniqType
 {
 public:
     // ====================  LIFECYCLE     =======================================
@@ -218,7 +219,8 @@ using DocumentSectionList = std::vector<DocumentSection>;
 
 namespace EM = Extractor;
 
-template <typename T, typename Uniqueifier> inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
+template <typename T, typename Uniqueifier>
+inline bool operator==(const EM::XLS_Entry &lhs, const EM::XLS_Entry &rhs)
 {
     return lhs.first.get() == rhs.first.get() && lhs.second.get() == rhs.second.get();
 }
@@ -233,7 +235,7 @@ std::ostream &operator<<(std::ostream &os, const EM::UniqType<T, Uniqueifier> &a
 }
 
 template <typename T, typename Uniqueifier>
-std::istream &operator>>(std::istream &is, const EM::UniqType<T, Uniqueifier> &a_type)
+std::istream &operator>>(std::istream &is, EM::UniqType<T, Uniqueifier> &a_type)
 {
     T temp;
     is >> temp;
