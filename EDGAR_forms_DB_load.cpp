@@ -1,27 +1,17 @@
-#include <execution>
 #include <filesystem>
 #include <iostream>
-#include <sstream>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <string>
 #include <vector>
 
-#include <argparse/argparse.hpp>
+#include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 #include "Extractor.h"
-#include "Extractor_Utils.h"
-#include "Extractors.h"
-
-void SetupProgramOptions();
-void ParseProgramOptions(int argc, const char *argv[]);
-void CheckArgs();
-std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
-                                                  bool file_name_has_form, const std::string &form_type);
-
-argparse::ArgumentParser app("program_name");
 
 struct Options
 {
@@ -37,139 +27,154 @@ struct Options
     bool file_name_has_form_{false};
 } program_options;
 
+void SetupProgramOptions(Options &program_options);
+void ParseProgramOptions(int argc, const char *argv[]);
+void CheckArgs();
+std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
+                                                  bool file_name_has_form, const std::string &form_type);
+
+CLI::App app("program_name");
+
 void SetupProgramOptions(Options &program_options)
 {
 
-    // Forms option with custom parsing for comma-separated values
-    app.add_argument("-f", "--forms")
-        .help("Name of form type[s] we are processing. Process all if not specified.")
-        .nargs(argparse::nargs_pattern::any)
-        .action([&program_options](const std::string &str) {
-            std::stringstream ss(str);
-            std::string item;
-            while (std::getline(ss, item, ','))
+    auto form_option = app.add_option("-f,--form", program_options.forms_,
+                                      "Name of form type[s] we are processing. Process all if not specified.");
+
+    // 1. Handle comma-delimited lists:
+    // This modifier tells CLI11 to split the argument string by commas.
+    // e.g., --form A,B,C will result in three separate entries.
+    form_option->delimiter(',');
+
+    form_option->transform([](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return ::toupper(c); });
+        return s;
+    });
+
+    // --- New options for input directory and file list ---
+
+    // 1. Create an option group to enforce mutual exclusion.
+    auto input_source_group = app.add_option_group("InputSource", "Specify the source of files to process.");
+
+    input_source_group
+        ->add_option("-i,--input-dir", program_options.input_directory_,
+                     "Path to the directory of forms to be processed.")
+        ->check(CLI::ExistingDirectory) // Validator: Checks if path exists and is a directory.
+        ->check([](const std::string &path_str) {
+            // The path is guaranteed to exist and be a directory at this point.
+            if (std::filesystem::is_empty(path_str))
             {
-                program_options.forms_.push_back(item);
+                return "Input directory '" + path_str + "' contains no files.";
             }
+            return std::string{}; // Return an empty string for success
         });
 
-    app.add_argument("--list-file").help("Path to file with list of files to process.").required();
+    input_source_group
+        ->add_option("--file-list", program_options.file_list_,
+                     "Path to a file containing a list of files to process.")
+        ->check(CLI::ExistingFile) // Validator: Checks if path exists and is a regular file.
+        ->check([](const std::string &path_str) {
+            // The path is guaranteed to exist and be a file.
+            std::error_code ec;
+            const auto size = std::filesystem::file_size(path_str, ec);
 
-    app.add_argument("--max-files")
-        .help("Maximum number of files to extract. Default of -1 means no limit.")
-        .nargs(1)
-        .scan<'i', int>();
+            // It's good practice to check for errors when querying the filesystem.
+            if (ec)
+            {
+                return "Could not determine size of file '" + path_str + "'.";
+            }
 
-    app.add_argument("--log-path")
-        .help("path name for log file.")
-        .nargs(1)
-        .scan<'s', std::string>(); // scan for string type
+            if (size == 0)
+            {
+                return "File list file '" + path_str + "' is empty.";
+            }
+            return std::string{}; // Success
+        });
+    // specify the min and max number of options from the group to be allowed.
+    input_source_group->require_option(1, 1);
 
-    app.add_argument("-l", "--log-level")
-        .help("logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-        .default_value(std::string("information"))
-        .nargs(1);
+    app.add_option("--log-file-name", program_options.log_file_path_name_,
+                   "Path name of file to write logging data to. If not provided, will log to console.");
 
-    app.add_argument("-R", "--replace-DB-content")
-        .help("replace all DB content for each file. Default is 'false'")
-        .default_value(false)
-        .implicit_value(true)
-        .nargs(0);
+    app.add_option(
+           "-l,--log-level", program_options.logging_level_,
+           "Logging level. Must be one of 'none', 'error', 'information', or 'debug'. Defaults to: 'information'.")
+        ->check(CLI::IsMember(
+            {"none", "error", "information", "debug"})); // Restricts input to one of the strings in the set.
 
-    app.add_argument("--DB-mode")
-        .help("Must be either 'test' or 'live'. Default is 'test'.")
-        .default_value(std::string("test"))
-        .nargs(1);
+    app.add_option("-d,--db-mode", program_options.DB_mode_,
+                   "The database mode to use. Must be either 'test' or 'live'.")
+        ->required()                              // Makes this option mandatory on the command line.
+        ->check(CLI::IsMember({"test", "live"})); // Restricts input to one of the strings in the set.
+
+    // This is an optional field that must be a positive integer if provided.
+    app.add_option("--max-files", program_options.max_files_, "Maximum number of files to process.")
+        ->check(CLI::PositiveNumber); // Validator: Ensures the integer is > 0.
+
+    // A flag is an option that does not take a value. Its presence sets a boolean to true.
+    app.add_flag("--replace-db-data", program_options.replace_DB_content_, "Replace existing content in the database.");
+
+    app.add_flag("--filename-has-form", program_options.file_name_has_form_,
+                 "Indicates that the input filename contains the form type.");
 }
 void ConfigureLogging(Options &program_options)
 {
-    // // this logging code comes from gemini
-    //
-    // if (!program_options.log_file_path_name_.empty())
-    // {
-    //     fs::path log_dir = log_file_path_name_i_.parent_path();
-    //     if (!fs::exists(log_dir))
-    //     {
-    //         fs::create_directories(log_dir);
-    //     }
-    //
-    //     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_i_, true);
-    //
-    //     auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", file_sink);
-    //
-    //     spdlog::set_default_logger(app_logger);
-    // }
-    // else
-    // {
-    //     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    //
-    //     // 3. Create an asynchronous logger using the console sink.
-    //     auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", // Name for the console logger
-    //                                                        console_sink);
-    //
-    //     spdlog::set_default_logger(app_logger);
-    // }
-    //
-    // // we are running before 'CheckArgs' so we need to do a little editiing
-    // // ourselves.
-    //
-    // const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
-    //                                                               {"error", spdlog::level::err},
-    //                                                               {"information", spdlog::level::info},
-    //                                                               {"debug", spdlog::level::debug}};
-    //
-    // auto which_level = levels.find(logging_level_);
-    // if (which_level != levels.end())
-    // {
-    //     spdlog::set_level(which_level->second);
-    // }
-    // else
-    // {
-    //     spdlog::set_level(spdlog::level::info);
-    // }
-}
+    // this logging code comes from gemini
 
-void ParseProgramOptions(int argc, const char *argv[])
-{
-    try
+    if (!program_options.log_file_path_name_.get().empty())
     {
-        app.parse(argc, argv);
+        fs::path log_dir = program_options.log_file_path_name_.get().parent_path();
+        if (!fs::exists(log_dir))
+        {
+            fs::create_directories(log_dir);
+        }
+
+        auto file_sink =
+            std::make_shared<spdlog::sinks::basic_file_sink_mt>(program_options.log_file_path_name_.get(), true);
+
+        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", file_sink);
+
+        spdlog::set_default_logger(app_logger);
     }
-    catch (const CLI::ParseError &e)
+    else
     {
-        std::cerr << e.what() << std::endl;
-        std::exit(1);
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+        // 3. Create an asynchronous logger using the console sink.
+        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", // Name for the console logger
+                                                           console_sink);
+
+        spdlog::set_default_logger(app_logger);
+    }
+
+    // we are running before 'CheckArgs' so we need to do a little editiing
+    // ourselves.
+
+    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
+                                                                  {"error", spdlog::level::err},
+                                                                  {"information", spdlog::level::info},
+                                                                  {"debug", spdlog::level::debug}};
+
+    auto which_level = levels.find(program_options.logging_level_);
+    if (which_level != levels.end())
+    {
+        spdlog::set_level(which_level->second);
+    }
+    else
+    {
+        spdlog::set_level(spdlog::level::info);
     }
 }
 
 void CheckArgs(Options &program_options)
 {
-    if (!input_directory.get().empty() && !fs::exists(input_directory.get()))
-    {
-        throw std::runtime_error("Input directory is missing.\n");
-    }
+    // if (fs::exists(output_directory.get()))
+    // {
+    //     fs::remove_all(output_directory.get());
+    // }
+    // fs::create_directories(output_directory.get());
 
-    if (!file_list.get().empty() && !fs::exists(file_list.get()))
-    {
-        throw std::runtime_error("List file is missing.\n");
-    }
-
-    if (input_directory.get().empty() && file_list.get().empty())
-    {
-        throw std::runtime_error("You must specify either a directory to process or a list of files to process.");
-    }
-
-    if (!input_directory.get().empty() && !file_list.get().empty())
-    {
-        throw std::runtime_error(
-            "You must specify EITHER a directory to process or a list of files to process -- not both.");
-    }
-
-    if (fs::exists(output_directory.get()))
-    {
-        fs::remove_all(output_directory.get());
-    }
-    fs::create_directories(output_directory.get());
+    // right now, we have nothing to do.  CLI11 takes care of edits.
 }
 
 // This ctype facet does NOT classify spaces and tabs as whitespace
@@ -206,66 +211,81 @@ int main(int argc, const char *argv[])
     try
     {
         SetupProgramOptions(program_options);
-        ParseProgramOptions(argc, argv);
+        CLI11_PARSE(app, argc, argv);
+        ConfigureLogging(program_options);
         CheckArgs(program_options);
 
-        auto the_filters = SelectExtractors(app);
-
-        std::atomic<int> files_processed{0};
-
-        auto files_to_scan = MakeListOfFilesToProcess(input_directory, file_list, file_name_has_form, form_type);
-
-        std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
-
-        auto scan_file([&the_filters, &files_processed](const auto &input_file_name) {
-            spdlog::info(catenate("Processing file: ", input_file_name));
-            const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
-            EM::FileContent file_content(file_content_text);
-
-            try
-            {
-                auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
-
-                if (use_file)
-                {
-                    for (auto &e : the_filters)
-                    {
-                        try
-                        {
-                            std::visit(
-                                [&input_file_name, file_content, &use_file](auto &&x) {
-                                    x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory,
-                                                   use_file.value());
-                                },
-                                e);
-                        }
-                        catch (std::exception &ex)
-                        {
-                            std::cerr << ex.what() << '\n';
-                        }
-                    }
-                }
-            }
-            catch (std::exception &ex)
-            {
-                std::cerr << ex.what() << '\n';
-            }
-        });
-
-        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
-
-        for (const auto &e : the_filters)
-        {
-            if (auto f = std::get_if<Count_XLS>(&e))
-            {
-                std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
-            }
-        }
+        //     auto the_filters = SelectExtractors(app);
+        //
+        //     std::atomic<int> files_processed{0};
+        //
+        //     auto files_to_scan = MakeListOfFilesToProcess(input_directory, file_list, file_name_has_form, form_type);
+        //
+        //     std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
+        //
+        //     auto scan_file([&the_filters, &files_processed](const auto &input_file_name) {
+        //         spdlog::info(catenate("Processing file: ", input_file_name));
+        //         const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
+        //         EM::FileContent file_content(file_content_text);
+        //
+        //         try
+        //         {
+        //             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
+        //
+        //             if (use_file)
+        //             {
+        //                 for (auto &e : the_filters)
+        //                 {
+        //                     try
+        //                     {
+        //                         std::visit(
+        //                             [&input_file_name, file_content, &use_file](auto &&x) {
+        //                                 x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory,
+        //                                                use_file.value());
+        //                             },
+        //                             e);
+        //                     }
+        //                     catch (std::exception &ex)
+        //                     {
+        //                         std::cerr << ex.what() << '\n';
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //         catch (std::exception &ex)
+        //         {
+        //             std::cerr << ex.what() << '\n';
+        //         }
+        //     });
+        //
+        //     std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        //
+        //     for (const auto &e : the_filters)
+        //     {
+        //         if (auto f = std::get_if<Count_XLS>(&e))
+        //         {
+        //             std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
+        //         }
+        //     }
     }
     catch (std::exception &e)
     {
         std::cout << e.what();
         result = 1;
+    }
+    // -- -Verification Step-- -
+    // Let's print the parsed forms to confirm they are stored correctly.
+    std::cout << "Processing the following forms:\n";
+    if (program_options.forms_.empty())
+    {
+        std::cout << "  (No forms specified)" << std::endl;
+    }
+    else
+    {
+        for (const auto &form : program_options.forms_)
+        {
+            std::cout << "  - " << form << '\n';
+        }
     }
     return result;
 }
