@@ -1,3 +1,22 @@
+/* =====================================================================================
+ *
+ * Filename:  EDGAR_forms_DB_load.cpp
+ *
+ * Description:  Program to build/update DB index of downloaded EDGAR form files.
+ *
+ * Version:  1.0
+ * Created:  2025-09-07 13:40:10
+ * Revision:  none
+ * Compiler:  gcc / g++
+ *
+ * Author:  David P. Riedel <driedel@cox.net>
+ * Copyright (c) 2025, David P. Riedel
+ *
+ * =====================================================================================
+ */
+
+// #include "EDGAR_forms_DB_load.h"
+
 #include <filesystem>
 #include <iostream>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -31,10 +50,10 @@ struct Options
     bool file_name_has_form_{false};
 } program_options;
 
-void ConfigureLogging(Options &program_options);
+void ConfigureLogging(const Options &program_options);
 void SetupProgramOptions(Options &program_options);
 void ParseProgramOptions(int argc, const char *argv[]);
-void CheckArgs(Options &program_options);
+void CheckArgs(const Options &program_options);
 
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
 
@@ -144,8 +163,13 @@ int main(int argc, const char *argv[])
     }
     return result;
 }
-
-void ConfigureLogging(Options &program_options)
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  ConfigureLogging
+ * Description:  brief description
+ * =====================================================================================
+ */
+void ConfigureLogging(const Options &program_options)
 {
     // this logging code comes from gemini
 
@@ -194,6 +218,12 @@ void ConfigureLogging(Options &program_options)
     }
 }
 
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  SetupProgramOptions
+ * Description:  configure CLI11 command line parser
+ * =====================================================================================
+ */
 void SetupProgramOptions(Options &program_options)
 {
 
@@ -278,7 +308,13 @@ void SetupProgramOptions(Options &program_options)
                  "Indicates that the input filename contains the form type.");
 }
 
-void CheckArgs(Options &program_options)
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  CheckArgs
+ * Description:  Do any additional edits on command line args. Throw if problems.
+ * =====================================================================================
+ */
+void CheckArgs(const Options &program_options)
 {
     // if (fs::exists(output_directory.get()))
     // {
@@ -353,6 +389,12 @@ std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options
     return list_of_files_to_process;
 } /* -----  end of function MakeListOfFilesToProcess  ----- */
 
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  LoadSingleFileToDB
+ * Description:  Extract information from a single file to build DB index.
+ * =====================================================================================
+ */
 void LoadSingleFileToDB(const EM::FileName &input_file_name)
 {
     // std::atomic<int> forms_processed{0};
