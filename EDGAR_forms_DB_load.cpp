@@ -433,7 +433,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
     auto filing_ID = trxn.query01<std::string>(index_cmd);
 
     trxn.commit();
-    spdlog::debug("{}", filing_ID ? "did insert" : "duplicate data");
+    spdlog::debug("{}", filing_ID ? "did insert"
+                                  : catenate("duplicate data: cik: ", SEC_fields.at("cik"), " form type: ", form_type,
+                                             " period ending: ", SEC_fields.at("quarter_ending"),
+                                             " name: ", SEC_fields.at("company_name")));
 
     return true;
 }
