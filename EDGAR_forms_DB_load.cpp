@@ -33,7 +33,7 @@ void CheckArgs();
 std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
                                                   bool file_name_has_form, const std::string &form_type);
 
-CLI::App app("program_name");
+CLI::App app("EDGAR_forms_DB_load");
 
 void SetupProgramOptions(Options &program_options)
 {
@@ -54,7 +54,8 @@ void SetupProgramOptions(Options &program_options)
     // --- New options for input directory and file list ---
 
     // 1. Create an option group to enforce mutual exclusion.
-    auto input_source_group = app.add_option_group("InputSource", "Specify the source of files to process.");
+    auto input_source_group =
+        app.add_option_group("InputSource", "Specify the source of files to process. Only 1 can be specified.");
 
     input_source_group
         ->add_option("-i,--input-dir", program_options.input_directory_,
@@ -64,7 +65,7 @@ void SetupProgramOptions(Options &program_options)
             // The path is guaranteed to exist and be a directory at this point.
             if (std::filesystem::is_empty(path_str))
             {
-                return "Input directory '" + path_str + "' contains no files.";
+                return "Input directory: '" + path_str + "' contains no files.";
             }
             return std::string{}; // Return an empty string for success
         });
@@ -81,12 +82,12 @@ void SetupProgramOptions(Options &program_options)
             // It's good practice to check for errors when querying the filesystem.
             if (ec)
             {
-                return "Could not determine size of file '" + path_str + "'.";
+                return "Could not determine size of file: '" + path_str + "'.";
             }
 
             if (size == 0)
             {
-                return "File list file '" + path_str + "' is empty.";
+                return "File list file: '" + path_str + "' is empty.";
             }
             return std::string{}; // Success
         });
@@ -98,7 +99,7 @@ void SetupProgramOptions(Options &program_options)
 
     app.add_option(
            "-l,--log-level", program_options.logging_level_,
-           "Logging level. Must be one of 'none', 'error', 'information', or 'debug'. Defaults to: 'information'.")
+           "Logging level. Must be one of: 'none', 'error', 'information', or 'debug'. Defaults to: 'information'.")
         ->check(CLI::IsMember(
             {"none", "error", "information", "debug"})); // Restricts input to one of the strings in the set.
 
@@ -197,6 +198,9 @@ struct line_only_whitespace : std::ctype<char>
 
 int main(int argc, const char *argv[])
 {
+    // start logging here.  will possible change once we have parsed
+    // command line.
+
     spdlog::set_level(spdlog::level::debug);
 
     const std::ctype<char> &ct(std::use_facet<std::ctype<char>>(std::locale()));
@@ -272,20 +276,6 @@ int main(int argc, const char *argv[])
     {
         std::cout << e.what();
         result = 1;
-    }
-    // -- -Verification Step-- -
-    // Let's print the parsed forms to confirm they are stored correctly.
-    std::cout << "Processing the following forms:\n";
-    if (program_options.forms_.empty())
-    {
-        std::cout << "  (No forms specified)" << std::endl;
-    }
-    else
-    {
-        for (const auto &form : program_options.forms_)
-        {
-            std::cout << "  - " << form << '\n';
-        }
     }
     return result;
 }
