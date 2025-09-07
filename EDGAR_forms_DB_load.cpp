@@ -12,6 +12,10 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 #include "Extractor.h"
+#include "Extractor_Utils.h"
+#include "SEC_Header.h"
+
+// keep our parsed command line arguments together
 
 struct Options
 {
@@ -27,13 +31,168 @@ struct Options
     bool file_name_has_form_{false};
 } program_options;
 
+void ConfigureLogging(Options &program_options);
 void SetupProgramOptions(Options &program_options);
 void ParseProgramOptions(int argc, const char *argv[]);
-void CheckArgs();
-std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
-                                                  bool file_name_has_form, const std::string &form_type);
+void CheckArgs(Options &program_options);
+
+std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
+
+void LoadSingleFileToDB(const EM::FileName &input_file_name);
 
 CLI::App app("EDGAR_forms_DB_load");
+
+// This ctype facet does NOT classify spaces and tabs as whitespace
+// from cppreference example
+
+struct line_only_whitespace : std::ctype<char>
+{
+    static const mask *make_table()
+    {
+        // make a copy of the "C" locale table
+        static std::vector<mask> v(classic_table(), classic_table() + table_size);
+        v['\t'] &= ~space; // tab will not be classified as whitespace
+        v[' '] &= ~space;  // space will not be classified as whitespace
+        return &v[0];
+    }
+    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs)
+    {
+    }
+};
+
+int main(int argc, const char *argv[])
+{
+    // start logging here.  will possible change once we have parsed
+    // command line.
+
+    spdlog::set_level(spdlog::level::debug);
+
+    const std::ctype<char> &ct(std::use_facet<std::ctype<char>>(std::locale()));
+
+    for (size_t i(0); i != 256; ++i)
+    {
+        ct.narrow(static_cast<char>(i), '\0');
+    }
+
+    auto result{0};
+
+    try
+    {
+        SetupProgramOptions(program_options);
+        CLI11_PARSE(app, argc, argv);
+        ConfigureLogging(program_options);
+        CheckArgs(program_options);
+
+        //     auto the_filters = SelectExtractors(app);
+        //
+        //
+        //     std::atomic<int> files_processed{0};
+        //
+        auto files_to_scan = MakeListOfFilesToProcess(program_options);
+
+        std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
+        //
+        //     auto scan_file([&the_filters, &files_processed](const auto &input_file_name) {
+        //         spdlog::info(catenate("Processing file: ", input_file_name));
+        //         const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
+        //         EM::FileContent file_content(file_content_text);
+        //
+        //         try
+        //         {
+        //             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
+        //
+        //             if (use_file)
+        //             {
+        //                 for (auto &e : the_filters)
+        //                 {
+        //                     try
+        //                     {
+        //                         std::visit(
+        //                             [&input_file_name, file_content, &use_file](auto &&x) {
+        //                                 x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory,
+        //                                                use_file.value());
+        //                             },
+        //                             e);
+        //                     }
+        //                     catch (std::exception &ex)
+        //                     {
+        //                         std::cerr << ex.what() << '\n';
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //         catch (std::exception &ex)
+        //         {
+        //             std::cerr << ex.what() << '\n';
+        //         }
+        //     });
+        //
+        //     std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        //
+        //     for (const auto &e : the_filters)
+        //     {
+        //         if (auto f = std::get_if<Count_XLS>(&e))
+        //         {
+        //             std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
+        //         }
+        //     }
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what();
+        result = 1;
+    }
+    return result;
+}
+
+void ConfigureLogging(Options &program_options)
+{
+    // this logging code comes from gemini
+
+    if (!program_options.log_file_path_name_.get().empty())
+    {
+        fs::path log_dir = program_options.log_file_path_name_.get().parent_path();
+        if (!fs::exists(log_dir))
+        {
+            fs::create_directories(log_dir);
+        }
+
+        auto file_sink =
+            std::make_shared<spdlog::sinks::basic_file_sink_mt>(program_options.log_file_path_name_.get(), true);
+
+        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", file_sink);
+
+        spdlog::set_default_logger(app_logger);
+    }
+    else
+    {
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+        // 3. Create an asynchronous logger using the console sink.
+        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", // Name for the console logger
+                                                           console_sink);
+
+        spdlog::set_default_logger(app_logger);
+    }
+
+    // we are running before 'CheckArgs' so we need to do a little editiing
+    // ourselves.
+
+    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
+                                                                  {"error", spdlog::level::err},
+                                                                  {"information", spdlog::level::info},
+                                                                  {"debug", spdlog::level::debug}};
+
+    auto which_level = levels.find(program_options.logging_level_);
+    if (which_level != levels.end())
+    {
+        spdlog::set_level(which_level->second);
+    }
+    else
+    {
+        spdlog::set_level(spdlog::level::info);
+    }
+}
 
 void SetupProgramOptions(Options &program_options)
 {
@@ -118,54 +277,6 @@ void SetupProgramOptions(Options &program_options)
     app.add_flag("--filename-has-form", program_options.file_name_has_form_,
                  "Indicates that the input filename contains the form type.");
 }
-void ConfigureLogging(Options &program_options)
-{
-    // this logging code comes from gemini
-
-    if (!program_options.log_file_path_name_.get().empty())
-    {
-        fs::path log_dir = program_options.log_file_path_name_.get().parent_path();
-        if (!fs::exists(log_dir))
-        {
-            fs::create_directories(log_dir);
-        }
-
-        auto file_sink =
-            std::make_shared<spdlog::sinks::basic_file_sink_mt>(program_options.log_file_path_name_.get(), true);
-
-        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", file_sink);
-
-        spdlog::set_default_logger(app_logger);
-    }
-    else
-    {
-        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-
-        // 3. Create an asynchronous logger using the console sink.
-        auto app_logger = std::make_shared<spdlog::logger>("EDGAR_Index_logger", // Name for the console logger
-                                                           console_sink);
-
-        spdlog::set_default_logger(app_logger);
-    }
-
-    // we are running before 'CheckArgs' so we need to do a little editiing
-    // ourselves.
-
-    const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
-                                                                  {"error", spdlog::level::err},
-                                                                  {"information", spdlog::level::info},
-                                                                  {"debug", spdlog::level::debug}};
-
-    auto which_level = levels.find(program_options.logging_level_);
-    if (which_level != levels.end())
-    {
-        spdlog::set_level(which_level->second);
-    }
-    else
-    {
-        spdlog::set_level(spdlog::level::info);
-    }
-}
 
 void CheckArgs(Options &program_options)
 {
@@ -178,127 +289,25 @@ void CheckArgs(Options &program_options)
     // right now, we have nothing to do.  CLI11 takes care of edits.
 }
 
-// This ctype facet does NOT classify spaces and tabs as whitespace
-// from cppreference example
-
-struct line_only_whitespace : std::ctype<char>
-{
-    static const mask *make_table()
-    {
-        // make a copy of the "C" locale table
-        static std::vector<mask> v(classic_table(), classic_table() + table_size);
-        v['\t'] &= ~space; // tab will not be classified as whitespace
-        v[' '] &= ~space;  // space will not be classified as whitespace
-        return &v[0];
-    }
-    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs)
-    {
-    }
-};
-
-int main(int argc, const char *argv[])
-{
-    // start logging here.  will possible change once we have parsed
-    // command line.
-
-    spdlog::set_level(spdlog::level::debug);
-
-    const std::ctype<char> &ct(std::use_facet<std::ctype<char>>(std::locale()));
-
-    for (size_t i(0); i != 256; ++i)
-    {
-        ct.narrow(static_cast<char>(i), '\0');
-    }
-
-    auto result{0};
-
-    try
-    {
-        SetupProgramOptions(program_options);
-        CLI11_PARSE(app, argc, argv);
-        ConfigureLogging(program_options);
-        CheckArgs(program_options);
-
-        //     auto the_filters = SelectExtractors(app);
-        //
-        //     std::atomic<int> files_processed{0};
-        //
-        //     auto files_to_scan = MakeListOfFilesToProcess(input_directory, file_list, file_name_has_form, form_type);
-        //
-        //     std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
-        //
-        //     auto scan_file([&the_filters, &files_processed](const auto &input_file_name) {
-        //         spdlog::info(catenate("Processing file: ", input_file_name));
-        //         const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
-        //         EM::FileContent file_content(file_content_text);
-        //
-        //         try
-        //         {
-        //             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
-        //
-        //             if (use_file)
-        //             {
-        //                 for (auto &e : the_filters)
-        //                 {
-        //                     try
-        //                     {
-        //                         std::visit(
-        //                             [&input_file_name, file_content, &use_file](auto &&x) {
-        //                                 x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory,
-        //                                                use_file.value());
-        //                             },
-        //                             e);
-        //                     }
-        //                     catch (std::exception &ex)
-        //                     {
-        //                         std::cerr << ex.what() << '\n';
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         catch (std::exception &ex)
-        //         {
-        //             std::cerr << ex.what() << '\n';
-        //         }
-        //     });
-        //
-        //     std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
-        //
-        //     for (const auto &e : the_filters)
-        //     {
-        //         if (auto f = std::get_if<Count_XLS>(&e))
-        //         {
-        //             std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
-        //         }
-        //     }
-    }
-    catch (std::exception &e)
-    {
-        std::cout << e.what();
-        result = 1;
-    }
-    return result;
-}
-
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  MakeListOfFilesToProcess
  *  Description:
  * =====================================================================================
  */
-std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, EM::FileName file_list,
-                                                  bool file_name_has_form, const std::string &form_type)
+std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options)
 {
     std::vector<std::string> list_of_files_to_process;
 
-    if (!input_directory.get().empty())
+    if (!program_options.input_directory_.get().empty())
     {
-        auto add_file_to_list([&list_of_files_to_process, file_name_has_form, form_type](const auto &dir_ent) {
+        auto add_file_to_list([&list_of_files_to_process, &program_options](const auto &dir_ent) {
             if (dir_ent.status().type() == fs::file_type::regular)
             {
-                if (file_name_has_form)
+                if (program_options.file_name_has_form_)
                 {
-                    if (dir_ent.path().string().find("/"s + form_type + "/"s) != std::string::npos)
+                    // if (dir_ent.path().string().find("/"s + form_type + "/"s) != std::string::npos)
+                    if (FormIsInFileName(program_options.forms_, EM::FileName(dir_ent.path())))
                     {
                         list_of_files_to_process.emplace_back(dir_ent.path().string());
                     }
@@ -310,21 +319,22 @@ std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, 
             }
         });
 
-        std::for_each(fs::recursive_directory_iterator(input_directory.get()), fs::recursive_directory_iterator(),
-                      add_file_to_list);
+        std::for_each(fs::recursive_directory_iterator(program_options.input_directory_.get()),
+                      fs::recursive_directory_iterator(), add_file_to_list);
     }
     else
     {
-        std::ifstream input_file{file_list.get()};
+        std::ifstream input_file{program_options.file_list_.get()};
 
         // Tell the stream to use our facet, so only '\n' is treated as a space.
 
         input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
 
-        auto use_this_file([&list_of_files_to_process, file_name_has_form, form_type](const auto &file_name) {
-            if (file_name_has_form)
+        auto use_this_file([&list_of_files_to_process, &program_options](const auto &file_name) {
+            if (program_options.file_name_has_form_)
             {
-                if (file_name.find("/"s + form_type + "/"s) != std::string::npos)
+                // if (file_name.find("/"s + form_type + "/"s) != std::string::npos)
+                if (FormIsInFileName(program_options.forms_, EM::FileName(file_name)))
                 {
                     return true;
                 }
@@ -342,3 +352,47 @@ std::vector<std::string> MakeListOfFilesToProcess(EM::FileName input_directory, 
 
     return list_of_files_to_process;
 } /* -----  end of function MakeListOfFilesToProcess  ----- */
+
+void LoadSingleFileToDB(const EM::FileName &input_file_name)
+{
+    // std::atomic<int> forms_processed{0};
+    // try
+    // {
+    //     const std::string content{LoadDataFileForUse(input_file_name)};
+    //     EM::FileContent file_content{content};
+    //     const auto document_sections = LocateDocumentSections(file_content);
+    //
+    //     SEC_Header SEC_data;
+    //     SEC_data.UseData(file_content);
+    //     SEC_data.ExtractHeaderFields();
+    //     decltype(auto) SEC_fields = SEC_data.GetFields();
+    //
+    //     auto use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
+    //     BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
+    //
+    //     if (use_file.value() == FileMode::e_XLS)
+    //     {
+    //         return LoadSingleFileToDB_XLS(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
+    //                                       input_file_name);
+    //     }
+    //     if (use_file.value() == FileMode::e_XBRL)
+    //     {
+    //         return LoadSingleFileToDB_XBRL(file_content, document_sections, SEC_fields, input_file_name);
+    //     }
+    //     return LoadSingleFileToDB_HTML(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
+    //                                    input_file_name);
+    // }
+    // catch (const std::system_error &e)
+    // {
+    //     spdlog::error(catenate("System error while processing file: ", input_file_name.get().string(), ". ",
+    //     e.what(),
+    //                            " Processing stopped."));
+    //     throw;
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     spdlog::error(catenate("Problem processing file: ", input_file_name.get().string(), ". ", e.what()));
+    //     return {0, 0, 1};
+    // }
+    //
+} /* -----  end of method LoadSingleFileToDB  ----- */
