@@ -89,12 +89,12 @@ FilterList SelectExtractors(CLI::App &app)
 
     FilterList filters;
 
-    //    filters.emplace_back(XBRL_data{});
+    // filters.emplace_back(XBRL_data{});
     //    filters.emplace_back(XBRL_Label_data{});
     filters.emplace_back(XLS_data{app});
     //    filters.emplace_back(DocumentCounter{});
 
-    //    filters.emplace_back(HTM_data{});
+    // filters.emplace_back(HTM_data{});
     //    filters.emplace_back(Count_SS{});
     //    filters.emplace_back(Form_data{args});
     //    filters.emplace_back(BalanceSheet_data{});
