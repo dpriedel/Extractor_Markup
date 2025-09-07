@@ -17,6 +17,7 @@
 
 // #include "EDGAR_forms_DB_load.h"
 
+#include <execution>
 #include <filesystem>
 #include <iostream>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -25,6 +26,7 @@
 #include <vector>
 
 #include <CLI/CLI.hpp>
+#include <pqxx/pqxx>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
@@ -57,7 +59,10 @@ void CheckArgs(const Options &program_options);
 
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
 
-void LoadSingleFileToDB(const EM::FileName &input_file_name);
+void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name);
+
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
+                  const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls);
 
 CLI::App app("EDGAR_forms_DB_load");
 
@@ -95,6 +100,8 @@ int main(int argc, const char *argv[])
 
     auto result{0};
 
+    std::atomic<int> files_processed{0};
+
     try
     {
         SetupProgramOptions(program_options);
@@ -102,59 +109,16 @@ int main(int argc, const char *argv[])
         ConfigureLogging(program_options);
         CheckArgs(program_options);
 
-        //     auto the_filters = SelectExtractors(app);
-        //
-        //
-        //     std::atomic<int> files_processed{0};
-        //
         auto files_to_scan = MakeListOfFilesToProcess(program_options);
 
         std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
-        //
-        //     auto scan_file([&the_filters, &files_processed](const auto &input_file_name) {
-        //         spdlog::info(catenate("Processing file: ", input_file_name));
-        //         const std::string file_content_text = LoadDataFileForUse(EM::FileName{input_file_name});
-        //         EM::FileContent file_content(file_content_text);
-        //
-        //         try
-        //         {
-        //             auto use_file = FilterFiles(file_content, form_type, MAX_FILES, files_processed);
-        //
-        //             if (use_file)
-        //             {
-        //                 for (auto &e : the_filters)
-        //                 {
-        //                     try
-        //                     {
-        //                         std::visit(
-        //                             [&input_file_name, file_content, &use_file](auto &&x) {
-        //                                 x.UseExtractor(EM::FileName{input_file_name}, file_content, output_directory,
-        //                                                use_file.value());
-        //                             },
-        //                             e);
-        //                     }
-        //                     catch (std::exception &ex)
-        //                     {
-        //                         std::cerr << ex.what() << '\n';
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         catch (std::exception &ex)
-        //         {
-        //             std::cerr << ex.what() << '\n';
-        //         }
-        //     });
-        //
-        //     std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
-        //
-        //     for (const auto &e : the_filters)
-        //     {
-        //         if (auto f = std::get_if<Count_XLS>(&e))
-        //         {
-        //             std::cout << "Found: " << f->XLS_counter << " spread sheets.\n";
-        //         }
-        //     }
+
+        auto scan_file = [&files_processed](const auto &input_file_name) {
+            spdlog::info(catenate("Processing file: ", input_file_name));
+            LoadSingleFileToDB(program_options, EM::FileName{input_file_name});
+        };
+
+        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
     }
     catch (std::exception &e)
     {
@@ -395,46 +359,81 @@ std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options
  * Description:  Extract information from a single file to build DB index.
  * =====================================================================================
  */
-void LoadSingleFileToDB(const EM::FileName &input_file_name)
+void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name)
 {
     // std::atomic<int> forms_processed{0};
-    // try
-    // {
-    //     const std::string content{LoadDataFileForUse(input_file_name)};
-    //     EM::FileContent file_content{content};
-    //     const auto document_sections = LocateDocumentSections(file_content);
-    //
-    //     SEC_Header SEC_data;
-    //     SEC_data.UseData(file_content);
-    //     SEC_data.ExtractHeaderFields();
-    //     decltype(auto) SEC_fields = SEC_data.GetFields();
-    //
-    //     auto use_file = this->ApplyFilters(SEC_fields, input_file_name, document_sections, &forms_processed);
-    //     BOOST_ASSERT_MSG(use_file, "Specified file does not meet other criteria.");
-    //
-    //     if (use_file.value() == FileMode::e_XLS)
-    //     {
-    //         return LoadSingleFileToDB_XLS(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
-    //                                       input_file_name);
-    //     }
-    //     if (use_file.value() == FileMode::e_XBRL)
-    //     {
-    //         return LoadSingleFileToDB_XBRL(file_content, document_sections, SEC_fields, input_file_name);
-    //     }
-    //     return LoadSingleFileToDB_HTML(file_content, document_sections, SEC_data.GetHeader(), SEC_fields,
-    //                                    input_file_name);
-    // }
-    // catch (const std::system_error &e)
-    // {
-    //     spdlog::error(catenate("System error while processing file: ", input_file_name.get().string(), ". ",
-    //     e.what(),
-    //                            " Processing stopped."));
-    //     throw;
-    // }
-    // catch (const std::exception &e)
-    // {
-    //     spdlog::error(catenate("Problem processing file: ", input_file_name.get().string(), ". ", e.what()));
-    //     return {0, 0, 1};
-    // }
-    //
+    try
+    {
+        const std::string content{LoadDataFileForUse(input_file_name)};
+        EM::FileContent file_content{content};
+        const auto document_sections = LocateDocumentSections(file_content);
+
+        SEC_Header SEC_data;
+        SEC_data.UseData(file_content);
+        SEC_data.ExtractHeaderFields();
+        decltype(auto) SEC_fields = SEC_data.GetFields();
+
+        FileHasHTML check_for_html{program_options.forms_};
+        FileHasXBRL check_for_xbrl;
+        FileHasXLS check_for_xls;
+
+        bool has_html = check_for_html(SEC_fields, document_sections);
+        bool has_xbrl = check_for_xbrl(SEC_fields, document_sections);
+        bool has_xls = check_for_xls(SEC_fields, document_sections);
+
+        LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
+                     has_html, has_xbrl, has_xls);
+    }
+    catch (const std::system_error &e)
+    {
+        // for a system error, we had better stop
+
+        spdlog::error(catenate("System error while processing file: ", input_file_name.get().string(), ". ", e.what(),
+                               " Processing stopped."));
+        throw;
+    }
+    catch (const std::exception &e)
+    {
+        // just swallow error
+
+        spdlog::error(catenate("Problem processing file: ", input_file_name.get().string(), ". ", e.what()));
+    }
+
 } /* -----  end of method LoadSingleFileToDB  ----- */
+
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
+                  const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls)
+{
+    using namespace std::chrono_literals;
+
+    auto form_type = SEC_fields.at("form_type");
+
+    // start stuffing the database.
+    // we are simply adding/replacing data in our index.
+    // We use upserts to handle the differenct.
+
+    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
+    pqxx::work trxn{c};
+
+    auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
+    std::chrono::year_month_day date_filed_amended = 1900y / 1 / 1d; // need to start somewhere
+
+    auto index_cmd =
+        std::format("INSERT INTO {9}_forms_index.sec_form_index"
+                    " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
+                    "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
+                    " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
+                    "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING RETURNING filing_id;",
+                    trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
+                    trxn.quote(input_file_name.get().string()), "NULL", trxn.quote(SEC_fields.at("sic")),
+                    trxn.quote(form_type), trxn.quote(date_filed), trxn.quote(SEC_fields.at("quarter_ending")), NULL,
+                    schema_name, has_html, has_xbrl, has_xls);
+    // std::cout << index_cmd << '\n';
+    spdlog::debug("\n*** insert data for filing ID cmd: {}\n", index_cmd);
+    auto filing_ID = trxn.query01<std::string>(index_cmd);
+
+    trxn.commit();
+    spdlog::debug("{}", filing_ID ? "did insert" : "duplicate data");
+
+    return true;
+}
