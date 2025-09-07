@@ -23,7 +23,7 @@ CREATE TABLE test_forms_index.sec_form_index
     period_ending DATE NOT NULL,
     period_context_id TEXT DEFAULT NULL,
     has_html BOOL NOT NULL,
-    has_xml BOOL NOT NULL,
+    has_xbrl BOOL NOT NULL,
     has_xls BOOL NOT NULL,
     UNIQUE (cik, form_type, period_ending),
     PRIMARY KEY (cik, form_type, period_ending)
