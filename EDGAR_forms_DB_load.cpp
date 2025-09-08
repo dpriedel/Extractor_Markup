@@ -95,14 +95,14 @@ int main(int argc, const char *argv[])
 
         auto files_to_scan = MakeListOfFilesToProcess(program_options);
 
-        std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
+        spdlog::info("Found: {} files to process.", files_to_scan.size());
 
         auto scan_file = [&files_processed](const auto &input_file_name) {
             if (input_file_name.empty())
             {
                 return;
             }
-            spdlog::info(catenate("Processing file: ", input_file_name));
+            spdlog::debug("Processing file: {}", input_file_name);
             LoadSingleFileToDB(program_options, EM::FileName{input_file_name});
         };
 
