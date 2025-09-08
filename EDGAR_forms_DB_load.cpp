@@ -17,19 +17,22 @@
 
 // #include "EDGAR_forms_DB_load.h"
 
+#include <algorithm>
 #include <execution>
 #include <filesystem>
 #include <iostream>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <ranges>
 #include <string>
 #include <vector>
 
 #include <CLI/CLI.hpp>
 #include <pqxx/pqxx>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
+namespace rng = std::ranges;
 using namespace std::string_literals;
 
 #include "Extractor.h"
@@ -54,7 +57,6 @@ struct Options
 
 void ConfigureLogging(const Options &program_options);
 void SetupProgramOptions(Options &program_options);
-void ParseProgramOptions(int argc, const char *argv[]);
 void CheckArgs(const Options &program_options);
 
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
@@ -65,24 +67,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
                   const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls);
 
 CLI::App app("EDGAR_forms_DB_load");
-
-// This ctype facet does NOT classify spaces and tabs as whitespace
-// from cppreference example
-
-struct line_only_whitespace : std::ctype<char>
-{
-    static const mask *make_table()
-    {
-        // make a copy of the "C" locale table
-        static std::vector<mask> v(classic_table(), classic_table() + table_size);
-        v['\t'] &= ~space; // tab will not be classified as whitespace
-        v[' '] &= ~space;  // space will not be classified as whitespace
-        return &v[0];
-    }
-    explicit line_only_whitespace(std::size_t refs = 0) : ctype(make_table(), false, refs)
-    {
-    }
-};
 
 int main(int argc, const char *argv[])
 {
@@ -114,11 +98,17 @@ int main(int argc, const char *argv[])
         std::cout << "Found: " << files_to_scan.size() << " files to process.\n";
 
         auto scan_file = [&files_processed](const auto &input_file_name) {
+            if (input_file_name.empty())
+            {
+                return;
+            }
             spdlog::info(catenate("Processing file: ", input_file_name));
             LoadSingleFileToDB(program_options, EM::FileName{input_file_name});
         };
 
-        std::for_each(std::execution::seq, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        // the range splitter I use can end up with an empty entry so, filter for that.
+
+        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
     }
     catch (std::exception &e)
     {
@@ -162,9 +152,6 @@ void ConfigureLogging(const Options &program_options)
 
         spdlog::set_default_logger(app_logger);
     }
-
-    // we are running before 'CheckArgs' so we need to do a little editiing
-    // ourselves.
 
     const std::map<std::string, spdlog::level::level_enum> levels{{"none", spdlog::level::off},
                                                                   {"error", spdlog::level::err},
@@ -299,55 +286,37 @@ std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options
 {
     std::vector<std::string> list_of_files_to_process;
 
+    auto use_this_file([&program_options](const auto &file_name) {
+        if (program_options.file_name_has_form_)
+        {
+            // if (file_name.find("/"s + form_type + "/"s) != std::string::npos)
+            if (FormIsInFileName(program_options.forms_, EM::FileName(file_name)))
+            {
+                return true;
+            }
+            return false;
+        }
+        return true;
+    });
+
     if (!program_options.input_directory_.get().empty())
     {
-        auto add_file_to_list([&list_of_files_to_process, &program_options](const auto &dir_ent) {
-            if (dir_ent.status().type() == fs::file_type::regular)
-            {
-                if (program_options.file_name_has_form_)
-                {
-                    // if (dir_ent.path().string().find("/"s + form_type + "/"s) != std::string::npos)
-                    if (FormIsInFileName(program_options.forms_, EM::FileName(dir_ent.path())))
-                    {
-                        list_of_files_to_process.emplace_back(dir_ent.path().string());
-                    }
-                }
-                else
-                {
-                    list_of_files_to_process.emplace_back(dir_ent.path().string());
-                }
-            }
-        });
-
-        std::for_each(fs::recursive_directory_iterator(program_options.input_directory_.get()),
-                      fs::recursive_directory_iterator(), add_file_to_list);
+        rng::transform(rng::subrange(fs::recursive_directory_iterator(program_options.input_directory_.get()),
+                                     fs::recursive_directory_iterator()) |
+                           rng::views::filter(
+                               [](const auto &dir_ent) { return dir_ent.status().type() == fs::file_type::regular; }) |
+                           rng::views::transform([](const auto &dir_ent) { return dir_ent.path().string(); }) |
+                           rng::views::filter(use_this_file),
+                       std::back_inserter(list_of_files_to_process),
+                       [](const auto &fname) { return fname; });
     }
     else
     {
-        std::ifstream input_file{program_options.file_list_.get()};
+        const std::string list_of_files = LoadDataFileForUse(program_options.file_list_);
 
-        // Tell the stream to use our facet, so only '\n' is treated as a space.
-
-        input_file.imbue(std::locale(input_file.getloc(), new line_only_whitespace()));
-
-        auto use_this_file([&list_of_files_to_process, &program_options](const auto &file_name) {
-            if (program_options.file_name_has_form_)
-            {
-                // if (file_name.find("/"s + form_type + "/"s) != std::string::npos)
-                if (FormIsInFileName(program_options.forms_, EM::FileName(file_name)))
-                {
-                    return true;
-                }
-                return false;
-            }
-            return true;
-        });
-
-        std::copy_if(std::istream_iterator<std::string>{input_file},
-                     std::istream_iterator<std::string>{},
-                     std::back_inserter(list_of_files_to_process),
-                     use_this_file);
-        input_file.close();
+        rng::transform(rng_split_string<std::string_view>(list_of_files, "\n") | rng::views::filter(use_this_file),
+                       std::back_inserter(list_of_files_to_process),
+                       [](const auto &fname) { return std::string{fname}; });
     }
 
     return list_of_files_to_process;
@@ -373,7 +342,7 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        FileHasHTML check_for_html{program_options.forms_};
+        FileHasHTML check_for_html;
         FileHasXBRL check_for_xbrl;
         FileHasXLS check_for_xls;
 
