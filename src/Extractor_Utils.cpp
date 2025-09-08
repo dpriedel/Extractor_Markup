@@ -381,7 +381,7 @@ bool FileHasHTML::operator()(const EM::SEC_Header_fields &header_fields,
         auto file_name = FindFileName(document, document_name);
         auto file_type = FindFileType(document);
 
-        if (file_name.get().extension() == ".htm" && rng::find(form_list_, file_type.get()) != rng::end(form_list_))
+        if (file_name.get().extension() == ".htm")
         {
             auto content = FindHTML(document, file_name);
             if (!content.get().empty())
