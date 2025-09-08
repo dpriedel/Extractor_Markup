@@ -342,6 +342,17 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
+        // we may need to filter on form type here if it is not included int the file name.
+        FileHasFormType form_type_filter{program_options.forms_};
+
+        if (!program_options.forms_.empty() && !program_options.file_name_has_form_)
+        {
+            if (!form_type_filter(SEC_fields, document_sections))
+            {
+                spdlog::debug("Skipping load of file: {} because of form type filter.", input_file_name);
+                return;
+            }
+        }
         FileHasHTML check_for_html;
         FileHasXBRL check_for_xbrl;
         FileHasXLS check_for_xls;
