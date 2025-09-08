@@ -104,8 +104,8 @@ ifeq "$(CFG)" "Release"
 
 OUTDIR=EDGARDBRelease
 
-COMPILE=$(CPP) -c  -x c++  -O3  -std=c++26 -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
-LINK := $(CPP)  -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
+COMPILE=$(CPP) -c  -x c++  -O3  -std=c++26 -flto -DBOOST_ENABLE_ASSERT_HANDLER -DSPDLOG_USE_STD_FORMAT -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
+LINK := $(CPP) -flto=auto -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
 
 endif #	RELEASE configuration
 
