@@ -38,6 +38,7 @@
 #include <chrono>
 #include <filesystem>
 #include <format>
+#include <ranges>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -61,10 +62,12 @@ concept has_string = requires(T t) { t.string(); };
 
 // custom fmtlib formatter for filesytem paths
 
-template <> struct std::formatter<std::filesystem::path> : formatter<std::string>
+template <>
+struct std::formatter<std::filesystem::path> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
-    template <typename FormatContext> auto format(const std::filesystem::path &p, FormatContext &ctx) const
+    template <typename FormatContext>
+    auto format(const std::filesystem::path &p, FormatContext &ctx) const
     {
         std::string f_name = p.string();
         return std::format_to(ctx.out(), "{}", p.string());
@@ -83,7 +86,8 @@ template <> struct std::formatter<std::filesystem::path> : formatter<std::string
 //     }
 // };
 
-template <typename... Ts> inline std::string catenate(Ts &&...ts)
+template <typename... Ts>
+inline std::string catenate(Ts &&...ts)
 {
     constexpr auto N = sizeof...(Ts);
 
@@ -102,7 +106,8 @@ template <typename... Ts> inline std::string catenate(Ts &&...ts)
 // based on code techniques from C++17 STL Cookbook zipping tuples.
 // (works for any class which supports the '+' operator)
 
-template <typename... Ts> std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, std::tuple<Ts...> const &t2)
+template <typename... Ts>
+std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, std::tuple<Ts...> const &t2)
 {
     auto z_([](auto... xs) { return [xs...](auto... ys) { return std::make_tuple((xs + ys)...); }; });
 
@@ -113,7 +118,8 @@ template <typename... Ts> std::tuple<Ts...> AddTs(std::tuple<Ts...> const &t1, s
 // (from C++ Templates...second edition p.58
 // and C++17 STL Cookbook.
 
-template <typename... Ts> auto SumT(const std::tuple<Ts...> &t)
+template <typename... Ts>
+auto SumT(const std::tuple<Ts...> &t)
 {
     auto z_([](auto... ys) { return (... + ys); });
     return std::apply(z_, t);
@@ -207,14 +213,33 @@ inline std::vector<T> split_string(std::string_view string_data, std::string_vie
     return results;
 }
 
+// here's a ranges based version of the split code above.
+// this advantage of using this version is that it is lazy --
+// no requirement to split the whole input up front.
+
+template <typename T>
+inline auto rng_split_string(std::string_view string_data, std::string_view delim)
+    requires std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>
+{
+    // namespace rng = std::ranges;
+    namespace vws = std::ranges::views;
+
+    auto splitter = vws::split(string_data, delim) |
+                    vws::transform([](auto &&item_rng) { return T(item_rng.begin(), item_rng.end()); });
+
+    return splitter;
+}
+
 // utility function
 
-template <typename... Ts> auto NotAllEmpty(const Ts &...ts)
+template <typename... Ts>
+auto NotAllEmpty(const Ts &...ts)
 {
     return ((!ts.empty()) || ...);
 }
 
-template <typename... Ts> auto AllNotEmpty(const Ts &...ts)
+template <typename... Ts>
+auto AllNotEmpty(const Ts &...ts)
 {
     return ((!ts.empty()) && ...);
 }
@@ -259,15 +284,9 @@ struct FileHasXLS
 
 struct FileHasHTML
 {
-    explicit FileHasHTML(const std::vector<std::string> &form_list) : form_list_{form_list}
-    {
-    }
-
     bool operator()(const EM::SEC_Header_fields &, const EM::DocumentSectionList &document_sections) const;
 
     const std::string filter_name_{"FileHasHTML"};
-
-    const std::vector<std::string> form_list_;
 };
 
 struct FileHasFormType
