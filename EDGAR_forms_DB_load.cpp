@@ -70,17 +70,10 @@ CLI::App app("EDGAR_forms_DB_load");
 
 int main(int argc, const char *argv[])
 {
-    // start logging here.  will possible change once we have parsed
+    // start logging here.  will possibly change once we have parsed
     // command line.
 
     spdlog::set_level(spdlog::level::debug);
-
-    const std::ctype<char> &ct(std::use_facet<std::ctype<char>>(std::locale()));
-
-    for (size_t i(0); i != 256; ++i)
-    {
-        ct.narrow(static_cast<char>(i), '\0');
-    }
 
     auto result{0};
 
@@ -333,6 +326,10 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
     // std::atomic<int> forms_processed{0};
     try
     {
+        if (!fs::exists(input_file_name.get()))
+        {
+            throw std::runtime_error(std::format("File: {} not found. Skipped.", input_file_name));
+        }
         const std::string content{LoadDataFileForUse(input_file_name)};
         EM::FileContent file_content{content};
         const auto document_sections = LocateDocumentSections(file_content);
