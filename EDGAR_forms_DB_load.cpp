@@ -71,11 +71,12 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name);
 
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
 
-void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name,
-                        std::atomic<int> &files_processed);
+void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
+                        const EM::FileName &input_file_name, std::atomic<int> &files_processed);
 
 bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls);
+                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
+                  bool has_html, bool has_xbrl, bool has_xls);
 
 CLI::App app("EDGAR_forms_DB_load");
 
@@ -101,17 +102,17 @@ int main(int argc, const char *argv[])
 
         spdlog::info("Found: {} files to process.", files_to_scan.size());
 
-        const auto CIK_map = LoadCIKToSymbolTable(program_options.CIK2Symbol_file_name_);
-        spdlog::info("Loaded: {} CIK-to-symbol mappings from file: {}.", CIK_map.size(),
+        const CIK2SymbolMap CIK_symbol_map = LoadCIKToSymbolTable(program_options.CIK2Symbol_file_name_);
+        spdlog::info("Loaded: {} CIK-to-symbol mappings from file: {}.", CIK_symbol_map.size(),
                      program_options.CIK2Symbol_file_name_);
 
-        auto scan_file = [&files_processed](const auto &input_file_name) {
+        auto scan_file = [&files_processed, &CIK_symbol_map](const auto &input_file_name) {
             if (input_file_name.empty())
             {
                 return;
             }
             spdlog::debug("Processing file: {}", input_file_name);
-            LoadSingleFileToDB(program_options, EM::FileName{input_file_name}, files_processed);
+            LoadSingleFileToDB(program_options, CIK_symbol_map, EM::FileName{input_file_name}, files_processed);
         };
 
         // the range splitter I use can end up with an empty entry so, filter for that.
@@ -387,8 +388,8 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
  * Description:  Extract information from a single file to build DB index.
  * =====================================================================================
  */
-void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name,
-                        std::atomic<int> &files_processed)
+void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
+                        const EM::FileName &input_file_name, std::atomic<int> &files_processed)
 {
     try
     {
@@ -406,6 +407,8 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
         // we may need to filter on form type here if it is not included int the file name.
+        // filtering based on file name is done earlier when building the list of files to process.
+
         FileHasFormType form_type_filter{program_options.forms_};
 
         if (!program_options.forms_.empty() && !program_options.file_name_has_form_)
@@ -420,12 +423,16 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
         FileHasXBRL check_for_xbrl;
         FileHasXLS check_for_xls;
 
+        const std::string &cik = SEC_fields.at("cik");
+        const auto cik_symbol = CIK_symbol_map.find(cik);
+        const std::string symbol_for_CIK = cik_symbol != CIK_symbol_map.end() ? cik_symbol->second : "";
+
         bool has_html = check_for_html(SEC_fields, document_sections);
         bool has_xbrl = check_for_xbrl(SEC_fields, document_sections);
         bool has_xls = check_for_xls(SEC_fields, document_sections);
 
         LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
-                     has_html, has_xbrl, has_xls);
+                     symbol_for_CIK, has_html, has_xbrl, has_xls);
 
         auto xx = files_processed.fetch_add(1);
     }
@@ -447,7 +454,8 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
 } /* -----  end of method LoadSingleFileToDB  ----- */
 
 bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls)
+                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
+                  bool has_html, bool has_xbrl, bool has_xls)
 {
     using namespace std::chrono_literals;
 
@@ -460,21 +468,32 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
     pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
     pqxx::work trxn{c};
 
-    auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-    std::chrono::year_month_day date_filed_amended = 1900y / 1 / 1d; // need to start somewhere
+    if (replace_DB_content)
+    {
+        auto delete_index_entry_cmd = std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE"
+                                                  " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                                  trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
+                                                  trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
 
-    auto index_cmd =
-        std::format("INSERT INTO {9}_forms_index.sec_form_index"
-                    " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
-                    "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
-                    " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
-                    "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING RETURNING filing_id;",
-                    trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
-                    trxn.quote(input_file_name.get().string()), "NULL", trxn.quote(SEC_fields.at("sic")),
-                    trxn.quote(form_type), trxn.quote(date_filed), trxn.quote(SEC_fields.at("quarter_ending")), NULL,
-                    schema_name, has_html, has_xbrl, has_xls);
+        spdlog::debug("\n*** delete data for index entry cmd: {}\n", delete_index_entry_cmd);
+
+        trxn.exec(delete_index_entry_cmd);
+    }
+
+    auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
+
+    auto index_cmd = std::format(
+        "INSERT INTO {9}_forms_index.sec_form_index"
+        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
+        "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
+        " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
+        "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING RETURNING filing_id;",
+        trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
+        trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
+        trxn.quote(SEC_fields.at("sic")), trxn.quote(form_type), trxn.quote(date_filed),
+        trxn.quote(SEC_fields.at("quarter_ending")), NULL, schema_name, has_html, has_xbrl, has_xls);
     // std::cout << index_cmd << '\n';
-    spdlog::debug("\n*** insert data for filing ID cmd: {}\n", index_cmd);
+    spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
     auto filing_ID = trxn.query01<std::string>(index_cmd);
 
     trxn.commit();
