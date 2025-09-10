@@ -21,6 +21,7 @@
 #include <execution>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <ranges>
 #include <string>
 #include <vector>
@@ -48,6 +49,7 @@ struct Options
     EM::FileName output_directory_;
     EM::FileName file_list_;
     EM::FileName log_file_path_name_;
+    EM::FileName CIK2Symbol_file_name_;
     std::string logging_level_{"information"};
     std::string DB_mode_{"test"};
     int max_files_{-1};
@@ -59,9 +61,18 @@ void ConfigureLogging(const Options &program_options);
 void SetupProgramOptions(Options &program_options);
 void CheckArgs(const Options &program_options);
 
+// we need to try to collect symbols for each CIK we encounter.
+// Not all will be found.
+
+using CIK2SymbolMap = std::map<std::string, std::string>;
+CIK2SymbolMap CIK_to_symbol;
+
+CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name);
+
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
 
-void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name);
+void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name,
+                        std::atomic<int> &files_processed);
 
 bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
                   const std::string &schema_name, bool replace_DB_content, bool has_html, bool has_xbrl, bool has_xls);
@@ -90,13 +101,17 @@ int main(int argc, const char *argv[])
 
         spdlog::info("Found: {} files to process.", files_to_scan.size());
 
+        const auto CIK_map = LoadCIKToSymbolTable(program_options.CIK2Symbol_file_name_);
+        spdlog::info("Loaded: {} CIK-to-symbol mappings from file: {}.", CIK_map.size(),
+                     program_options.CIK2Symbol_file_name_);
+
         auto scan_file = [&files_processed](const auto &input_file_name) {
             if (input_file_name.empty())
             {
                 return;
             }
             spdlog::debug("Processing file: {}", input_file_name);
-            LoadSingleFileToDB(program_options, EM::FileName{input_file_name});
+            LoadSingleFileToDB(program_options, EM::FileName{input_file_name}, files_processed);
         };
 
         // the range splitter I use can end up with an empty entry so, filter for that.
@@ -108,6 +123,7 @@ int main(int argc, const char *argv[])
         std::cout << e.what();
         result = 1;
     }
+    spdlog::info("Processed: {} files.", files_processed.load());
     return result;
 }
 /*
@@ -227,6 +243,27 @@ void SetupProgramOptions(Options &program_options)
     // specify the min and max number of options from the group to be allowed.
     input_source_group->require_option(1, 1);
 
+    app.add_option("--CIK-to-symbol", program_options.CIK2Symbol_file_name_,
+                   "Path to a file containing table mapping CIK to symbol.")
+        ->check(CLI::ExistingFile)
+        ->check([](const std::string &path_str) {
+            // The path is guaranteed to exist and be a file.
+            std::error_code ec;
+            const auto size = std::filesystem::file_size(path_str, ec);
+
+            // It's good practice to check for errors when querying the filesystem.
+            if (ec)
+            {
+                return "Could not determine size of file: '" + path_str + "'.";
+            }
+
+            if (size == 0)
+            {
+                return "File list file: '" + path_str + "' is empty.";
+            }
+            return std::string{}; // Success
+        })
+        ->required();
     app.add_option("--log-file-name", program_options.log_file_path_name_,
                    "Path name of file to write logging data to. If not provided, will log to console.");
 
@@ -317,13 +354,42 @@ std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options
 
 /*
  * ===  FUNCTION  ======================================================================
+ * Name:  LoadCIKToSymbolTable
+ * Description:  Loads data from tab-delimited file into map structure.
+ * =====================================================================================
+ */
+CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
+{
+    CIK2SymbolMap map;
+
+    const std::string symbol_data = LoadDataFileForUse(program_options.CIK2Symbol_file_name_);
+
+    // NOTE: this range splitter seems to add an extra empty line at the end when
+    // there is no terminating line-end char in the file.
+    // so, add a filter for an empty line.
+
+    auto lines = rng_split_string<std::string_view>(symbol_data, "\n");
+    rng::for_each(lines | rng::views::all | rng::views::filter([](const auto line) { return !line.empty(); }),
+                  [&map](const auto line) {
+                      // each line has format: <symbol>\tab<CIK>
+
+                      const auto fields = split_string<std::string_view>(line, "\t");
+                      BOOST_ASSERT_MSG(fields.size() == 2,
+                                       std::format("Failed to split table line: -->{}<--.", line).c_str());
+                      map.try_emplace(std::string{fields[1]}, std::string{fields[0]});
+                  });
+    return map;
+}
+
+/*
+ * ===  FUNCTION  ======================================================================
  * Name:  LoadSingleFileToDB
  * Description:  Extract information from a single file to build DB index.
  * =====================================================================================
  */
-void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name)
+void LoadSingleFileToDB(const Options &program_options, const EM::FileName &input_file_name,
+                        std::atomic<int> &files_processed)
 {
-    // std::atomic<int> forms_processed{0};
     try
     {
         if (!fs::exists(input_file_name.get()))
@@ -360,6 +426,8 @@ void LoadSingleFileToDB(const Options &program_options, const EM::FileName &inpu
 
         LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
                      has_html, has_xbrl, has_xls);
+
+        auto xx = files_processed.fetch_add(1);
     }
     catch (const std::system_error &e)
     {
