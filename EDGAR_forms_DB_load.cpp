@@ -89,6 +89,8 @@ int main(int argc, const char *argv[])
 
     auto result{0};
 
+    spdlog::info("\n\n*** Begin run {} ***\n", std::chrono::system_clock::now());
+
     std::atomic<int> files_processed{0};
 
     try
@@ -125,6 +127,10 @@ int main(int argc, const char *argv[])
         result = 1;
     }
     spdlog::info("Processed: {} files.", files_processed.load());
+
+    spdlog::info("\n\n*** End run {} ***\n", std::chrono::system_clock::now());
+    spdlog::shutdown(); // Ensure all messages are flushed
+    //
     return result;
 }
 /*
