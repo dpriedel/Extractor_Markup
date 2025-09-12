@@ -312,7 +312,7 @@ EM::HTMLContent FindHTML(const EM::DocumentSection &document, const EM::FileName
             //                    return result;
             //                }
             //            }
-            spdlog::info("Looks like it's really XBRL.\n");
+            spdlog::debug("File: {}. Looks like HTML is really XBRL.", document_name);
             return EM::HTMLContent{};
         }
         return EM::HTMLContent{result};
