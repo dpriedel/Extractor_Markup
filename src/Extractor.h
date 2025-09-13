@@ -41,6 +41,8 @@
 #include <type_traits>
 #include <vector>
 
+// namespace fs = std::filesystem;
+
 namespace Extractor
 {
 // thanks to Jonathan Boccara of fluentcpp.com for his articles on
@@ -102,6 +104,11 @@ public:
         return value_;
     }
 
+    bool empty() const
+    {
+        return value_ == T{};
+    }
+
     // ====================  MUTATORS      =======================================
 
     // ====================  OPERATORS     =======================================
@@ -159,7 +166,7 @@ private:
 
 using sv = std::string_view;
 using SEC_Header_fields = std::map<std::string, std::string>;
-using std::filesystem::path;
+// using std::filesystem::path;
 
 struct FilingData
 {
@@ -208,7 +215,7 @@ using DocumentSection = UniqType<sv, struct DocumentSectionTag>;
 using XBRLContent = UniqType<sv, struct XBRLContentTag>;
 using XLSContent = UniqType<sv, struct XLSContentTag>;
 using HTMLContent = UniqType<sv, struct HTMLContentTag>;
-using FileName = UniqType<path, struct FileNameTag>;
+using FileName = UniqType<std::filesystem::path, struct FileNameTag>;
 using FileType = UniqType<sv, struct FileTypeTag>;
 using AnchorContent = UniqType<sv, struct AnchorContentTag>;
 using TableContent = UniqType<sv, struct TableContentTag>;
