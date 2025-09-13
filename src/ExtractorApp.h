@@ -49,13 +49,17 @@
 
 namespace fs = std::filesystem;
 
+// NOTE: This header must be included before the boost headers
+// so program_options can find custom stream inserter for UniqType objects.
+//
+#include "Extractor.h"
+
 #include <boost/program_options.hpp>
 
 #include <spdlog/spdlog.h>
 
 namespace po = boost::program_options;
 
-#include "Extractor.h"
 // #include "ExtractorMutexAndLock.h"
 #include "Extractor_Utils.h"
 #include "SharesOutstanding.h"
@@ -191,17 +195,6 @@ private:
     std::vector<std::string> SIC_list_;
 
     FilterList filters_;
-
-    // this is a cheep hack to get past compile errors
-    // from program_options can't work with EM::FileName s
-    //
-    fs::path list_of_files_to_process_path_i_;
-    fs::path log_file_path_name_i_;
-    fs::path local_form_file_directory_i_;
-    fs::path single_file_to_process_i_;
-    fs::path SS_export_directory_i_;
-    fs::path HTML_export_source_directory_i_;
-    fs::path HTML_export_target_directory_i_;
 
     EM::FileName list_of_files_to_process_path_;
     EM::FileName log_file_path_name_;

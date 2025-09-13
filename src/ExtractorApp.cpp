@@ -52,6 +52,7 @@
 #include <thread>
 #include <vector>
 
+#include "Extractor.h"
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
 #include "SEC_Header.h"
@@ -166,15 +167,15 @@ void ExtractorApp::ConfigureLogging()
 {
     // this logging code comes from gemini
 
-    if (!log_file_path_name_i_.empty())
+    if (!log_file_path_name_.empty())
     {
-        fs::path log_dir = log_file_path_name_i_.parent_path();
+        fs::path log_dir = log_file_path_name_.get().parent_path();
         if (!fs::exists(log_dir))
         {
             fs::create_directories(log_dir);
         }
 
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_i_, true);
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path_name_.get(), true);
 
         auto app_logger = std::make_shared<spdlog::logger>("Extractor_logger", file_sink);
 
@@ -249,25 +250,25 @@ void ExtractorApp::SetupProgramOptions()
     mNewOptions->add_options()("help,h", "produce help message")
         ( "begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
         ( "end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
-        ( "form-dir", po::value<fs::path>(&local_form_file_directory_i_), "directory of form files to be processed")
+        ( "form-dir", po::value<EM::FileName>(&local_form_file_directory_), "directory of form files to be processed")
         //		("SS-form-dir",
         // po::value<fs::path>(&SS_export_directory_i_),	"directory to
         // write Excel data files to.")
-        ("HTML-forms-to-dir", po::value<fs::path>(&HTML_export_target_directory_i_), "directory to write exported HTML data files to.")
-        ("HTML-forms-from-dir", po::value<fs::path>(&HTML_export_source_directory_i_), "directory to read exported HTML data files from.")
-        ( "file,f", po::value<fs::path>(&single_file_to_process_i_), "single file to be processed.")
+        ("HTML-forms-to-dir", po::value<EM::FileName>(&HTML_export_target_directory_), "directory to write exported HTML data files to.")
+        ("HTML-forms-from-dir", po::value<EM::FileName>(&HTML_export_source_directory_), "directory to read exported HTML data files from.")
+        ( "file,f", po::value<EM::FileName>(&single_file_to_process_), "single file to be processed.")
         ( "replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true), "replace all DB content for each file. Default is 'false'")
         ( "export-XLS-data", po::value<bool>(&export_XLS_files_)->default_value(false)->implicit_value(true), "export Excel data if any. Default is 'false'")
         ( "export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true), "export problem HTML data if any. Default is 'false'")
         ( "UpdateSharesOutstanding", po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true), "Update Shares outstanding value in DB.")
-        ("list-file", po::value<fs::path>(&list_of_files_to_process_path_i_), "path to file with list of files to process.")
+        ("list-file", po::value<EM::FileName>(&list_of_files_to_process_path_), "path to file with list of files to process.")
         ( "log-level,l", po::value<std::string>(&logging_level_), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
         ("mode,m", po::value<std::string>(&data_source_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
         ( "DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")
         ( "form", po::value<std::string>(&form_)->default_value("10-Q"), "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
         ("CIK", po::value<std::string>(&CIK_), "Zero-padded-on-left 10 digit CIK[s] we are processing. May be comma-delimited list. Default is all.")
         ( "SIC", po::value<std::string>(&SIC_), "SIC we are processing. May be comma-delimited list. Default is all.")
-        ("log-path", po::value<fs::path>(&log_file_path_name_i_), "path name for log file.")
+        ("log-path", po::value<EM::FileName>(&log_file_path_name_), "path name for log file.")
         ( "max-files", po::value<int>(&max_forms_to_process_)->default_value(-1), "Maximun number of forms to process -- mainly for testing. Default of -1 means no limit.")
         ("concurrent,k", po::value<int>(&max_at_a_time_)->default_value(-1), "Maximun number of concurrent processes. Default of -1 -- system defined.")
         ( "filename-has-form", po::value<bool>(&filename_has_form_)->default_value(false)->implicit_value(true), "form number is in file path. Default is 'false'")
@@ -356,16 +357,6 @@ bool ExtractorApp::CheckArgs()
         BOOST_ASSERT_MSG(data_source_ == "BOTH" || data_source_ == "HTML" || data_source_ == "XBRL",
                          "Mode must be: 'BOTH' or 'HTML' or 'XBRL'.");
     }
-
-    // more of the cheep hack for program_options here
-    //
-    list_of_files_to_process_path_ = list_of_files_to_process_path_i_;
-    log_file_path_name_ = log_file_path_name_i_;
-    local_form_file_directory_ = local_form_file_directory_i_;
-    single_file_to_process_ = single_file_to_process_i_;
-    SS_export_directory_ = SS_export_directory_i_;
-    HTML_export_source_directory_ = HTML_export_source_directory_i_;
-    HTML_export_target_directory_ = HTML_export_target_directory_i_;
 
     if (!DB_mode_.empty())
     {
@@ -623,7 +614,7 @@ std::optional<ExtractorApp::FileMode> ExtractorApp::ApplyFilters(const EM::SEC_H
     }
     if (data_source_ == "BOTH" || data_source_ == "HTML")
     {
-        FileHasHTML filter1{form_list_};
+        FileHasHTML filter1{};
         use_file = filter1(SEC_fields, sections);
         if (use_file)
         {
