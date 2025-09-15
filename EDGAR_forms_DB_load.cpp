@@ -18,6 +18,7 @@
 // #include "EDGAR_forms_DB_load.h"
 
 #include <algorithm>
+#include <chrono>
 #include <execution>
 #include <filesystem>
 #include <iostream>
@@ -89,7 +90,8 @@ int main(int argc, const char *argv[])
 
     auto result{0};
 
-    spdlog::info("\n\n*** Begin run {} ***\n", std::chrono::system_clock::now());
+    spdlog::info("\n\n*** Begin run {} ***\n",
+                 std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now()));
 
     std::atomic<int> files_processed{0};
 
@@ -128,7 +130,8 @@ int main(int argc, const char *argv[])
     }
     spdlog::info("Processed: {} files.", files_processed.load());
 
-    spdlog::info("\n\n*** End run {} ***\n", std::chrono::system_clock::now());
+    spdlog::info("\n\n*** End run {} ***\n",
+                 std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now()));
     spdlog::shutdown(); // Ensure all messages are flushed
     //
     return result;
