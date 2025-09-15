@@ -52,6 +52,8 @@
 #include <thread>
 #include <vector>
 
+#include <ranges>
+
 #include "Extractor.h"
 #include "Extractor_HTML_FileFilter.h"
 #include "Extractor_XBRL_FileFilter.h"
@@ -63,6 +65,7 @@
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
+using namespace std::string_view_literals;
 
 namespace rng = std::ranges;
 
@@ -148,6 +151,7 @@ ExtractorApp::ExtractorApp(int argc, char *argv[]) : mArgc{argc}, mArgv{argv}
  */
 ExtractorApp::ExtractorApp(const std::vector<std::string> &tokens) : tokens_{tokens}
 {
+    std::cout << std::format("ctor cmd line args: {}\n", tokens_);
     original_logger_ = spdlog::default_logger();
 } /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
 
@@ -217,9 +221,12 @@ bool ExtractorApp::Startup()
     bool result{true};
     try
     {
-        SetupProgramOptions();
-        ParseProgramOptions(tokens_);
+        // SetupProgramOptions();
+        // ParseProgramOptions(tokens_);
+        SetupNewProgramOptions();
+        ParseNewProgramOptions(tokens_);
         ConfigureLogging();
+        return false; // for testing
         result = CheckArgs();
     }
     catch (const std::exception &e)
@@ -241,6 +248,92 @@ bool ExtractorApp::Startup()
     }
     return result;
 } /* -----  end of method ExtractorApp::Startup  ----- */
+
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  ClassName::member_function_name
+ * Description:  Use CLI11 to manage commandlline arguments
+ * =====================================================================================
+ */
+void ExtractorApp::SetupNewProgramOptions(void)
+{
+    // CLI11 automatically provides a -h, --help flag, so we don't need to add it.
+    app.add_option("--begin-date", start_date_, "retrieve files with dates greater than or equal to")
+        ->check([](const std::string &str) -> std::string {
+            std::istringstream in{str};
+            std::chrono::year_month_day ymd;
+            // Attempt to parse the string using the specified format
+            in >> std::chrono::parse("%F", ymd); // %F is a shortcut for %Y-%m-%d
+
+            // Check if the parsing failed or if there are leftover characters
+            if (in.fail() || !in.eof())
+            {
+                // try an alternate representation
+
+                in.clear();
+                in.rdbuf()->pubseekpos(0);
+                std::chrono::from_stream(in, "%Y-%b-%d", ymd);
+            }
+            if (in.fail() || !in.eof())
+            {
+                return catenate("Error: Unable to parse begin date: ", str);
+            }
+            if (!ymd.ok())
+            {
+                return catenate("Invalid begin date: ", str);
+            }
+
+            return ""; // Return an empty string on success
+        });
+    app.add_option("--end-date", stop_date_, "retrieve files with dates less than or equal to");
+    app.add_option("--form-dir", local_form_file_directory_, "directory of form files to be processed");
+    app.add_option("--HTML-forms-to-dir", HTML_export_target_directory_,
+                   "directory to write exported HTML data files to.");
+    app.add_option("--HTML-forms-from-dir", HTML_export_source_directory_,
+                   "directory to read exported HTML data files from.");
+    app.add_option("-f,--file", single_file_to_process_, "single file to be processed.");
+
+    app.add_flag("-R,--replace-DB-content", replace_DB_content_,
+                 "replace all DB content for each file. Default is 'false'");
+    app.add_flag("--export-XLS-data", export_XLS_files_, "export Excel data if any. Default is 'false'");
+    app.add_flag("--export-HTML-data", export_HTML_forms_, "export problem HTML data if any. Default is 'false'");
+    app.add_flag("--UpdateSharesOutstanding", update_shares_outstanding_, "Update Shares outstanding value in DB.");
+
+    app.add_option("--list-file", list_of_files_to_process_path_, "path to file with list of files to process.");
+
+    // Add a validator to ensure the log-level is one of the allowed values.
+    app.add_option("-l,--log-level", logging_level_, "logging level. Must be 'none|error|information|debug'.")
+        // ->default_val("information")
+        ->check(CLI::IsMember({"none", "error", "information", "debug"}));
+
+    // Add a validator for mode and mark it as required.
+    app.add_option("-m,--mode", data_source_, "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
+        ->required()
+        ->check(CLI::IsMember({"BOTH", "HTML", "XBRL"}));
+
+    app.add_option("--DB-mode", DB_mode_, "Must be either 'test' or 'live'.")
+        ->default_val("test")
+        ->check(CLI::IsMember({"test", "live"}));
+
+    // Note: The original help text mentions a comma-delimited list, but the code
+    // binds to a single string. This conversion maintains that behavior. CLI11
+    // could parse directly into a vector if desired.
+    app.add_option("--form", form_, "name of form type we are processing. May be comma-delimited list.")
+        ->default_val("10-Q");
+    app.add_option(
+        "--CIK", CIK_,
+        "Zero-padded-on-left 10 digit CIK[s] we are processing. May be comma-delimited list. Default is all.");
+    app.add_option("--SIC", SIC_, "SIC we are processing. May be comma-delimited list. Default is all.");
+
+    app.add_option("--log-path", log_file_path_name_, "path name for log file.");
+    app.add_option("--max-files", max_forms_to_process_, "Maximun number of forms to process -- mainly for testing.")
+        ->default_val(-1);
+    app.add_option("-k,--concurrent", max_at_a_time_, "Maximun number of concurrent processes.")->default_val(-1);
+
+    app.add_flag("--filename-has-form", filename_has_form_, "form number is in file path. Default is 'false'");
+    app.add_option("--resume-at", resume_at_this_filename_,
+                   "find this file name in list of files to process and resume processing there.");
+}
 
 // clang-format off
 void ExtractorApp::SetupProgramOptions()
@@ -275,6 +368,49 @@ void ExtractorApp::SetupProgramOptions()
         ( "resume-at", po::value<std::string>(&resume_at_this_filename_), "find this file name in list of files to process and resume processing there.");
 } /* -----  end of method ExtractorApp::SetupProgramOptions  ----- */
 // clang-format on
+
+void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
+{
+    try
+    {
+        if (tokens.empty())
+        {
+            // If the token vector is empty, parse the original argc/argv.
+            // This is the standard execution path.
+            app.parse(mArgc, mArgv);
+        }
+        else
+        {
+            // std::cout << std::format("cmd line args: {}\n", tokens);
+            // If tokens are provided, parse them directly.
+            // This is ideal for testing or scripted commands.
+            // Note: CLI11's vector parse does NOT expect the program name.
+            auto cmd_line_vw = rng::views::join_with(rng::views::drop(tokens, 1), " "sv);
+
+            // std::vector<std::string> xxx = rng::to<std::vector>(rng::views::drop(tokens, 1));
+
+            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
+            // std::cout << std::format("revised cmd line args: {}\n", xxx);
+            app.parse(cmd_line);
+        }
+    }
+    catch (const CLI::CallForHelp &e)
+    {
+        // CLI11 automatically prints the help message when it sees -h or --help.
+        // It then throws CLI::CallForHelp.
+        // All we need to do is exit gracefully. Re-throwing is a clean way
+        // to signal the caller that execution should stop.
+        throw std::runtime_error("Exiting after 'help' request.");
+    }
+    catch (const CLI::ParseError &e)
+    {
+        // For any other parsing error (missing required option, bad value, etc.),
+        // CLI11 throws a ParseError. We can format a clean message and throw.
+        // The app.exit(e) call is often used in main() to get an exit code,
+        // but re-throwing is better for a class member function.
+        throw std::runtime_error(std::format("Command line parse error: {}", e.what()));
+    }
+}
 
 void ExtractorApp::ParseProgramOptions(const std::vector<std::string> &tokens)
 {

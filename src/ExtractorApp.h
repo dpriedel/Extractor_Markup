@@ -47,6 +47,8 @@
 #include <variant>
 #include <vector>
 
+#include <CLI/CLI.hpp>
+
 namespace fs = std::filesystem;
 
 // NOTE: This header must be included before the boost headers
@@ -102,7 +104,9 @@ protected:
     //	Setup for parsing program options.
 
     void SetupProgramOptions();
+    void SetupNewProgramOptions();
     void ParseProgramOptions(const std::vector<std::string> &tokens);
+    void ParseNewProgramOptions(const std::vector<std::string> tokens);
 
     void ConfigureLogging();
 
@@ -166,6 +170,8 @@ private:
     po::positional_options_description mPositional;       //	old style options
     std::unique_ptr<po::options_description> mNewOptions; //	new style options (with identifiers)
     po::variables_map mVariableMap;
+
+    CLI::App app{"A program to extract data from SEC filings"};
 
     ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
 
