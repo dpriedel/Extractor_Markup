@@ -203,7 +203,7 @@ void SetupProgramOptions(Options &program_options)
     form_option->delimiter(',');
 
     form_option->transform([](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return ::toupper(c); });
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
         return s;
     });
 
