@@ -47,8 +47,6 @@
 #include <variant>
 #include <vector>
 
-#include <CLI/CLI.hpp>
-
 namespace fs = std::filesystem;
 
 // NOTE: This header must be included before the boost headers
@@ -56,11 +54,14 @@ namespace fs = std::filesystem;
 //
 #include "Extractor.h"
 
+#ifdef USE_PG_OPTIONS
 #include <boost/program_options.hpp>
+namespace po = boost::program_options;
+#else
+#include <CLI/CLI.hpp>
+#endif // USE_PG_OPTIONS
 
 #include <spdlog/spdlog.h>
-
-namespace po = boost::program_options;
 
 // #include "ExtractorMutexAndLock.h"
 #include "Extractor_Utils.h"
@@ -103,14 +104,21 @@ protected:
 
     //	Setup for parsing program options.
 
+#ifdef USE_PG_OPTIONS
     void SetupProgramOptions();
-    void SetupNewProgramOptions();
     void ParseProgramOptions(const std::vector<std::string> &tokens);
+#else
+    void SetupNewProgramOptions();
     void ParseNewProgramOptions(const std::vector<std::string> tokens);
+#endif // USE_PG_OPTIONS
 
     void ConfigureLogging();
 
+#ifdef USE_PG_OPTIONS
     bool CheckArgs();
+#else
+    bool CheckNewArgs();
+#endif
     void Do_Quit();
 
     void BuildFilterList();
@@ -167,11 +175,13 @@ private:
                                      FileIsWithinDateRange, NeedToUpdateDBContent>;
     using FilterList = std::vector<FilterTypes>;
 
+#ifdef USE_PG_OPTIONS
     po::positional_options_description mPositional;       //	old style options
     std::unique_ptr<po::options_description> mNewOptions; //	new style options (with identifiers)
     po::variables_map mVariableMap;
-
+#else
     CLI::App app{"A program to extract data from SEC filings"};
+#endif // USE_PG_OPTIONS
 
     ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
 
