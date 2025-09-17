@@ -404,7 +404,6 @@ void ExtractorApp::SetupNewProgramOptions(void)
     app.add_option("--form", form_list_, "name of form type we are processing. May be comma-delimited list.")
         ->default_val("10-Q")
         ->delimiter(',')
-
         ->transform([](std::string s) {
             std::transform(s.begin(), s.end(), s.begin(),
                            [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
@@ -769,17 +768,17 @@ void ExtractorApp::BuildFilterList()
         filters_.emplace_back(NeedToUpdateDBContent{schema_prefix_, data_source_, replace_DB_content_});
     }
 
-    if (!form_.empty())
+    if (!form_list_.empty())
     {
         filters_.emplace_back(FileHasFormType{form_list_});
     }
 
-    if (!CIK_.empty())
+    if (!CIK_list_.empty())
     {
         filters_.emplace_back(FileHasCIK{CIK_list_});
     }
 
-    if (!SIC_.empty())
+    if (!SIC_list_.empty())
     {
         filters_.emplace_back(FileHasSIC{SIC_list_});
     }
