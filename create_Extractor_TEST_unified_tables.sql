@@ -27,8 +27,8 @@ CREATE TABLE test_unified_extracts.sec_filing_id
     period_context_id TEXT DEFAULT NULL,
     shares_outstanding NUMERIC DEFAULT -1,
     data_source TEXT NOT NULL,
-    UNIQUE (cik, form_type, period_ending),
-    PRIMARY KEY (cik, form_type, period_ending)
+    UNIQUE (cik, form_type, period_ending, data_source),
+    PRIMARY KEY (cik, form_type, period_ending, data_source)
 );
 
 ALTER TABLE test_unified_extracts.sec_filing_id OWNER TO extractor_pg;
