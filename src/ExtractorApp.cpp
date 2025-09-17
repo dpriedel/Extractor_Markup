@@ -484,7 +484,7 @@ void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
         // It then throws CLI::CallForHelp.
         // All we need to do is exit gracefully. Re-throwing is a clean way
         // to signal the caller that execution should stop.
-        throw std::runtime_error("Exiting after 'help' request.");
+        app.exit(e);
     }
     catch (const CLI::ParseError &e)
     {
@@ -1617,9 +1617,6 @@ void ExtractorApp::HandleSignal(int signal)
 void ExtractorApp::Shutdown()
 {
     spdlog::info(catenate("\n\n*** End run ", LocalDateTimeAsString(std::chrono::system_clock::now()), " ***\n"));
-
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // Give time for async processing
-
-    // spdlog::shutdown(); // Ensure all messages are flushed
+    spdlog::shutdown(); // Ensure all messages are flushed
 
 } // -----  end of method ExtractorApp::Shutdown  -----
