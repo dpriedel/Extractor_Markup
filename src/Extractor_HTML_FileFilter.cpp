@@ -1097,6 +1097,7 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
 
     // NOTE: data_source is now part of the primary key so we DO need to
     // include it in our check below.
+
     auto save_original_data_cmd =
         std::format("SELECT date_filed, file_name, amended_date_filed, "
                     "amended_file_name FROM {3}.sec_filing_id WHERE"
