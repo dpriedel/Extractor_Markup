@@ -19,7 +19,7 @@
 #
 MAKE=gmake
 
-BOOSTDIR := /extra/boost/boost-1.88_gcc-15
+BOOSTDIR := /extra/boost/boost-1.89_gcc-15
 GCCDIR := /extra/gcc/gcc-15
 CPP := $(GCCDIR)/bin/g++
 
@@ -55,19 +55,10 @@ SRCS := $(SRCS1) $(SRCS2)
 
 VPATH := $(SDIR1):$(SDIR2)
 
-#
-# Configuration: DEBUG
-#
-ifeq "$(CFG)" "Debug"
-
-OUTDIR=Debug
-
 CFG_LIB := -lpthread \
 		-L$(GCCDIR)/lib64 \
 		-lstdc++ \
 		-lstdc++exp \
-   		-L$(BOOSTDIR)/lib \
-		-lboost_program_options-mt-x64 \
 		-L/usr/local/lib \
 		-lxlsxio_read \
 		-lspdlog \
@@ -79,11 +70,21 @@ CFG_LIB := -lpthread \
 		-lzip \
 		-lpugixml
 
+#  		-L$(BOOSTDIR)/lib \
+# -lboost_program_options-mt-x64 \
+
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
 
 OBJS=$(OBJS1) $(OBJS2)
 DEPS=$(OBJS:.o=.d)
+
+#
+# Configuration: DEBUG
+#
+ifeq "$(CFG)" "Debug"
+
+OUTDIR=Debug
 
 COMPILE=$(CPP) -c  -x c++  -O0  -g3 -std=c++26 -DBOOST_ENABLE_ASSERT_HANDLER -D_DEBUG -DSPDLOG_USE_STD_FORMAT -DBOOST_REGEX_STANDALONE -DUSE_OS_TZDB -DSHOW_STRACE -fPIC -o $@ $(CFG_INC) $< -march=native -MMD -MP
 LINK := $(CPP)  -g -o $(OUTFILE) $(OBJS) $(CFG_LIB) -Wl,-E $(RPATH_LIB)
@@ -97,30 +98,6 @@ endif #	DEBUG configuration
 ifeq "$(CFG)" "Release"
 
 OUTDIR=Release
-
-CFG_LIB := -lpthread \
-		-L$(GCCDIR)/lib64 \
-		-lstdc++ \
-		-lstdc++exp \
-   		-L$(BOOSTDIR)/lib \
-		-lboost_program_options-mt-x64 \
-		-L/usr/local/lib \
-		-lxlsxio_read \
-		-lspdlog \
-		-lgumbo \
-		-lgq \
-		-lpqxx -lpq \
-		-L/usr/lib \
-		-lexpat \
-		-lzip \
-		-lpugixml
-
-
-OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
-OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
-
-OBJS=$(OBJS1) $(OBJS2)
-DEPS=$(OBJS:.o=.d)
 
 # need to figure out cert handling better. Until then, turn off the SSL Cert testing.
 
