@@ -921,9 +921,12 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FilingData 
     // since that may have changed (especially if we are processing an
     // amended form)
 
+    // NOTE: data_source is now part of the primary key so we DO need to
+    // include it in our check below.
+
     auto save_original_data_cmd =
         std::format("SELECT date_filed, file_name, amended_date_filed, amended_file_name FROM {3}.sec_filing_id WHERE"
-                    " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                    " cik = {0} AND form_type = {1} AND period_ending = {2} AND data_source = 'XBRL'",
                     trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
                     trxn.quote(filing_fields.period_end_date), schema_name);
     auto saved_original_data = trxn.exec(save_original_data_cmd);

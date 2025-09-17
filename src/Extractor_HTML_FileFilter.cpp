@@ -1095,11 +1095,14 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const FinancialStatem
     // since that may have changed (especially if we are processing an
     // amended form)
 
-    auto save_original_data_cmd = std::format("SELECT date_filed, file_name, amended_date_filed, "
-                                              "amended_file_name FROM {3}.sec_filing_id WHERE"
-                                              " cik = {0} AND form_type = {1} AND period_ending = {2}",
-                                              trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
-                                              trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+    // NOTE: data_source is now part of the primary key so we DO need to
+    // include it in our check below.
+    auto save_original_data_cmd =
+        std::format("SELECT date_filed, file_name, amended_date_filed, "
+                    "amended_file_name FROM {3}.sec_filing_id WHERE"
+                    " cik = {0} AND form_type = {1} AND period_ending = {2} AND data_source = 'HTML'",
+                    trxn.quote(SEC_fields.at("cik")), trxn.quote(base_form_type),
+                    trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
 
     spdlog::debug("\n*** save original data cmd: {}\n", save_original_data_cmd);
 
