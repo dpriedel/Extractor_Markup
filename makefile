@@ -63,7 +63,7 @@ CFG_LIB := -lpthread \
 		-lxlsxio_read \
 		-lspdlog \
 		-lgumbo \
-		-lgq \
+		-lgumbo_query \
 		-lpqxx -lpq \
 		-L/usr/lib \
 		-lexpat \
