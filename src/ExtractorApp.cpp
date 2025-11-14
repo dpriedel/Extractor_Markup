@@ -298,6 +298,13 @@ void ExtractorApp::SetupProgramOptions()
  */
 void ExtractorApp::SetupNewProgramOptions(void)
 {
+    // Add a preparse callback to check for no arguments
+    app.preparse_callback([](size_t argCount) {
+        if (argCount == 0)
+        {
+            throw(CLI::CallForHelp());
+        }
+    });
     // avoid some duplicate code
 
     auto check_date = [](const std::string &str, std::chrono::year_month_day &ymd) -> std::string {
@@ -657,6 +664,13 @@ bool ExtractorApp::CheckArgs()
 #else
 bool ExtractorApp::CheckNewArgs()
 {
+    // don't do any checking if there is nothing to check
+    // or help was asked for.
+
+    if (app.count_all() == 1 || app.get_option("--help")->count() == 1)
+    {
+        return false;
+    }
     if (!start_date_.empty())
     {
         if (stop_date_.empty())
