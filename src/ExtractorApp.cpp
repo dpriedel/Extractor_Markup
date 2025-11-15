@@ -305,6 +305,8 @@ void ExtractorApp::SetupNewProgramOptions(void)
             throw(CLI::CallForHelp());
         }
     });
+    // Set a failure message for when an option is needed but not provided
+    app.failure_message(CLI::FailureMessage::help);
     // avoid some duplicate code
 
     auto check_date = [](const std::string &str, std::chrono::year_month_day &ymd) -> std::string {
