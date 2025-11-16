@@ -23,6 +23,8 @@ BOOSTDIR := /extra/boost/boost-1.89_gcc-15
 GCCDIR := /extra/gcc/gcc-15
 CPP := $(GCCDIR)/bin/g++
 
+# TBB_LIBRARY := /opt/intel/oneapi/tbb/latest/lib/libtbb.so
+
 # If no configuration is specified, "Debug" will be used
 ifndef "CFG"
 	CFG := Debug
@@ -55,25 +57,25 @@ SRCS := $(SRCS1) $(SRCS2) # $(SRCS3)
 
 VPATH := $(SDIR1):$(SDIR2) # :$(SDIR3h)
 
-CFG_LIB := -lpthread -ltbb \
+CFG_LIB := -lpthread \
+		   -ltbb \
 		-L$(GCCDIR)/lib64 \
 		-L$(BOOSTDIR)/lib \
 		-lboost_regex-mt-x64 \
 		-lboost_program_options-mt-x64 \
-		-L/usr/local/lib \
-		-lspdlog \
-		-lgumbo \
-		-lgq \
-		-lxlsxio_read \
 		-L/usr/lib \
 		-lexpat \
 		-lzip \
 		-lpugixml \
 		-lpq \
 		-L/usr/local/lib \
-		-lpqxx \
-		-L/usr/local/lib/tbb_lib \
-		-ltbb
+		-lspdlog \
+		-lgumbo \
+		-lgumbo_query \
+		-lxlsxio_read \
+		-lpqxx #\
+		# -L/usr/local/lib/tbb_lib \
+		# -ltbb
 
 OBJS1=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS1)))))
 OBJS2=$(addprefix $(OUTDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
