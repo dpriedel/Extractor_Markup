@@ -126,7 +126,7 @@ int main(int argc, const char *argv[])
     catch (std::exception &e)
     {
         std::cout << e.what();
-        result = 1;
+        result = 5; // arbitrary value
     }
     spdlog::info("Processed: {} files.", files_processed.load());
 
@@ -196,6 +196,15 @@ void ConfigureLogging(const Options &program_options)
  */
 void SetupProgramOptions(Options &program_options)
 {
+    // Add a preparse callback to check for no arguments
+    app.preparse_callback([](size_t argCount) {
+        if (argCount == 0)
+        {
+            throw(CLI::CallForHelp());
+        }
+    });
+    // Set a failure message for when an option is needed but not provided
+    app.failure_message(CLI::FailureMessage::help);
 
     auto form_option = app.add_option("-f,--form", program_options.forms_,
                                       "Name of form type[s] we are processing. Process all if not specified.");
@@ -307,6 +316,13 @@ void SetupProgramOptions(Options &program_options)
  */
 void CheckArgs(const Options &program_options)
 {
+    // don't do any checking if there is nothing to check
+    // or help was asked for.
+
+    // if (app.count_all() == 1 || app.get_option("--help")->count() == 1)
+    // {
+    //     return false;
+    // }
     // if (fs::exists(output_directory.get()))
     // {
     //     fs::remove_all(output_directory.get());
@@ -440,10 +456,13 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
         bool has_xbrl = check_for_xbrl(SEC_fields, document_sections);
         bool has_xls = check_for_xls(SEC_fields, document_sections);
 
-        LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
-                     symbol_for_CIK, has_html, has_xbrl, has_xls);
+        if (!LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
+                          symbol_for_CIK, has_html, has_xbrl, has_xls))
+        {
+            spdlog::error("Failed to load data for file: {}", input_file_name.get().string());
+        }
 
-        auto xx = files_processed.fetch_add(1);
+        files_processed.fetch_add(1, std::memory_order_relaxed);
     }
     catch (const std::system_error &e)
     {
@@ -468,48 +487,55 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
 {
     using namespace std::chrono_literals;
 
-    auto form_type = SEC_fields.at("form_type");
-
-    // start stuffing the database.
-    // we are simply adding/replacing data in our index.
-    // We use upserts to handle the differenct.
-
-    pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-    pqxx::work trxn{c};
-
-    if (replace_DB_content)
+    try
     {
-        auto delete_index_entry_cmd = std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE"
-                                                  " cik = {0} AND form_type = {1} AND period_ending = {2}",
-                                                  trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
-                                                  trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+        auto form_type = SEC_fields.at("form_type");
 
-        spdlog::debug("\n*** delete data for index entry cmd: {}\n", delete_index_entry_cmd);
+        // Use RAII for database connection
+        pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
+        pqxx::work trxn{c};
 
-        trxn.exec(delete_index_entry_cmd);
+        if (replace_DB_content)
+        {
+            auto delete_index_entry_cmd = std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE"
+                                                      " cik = {0} AND form_type = {1} AND period_ending = {2}",
+                                                      trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
+                                                      trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+
+            spdlog::debug("\n*** delete data for index entry cmd: {}\n", delete_index_entry_cmd);
+
+            trxn.exec(delete_index_entry_cmd);
+        }
+
+        auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
+
+        auto index_cmd = std::format(
+            "INSERT INTO {9}_forms_index.sec_form_index"
+            " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
+            "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
+            " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
+            "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING "
+            "RETURNING filing_id;",
+            trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
+            trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
+            trxn.quote(SEC_fields.at("sic")), trxn.quote(form_type), trxn.quote(date_filed),
+            trxn.quote(SEC_fields.at("quarter_ending")), "NULL", schema_name, has_html, has_xbrl, has_xls);
+
+        spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
+        auto filing_ID = trxn.query01<std::string>(index_cmd);
+
+        trxn.commit();
+        spdlog::debug("{}",
+                      filing_ID ? "did insert"
+                                : catenate("duplicate data: cik: ", SEC_fields.at("cik"), " form type: ", form_type,
+                                           " period ending: ", SEC_fields.at("quarter_ending"),
+                                           " name: ", SEC_fields.at("company_name")));
+
+        return true;
     }
-
-    auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
-
-    auto index_cmd = std::format(
-        "INSERT INTO {9}_forms_index.sec_form_index"
-        " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
-        "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
-        " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
-        "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING RETURNING filing_id;",
-        trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
-        trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
-        trxn.quote(SEC_fields.at("sic")), trxn.quote(form_type), trxn.quote(date_filed),
-        trxn.quote(SEC_fields.at("quarter_ending")), NULL, schema_name, has_html, has_xbrl, has_xls);
-    // std::cout << index_cmd << '\n';
-    spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
-    auto filing_ID = trxn.query01<std::string>(index_cmd);
-
-    trxn.commit();
-    spdlog::debug("{}", filing_ID ? "did insert"
-                                  : catenate("duplicate data: cik: ", SEC_fields.at("cik"), " form type: ", form_type,
-                                             " period ending: ", SEC_fields.at("quarter_ending"),
-                                             " name: ", SEC_fields.at("company_name")));
-
-    return true;
+    catch (const std::exception &e)
+    {
+        spdlog::error("Database error in LoadDataToDB: {}", e.what());
+        return false;
+    }
 }
