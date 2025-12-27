@@ -137,7 +137,7 @@ int wait_for_any(std::vector<std::future<T>> &vf, int continue_here, std::chrono
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-ExtractorApp::ExtractorApp(int argc, char *argv[]) : mArgc{argc}, mArgv{argv}
+ExtractorApp::ExtractorApp(int argc, char *argv[]) : argc_{argc}, argv_{argv}
 {
     original_logger_ = spdlog::default_logger();
 } /* -----  end of method ExtractorApp::ExtractorApp  (constructor)  ----- */
@@ -220,19 +220,10 @@ bool ExtractorApp::Startup()
     bool result{true};
     try
     {
-#ifdef USE_PG_OPTIONS
         SetupProgramOptions();
         ParseProgramOptions(tokens_);
-#else
-        SetupNewProgramOptions();
-        ParseNewProgramOptions(tokens_);
-#endif // USE_PG_OPTIONS
         ConfigureLogging();
-#ifdef USE_PG_OPTIONS
         result = CheckArgs();
-#else
-        result = CheckNewArgs();
-#endif
     }
     catch (const std::exception &e)
     {
@@ -254,59 +245,23 @@ bool ExtractorApp::Startup()
     return result;
 } /* -----  end of method ExtractorApp::Startup  ----- */
 
-#ifdef USE_PG_OPTIONS
-// clang-format off
-void ExtractorApp::SetupProgramOptions()
-{
-    mNewOptions = std::make_unique<po::options_description>();
-
-    mNewOptions->add_options()("help,h", "produce help message")
-        ( "begin-date", po::value<std::string>(&this->start_date_), "retrieve files with dates greater than or equal to")
-        ( "end-date", po::value<std::string>(&this->stop_date_), "retrieve files with dates less than or equal to")
-        ( "form-dir", po::value<EM::FileName>(&local_form_file_directory_), "directory of form files to be processed")
-        //		("SS-form-dir",
-        // po::value<fs::path>(&SS_export_directory_i_),	"directory to
-        // write Excel data files to.")
-        ("HTML-forms-to-dir", po::value<EM::FileName>(&HTML_export_target_directory_), "directory to write exported HTML data files to.")
-        ("HTML-forms-from-dir", po::value<EM::FileName>(&HTML_export_source_directory_), "directory to read exported HTML data files from.")
-        ( "file,f", po::value<EM::FileName>(&single_file_to_process_), "single file to be processed.")
-        ( "replace-DB-content,R", po::value<bool>(&replace_DB_content_)->default_value(false)->implicit_value(true), "replace all DB content for each file. Default is 'false'")
-        ( "export-XLS-data", po::value<bool>(&export_XLS_files_)->default_value(false)->implicit_value(true), "export Excel data if any. Default is 'false'")
-        ( "export-HTML-data", po::value<bool>(&export_HTML_forms_)->default_value(false)->implicit_value(true), "export problem HTML data if any. Default is 'false'")
-        ( "UpdateSharesOutstanding", po::value<bool>(&update_shares_outstanding_)->default_value(false)->implicit_value(true), "Update Shares outstanding value in DB.")
-        ("list-file", po::value<EM::FileName>(&list_of_files_to_process_path_), "path to file with list of files to process.")
-        ( "log-level,l", po::value<std::string>(&logging_level_), "logging level. Must be 'none|error|information|debug'. Default is 'information'.")
-        ("mode,m", po::value<std::string>(&data_source_)->required(), "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
-        ( "DB-mode", po::value<std::string>(&DB_mode_), "Must be either 'test' or 'live'. Default is 'test'.")
-        ( "form", po::value<std::string>(&form_)->default_value("10-Q"), "name of form type we are processing. May be comma-delimited list. Default is '10-Q'.")
-        ("CIK", po::value<std::string>(&CIK_), "Zero-padded-on-left 10 digit CIK[s] we are processing. May be comma-delimited list. Default is all.")
-        ( "SIC", po::value<std::string>(&SIC_), "SIC we are processing. May be comma-delimited list. Default is all.")
-        ("log-path", po::value<EM::FileName>(&log_file_path_name_), "path name for log file.")
-        ( "max-files", po::value<int>(&max_forms_to_process_)->default_value(-1), "Maximun number of forms to process -- mainly for testing. Default of -1 means no limit.")
-        ("concurrent,k", po::value<int>(&max_at_a_time_)->default_value(-1), "Maximun number of concurrent processes. Default of -1 -- system defined.")
-        ( "filename-has-form", po::value<bool>(&filename_has_form_)->default_value(false)->implicit_value(true), "form number is in file path. Default is 'false'")
-        ( "resume-at", po::value<std::string>(&resume_at_this_filename_), "find this file name in list of files to process and resume processing there.");
-} /* -----  end of method ExtractorApp::SetupProgramOptions  ----- */
-// clang-format on
-
-#else
 /*
  * ===  FUNCTION  ======================================================================
  * Name:  ClassName::member_function_name
  * Description:  Use CLI11 to manage commandlline arguments
  * =====================================================================================
  */
-void ExtractorApp::SetupNewProgramOptions(void)
+void ExtractorApp::SetupProgramOptions(void)
 {
     // Add a preparse callback to check for no arguments
-    app.preparse_callback([](size_t argCount) {
+    app_.preparse_callback([](size_t argCount) {
         if (argCount == 0)
         {
             throw(CLI::CallForHelp());
         }
     });
     // Set a failure message for when an option is needed but not provided
-    app.failure_message(CLI::FailureMessage::help);
+    app_.failure_message(CLI::FailureMessage::help);
     // avoid some duplicate code
 
     auto check_date = [](const std::string &str, std::chrono::year_month_day &ymd) -> std::string {
@@ -354,14 +309,14 @@ void ExtractorApp::SetupNewProgramOptions(void)
         return std::string{}; // Success
     };
     // CLI11 automatically provides a -h, --help flag, so we don't need to add it.
-    app.add_option("--begin-date", start_date_, "retrieve files with dates greater than or equal to")
+    app_.add_option("--begin-date", start_date_, "retrieve files with dates greater than or equal to")
         ->check([this, &check_date](const std::string &str) { return check_date(str, begin_date_); });
-    app.add_option("--end-date", stop_date_, "retrieve files with dates less than or equal to")
+    app_.add_option("--end-date", stop_date_, "retrieve files with dates less than or equal to")
         ->check([this, &check_date](const std::string &str) { return check_date(str, end_date_); });
 
     // 1. Create an option group to enforce mutual exclusion.
     auto input_source_group =
-        app.add_option_group("InputSource", "Specify the source of files to process. Only 1 can be specified.");
+        app_.add_option_group("InputSource", "Specify the source of files to process. Only 1 can be specified.");
     input_source_group->add_option("-f,--file", single_file_to_process_, "single file to be processed.")
         ->check(CLI::ExistingFile)
         ->check(check_for_empty_file);
@@ -383,34 +338,34 @@ void ExtractorApp::SetupNewProgramOptions(void)
     // specify the min and max number of options from the group to be allowed.
     input_source_group->require_option(1, 1);
 
-    app.add_option("--HTML-forms-to-dir", HTML_export_target_directory_,
-                   "directory to write exported HTML data files to.");
-    app.add_option("--HTML-forms-from-dir", HTML_export_source_directory_,
-                   "directory to read exported HTML data files from.");
+    app_.add_option("--HTML-forms-to-dir", HTML_export_target_directory_,
+                    "directory to write exported HTML data files to.");
+    app_.add_option("--HTML-forms-from-dir", HTML_export_source_directory_,
+                    "directory to read exported HTML data files from.");
 
-    app.add_flag("-R,--replace-DB-content", replace_DB_content_,
-                 "replace all DB content for each file. Default is 'false'");
-    app.add_flag("--export-XLS-data", export_XLS_files_, "export Excel data if any. Default is 'false'");
-    app.add_flag("--export-HTML-data", export_HTML_forms_, "export problem HTML data if any. Default is 'false'");
-    app.add_flag("--UpdateSharesOutstanding", update_shares_outstanding_, "Update Shares outstanding value in DB.");
+    app_.add_flag("-R,--replace-DB-content", replace_DB_content_,
+                  "replace all DB content for each file. Default is 'false'");
+    app_.add_flag("--export-XLS-data", export_XLS_files_, "export Excel data if any. Default is 'false'");
+    app_.add_flag("--export-HTML-data", export_HTML_forms_, "export problem HTML data if any. Default is 'false'");
+    app_.add_flag("--UpdateSharesOutstanding", update_shares_outstanding_, "Update Shares outstanding value in DB.");
 
     // Add a validator to ensure the log-level is one of the allowed values.
-    app.add_option("-l,--log-level", logging_level_, "logging level. Must be 'none|error|information|debug'.")
+    app_.add_option("-l,--log-level", logging_level_, "logging level. Must be 'none|error|information|debug'.")
         // ->default_val("information")
         ->check(CLI::IsMember({"none", "error", "information", "debug"}));
 
     // Add a validator for mode and mark it as required.
-    app.add_option("-m,--mode", data_source_, "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
+    app_.add_option("-m,--mode", data_source_, "Must be either 'BOTH' or 'HTML' or 'XBRL'.")
         ->check(CLI::IsMember({"BOTH", "HTML", "XBRL"}));
 
-    app.add_option("--DB-mode", DB_mode_, "Must be either 'test' or 'live'.")
+    app_.add_option("--DB-mode", DB_mode_, "Must be either 'test' or 'live'.")
         ->default_val("test")
         ->check(CLI::IsMember({"test", "live"}));
 
     // Note: The original help text mentions a comma-delimited list, but the code
     // binds to a single string. This conversion maintains that behavior. CLI11
     // could parse directly into a vector if desired.
-    app.add_option("--form", form_list_, "name of form type we are processing. May be comma-delimited list.")
+    app_.add_option("--form", form_list_, "name of form type we are processing. May be comma-delimited list.")
         ->default_val("10-Q")
         ->delimiter(',')
         ->transform([](std::string s) {
@@ -418,53 +373,24 @@ void ExtractorApp::SetupNewProgramOptions(void)
                            [](unsigned char c) { return (c != '/' ? ::toupper(c) : '_'); });
             return s;
         });
-    app.add_option(
-           "--CIK", CIK_list_,
-           "Zero-padded-on-left 10 digit CIK[s] we are processing. May be comma-delimited list. Default is all.")
+    app_.add_option(
+            "--CIK", CIK_list_,
+            "Zero-padded-on-left 10 digit CIK[s] we are processing. May be comma-delimited list. Default is all.")
         ->delimiter(',');
-    app.add_option("--SIC", SIC_list_, "SIC we are processing. May be comma-delimited list. Default is all.")
+    app_.add_option("--SIC", SIC_list_, "SIC we are processing. May be comma-delimited list. Default is all.")
         ->delimiter(',');
 
-    app.add_option("--log-path", log_file_path_name_, "path name for log file.");
-    app.add_option("--max-files", max_forms_to_process_, "Maximun number of forms to process -- mainly for testing.")
+    app_.add_option("--log-path", log_file_path_name_, "path name for log file.");
+    app_.add_option("--max-files", max_forms_to_process_, "Maximun number of forms to process -- mainly for testing.")
         ->default_val(-1);
-    app.add_option("-k,--concurrent", max_at_a_time_, "Maximun number of concurrent processes.")->default_val(-1);
+    app_.add_option("-k,--concurrent", max_at_a_time_, "Maximun number of concurrent processes.")->default_val(-1);
 
-    app.add_flag("--filename-has-form", filename_has_form_, "form number is in file path. Default is 'false'");
-    app.add_option("--resume-at", resume_at_this_filename_,
-                   "find this file name in list of files to process and resume processing there.");
+    app_.add_flag("--filename-has-form", filename_has_form_, "form number is in file path. Default is 'false'");
+    app_.add_option("--resume-at", resume_at_this_filename_,
+                    "find this file name in list of files to process and resume processing there.");
 }
 
-#endif // USE_PG_OPTIONS
-
-#ifdef USE_PG_OPTIONS
 void ExtractorApp::ParseProgramOptions(const std::vector<std::string> &tokens)
-{
-    if (tokens.empty())
-    {
-        auto options = po::parse_command_line(mArgc, mArgv, *mNewOptions);
-        po::store(options, mVariableMap);
-        if (this->mArgc == 1 || mVariableMap.count("help") == 1)
-        {
-            std::cout << *mNewOptions << "\n";
-            throw std::runtime_error("\nExiting after 'help'.");
-        }
-    }
-    else
-    {
-        auto options = po::command_line_parser(tokens).options(*mNewOptions).run();
-        po::store(options, mVariableMap);
-        if (mVariableMap.count("help") == 1)
-        {
-            std::cout << *mNewOptions << "\n";
-            throw std::runtime_error("\nExiting after 'help'.");
-        }
-    }
-    po::notify(mVariableMap);
-} /* -----  end of method ExtractorApp::ParseProgramOptions  ----- */
-
-#else
-void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
 {
     try
     {
@@ -472,7 +398,12 @@ void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
         {
             // If the token vector is empty, parse the original argc/argv.
             // This is the standard execution path.
-            app.parse(mArgc, mArgv);
+            auto args = std::views::counted(argv_, argc_) |
+                        std::views::transform([](char *arg) { return std::string_view(arg); });
+            auto cmd_line_vw = rng::views::join_with(rng::views::drop(args, 1), " "sv);
+            std::string cmd_line = rng::to<std::string>(cmd_line_vw);
+            spdlog::info("cmd line: {}", cmd_line);
+            app_.parse(argc_, argv_);
         }
         else
         {
@@ -484,7 +415,8 @@ void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
             auto cmd_line_vw = rng::views::join_with(rng::views::drop(tokens, 1), " "sv);
 
             std::string cmd_line = rng::to<std::string>(cmd_line_vw);
-            app.parse(cmd_line);
+            spdlog::info("tokens: {}", cmd_line);
+            app_.parse(cmd_line);
         }
     }
     catch (const CLI::CallForHelp &e)
@@ -493,7 +425,8 @@ void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
         // It then throws CLI::CallForHelp.
         // All we need to do is exit gracefully. Re-throwing is a clean way
         // to signal the caller that execution should stop.
-        app.exit(e);
+        app_.exit(e);
+        throw std::runtime_error("Someone callled for Help.");
     }
     catch (const CLI::ParseError &e)
     {
@@ -505,171 +438,12 @@ void ExtractorApp::ParseNewProgramOptions(const std::vector<std::string> tokens)
     }
 }
 
-#endif // USE_PG_OPTIONS
-
-#ifdef USE_PG_OPTIONS
 bool ExtractorApp::CheckArgs()
-{
-    if (!start_date_.empty())
-    {
-        std::istringstream in{start_date_};
-        std::chrono::sys_days tp;
-        std::chrono::from_stream(in, "%F", tp);
-        if (in.fail())
-        {
-            // try an alternate representation
-
-            in.clear();
-            in.rdbuf()->pubseekpos(0);
-            std::chrono::from_stream(in, "%Y-%b-%d", tp);
-        }
-        BOOST_ASSERT_MSG(!in.fail() && !in.bad(), catenate("Unable to parse begin date: ", start_date_).c_str());
-        begin_date_ = tp;
-        BOOST_ASSERT_MSG(begin_date_.ok(), catenate("Invalid begin date: ", start_date_).c_str());
-    }
-    if (!stop_date_.empty())
-    {
-        std::istringstream in{stop_date_};
-        std::chrono::sys_days tp;
-        std::chrono::from_stream(in, "%F", tp);
-        if (in.fail())
-        {
-            // try an alternate representation
-
-            in.clear();
-            in.rdbuf()->pubseekpos(0);
-            std::chrono::from_stream(in, "%Y-%b-%d", tp);
-        }
-        BOOST_ASSERT_MSG(!in.fail() && !in.bad(), catenate("Unable to parse end date: ", stop_date_).c_str());
-        end_date_ = tp;
-        BOOST_ASSERT_MSG(end_date_.ok(), catenate("Invalid end date: ", stop_date_).c_str());
-    }
-
-    if (!start_date_.empty())
-    {
-        if (stop_date_.empty())
-        {
-            end_date_ = begin_date_;
-        }
-    }
-
-    if (start_date_.empty() && stop_date_.empty())
-    {
-        spdlog::info("Neither begin date nor end date specified. No date range "
-                     "filtering to be done.");
-    }
-
-    if (!data_source_.empty())
-    {
-        BOOST_ASSERT_MSG(data_source_ == "BOTH" || data_source_ == "HTML" || data_source_ == "XBRL",
-                         "Mode must be: 'BOTH' or 'HTML' or 'XBRL'.");
-    }
-
-    if (!DB_mode_.empty())
-    {
-        BOOST_ASSERT_MSG(DB_mode_ == "test" || DB_mode_ == "live", "DB-mode must be: 'test' or 'live'.");
-        schema_prefix_ = (DB_mode_ == "test" ? "test_" : "live_");
-    }
-
-    //  the user may specify multiple form types in a comma delimited list. We
-    //  need to parse the entries out of that list and place into ultimate home.
-    //  If just a single entry, copy it to our form list destination too.
-
-    if (!form_.empty())
-    {
-        // since we use form type as part of our file name for forms stored on disk,
-        // we can't have the '/' character in it.  Our Collect program replaces the
-        // '/' with '_' so we do the same here.
-
-        rng::transform(form_, form_.begin(), [](unsigned char c) { return (c == '/' ? '_' : std::toupper(c)); });
-        form_list_ = split_string<std::string>(form_, ",");
-    }
-
-    if (!CIK_.empty())
-    {
-        CIK_list_ = split_string<std::string>(CIK_, ",");
-        BOOST_ASSERT_MSG(std::all_of(CIK_list_.cbegin(), CIK_list_.cend(), [](auto e) { return e.size() == 10; }),
-                         "All CIKs must be 10 digits in length.");
-    }
-
-    if (!SIC_.empty())
-    {
-        SIC_list_ = split_string<std::string>(SIC_, ",");
-    }
-
-    if (!single_file_to_process_.get().empty())
-    {
-        BOOST_ASSERT_MSG(fs::exists(single_file_to_process_.get()),
-                         catenate("Can't find file: ", single_file_to_process_.get().string()).c_str());
-        BOOST_ASSERT_MSG(fs::is_regular_file(single_file_to_process_.get()),
-                         catenate("Path :", single_file_to_process_.get().string(), " is not a regular file.").c_str());
-    }
-
-    if (!local_form_file_directory_.get().empty())
-    {
-        BOOST_ASSERT_MSG(fs::exists(local_form_file_directory_.get()),
-                         catenate("Can't find SEC file directory: ", local_form_file_directory_.get()).c_str());
-        BOOST_ASSERT_MSG(fs::is_directory(local_form_file_directory_.get()),
-                         catenate("Path: ", local_form_file_directory_.get(), " is not a directory.").c_str());
-    }
-
-    if (!resume_at_this_filename_.empty())
-    {
-        BOOST_ASSERT_MSG(list_of_files_to_process_.empty(),
-                         "You must provide a list of files to process when "
-                         "specifying file to resume at.");
-    }
-
-    auto list_of_files_to_process_path_val = list_of_files_to_process_path_.get();
-    if (!list_of_files_to_process_path_val.empty())
-    {
-        BOOST_ASSERT_MSG(fs::exists(list_of_files_to_process_path_val),
-                         catenate("Can't find file: ", list_of_files_to_process_path_val).c_str());
-        BOOST_ASSERT_MSG(fs::is_regular_file(list_of_files_to_process_path_val),
-                         catenate("Path: ", list_of_files_to_process_path_val, " is not a regular file.").c_str());
-        BuildListOfFilesToProcess();
-    }
-
-    BOOST_ASSERT_MSG(
-        NotAllEmpty(single_file_to_process_.get(), local_form_file_directory_.get(), list_of_files_to_process_),
-        "No files to process found.");
-
-    BuildFilterList();
-
-    // make sure we don't have too many threads allocated.
-    // this can happen mainly in testing but also, in general, with a short file
-    // list
-
-    max_at_a_time_ = std::min<int>(max_at_a_time_, list_of_files_to_process_.size());
-
-    if (export_XLS_files_)
-    {
-        BOOST_ASSERT_MSG(!SS_export_directory_.get().empty(), "Must specify XLS export directory.");
-    }
-
-    if (export_HTML_forms_)
-    {
-        BOOST_ASSERT_MSG(!HTML_export_source_directory_.get().empty(), "Must specify HTML export source directory.");
-        BOOST_ASSERT_MSG(!HTML_export_target_directory_.get().empty(), "Must specify HTML export target directory.");
-        html_hierarchy_converter_ =
-            ConvertInputHierarchyToOutputHierarchy(HTML_export_source_directory_, HTML_export_target_directory_);
-    }
-
-    if (update_shares_outstanding_)
-    {
-        BOOST_ASSERT_MSG(data_source_ == "HTML", "Must use HTML mode.");
-    }
-
-    return true;
-} // -----  end of method ExtractorApp::CheckArgs  -----
-
-#else
-bool ExtractorApp::CheckNewArgs()
 {
     // don't do any checking if there is nothing to check
     // or help was asked for.
 
-    if (app.count_all() == 1 || app.get_option("--help")->count() == 1)
+    if (app_.count_all() == 1 || app_.get_option("--help")->count() == 1)
     {
         return false;
     }
@@ -739,8 +513,6 @@ bool ExtractorApp::CheckNewArgs()
 
     return true;
 }
-
-#endif // USE_PG_OPTIONS
 
 void ExtractorApp::BuildListOfFilesToProcess()
 {

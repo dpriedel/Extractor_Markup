@@ -54,12 +54,7 @@ namespace fs = std::filesystem;
 //
 #include "Extractor.h"
 
-#ifdef USE_PG_OPTIONS
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
-#else
 #include <CLI/CLI.hpp>
-#endif // USE_PG_OPTIONS
 
 #include <spdlog/spdlog.h>
 
@@ -104,21 +99,12 @@ protected:
 
     //	Setup for parsing program options.
 
-#ifdef USE_PG_OPTIONS
     void SetupProgramOptions();
     void ParseProgramOptions(const std::vector<std::string> &tokens);
-#else
-    void SetupNewProgramOptions();
-    void ParseNewProgramOptions(const std::vector<std::string> tokens);
-#endif // USE_PG_OPTIONS
 
     void ConfigureLogging();
 
-#ifdef USE_PG_OPTIONS
     bool CheckArgs();
-#else
-    bool CheckNewArgs();
-#endif
     void Do_Quit();
 
     void BuildFilterList();
@@ -175,20 +161,14 @@ private:
                                      FileIsWithinDateRange, NeedToUpdateDBContent>;
     using FilterList = std::vector<FilterTypes>;
 
-#ifdef USE_PG_OPTIONS
-    po::positional_options_description mPositional;       //	old style options
-    std::unique_ptr<po::options_description> mNewOptions; //	new style options (with identifiers)
-    po::variables_map mVariableMap;
-#else
-    CLI::App app{"A program to extract data from SEC filings"};
-#endif // USE_PG_OPTIONS
+    CLI::App app_{"A program to extract data from SEC filings"};
 
     ConvertInputHierarchyToOutputHierarchy html_hierarchy_converter_;
 
     const SharesOutstanding so_;
 
-    int mArgc = 0;
-    char **mArgv = nullptr;
+    int argc_ = 0;
+    char **argv_ = nullptr;
     const std::vector<std::string> tokens_;
 
     std::chrono::year_month_day begin_date_;
