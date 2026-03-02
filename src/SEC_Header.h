@@ -66,6 +66,7 @@ public:
     // ====================  OPERATORS     =======================================
 
 protected:
+    void ExtractAccessionNunber();
     void ExtractCIK();
     void ExtractSIC();
     void ExtractFormType();

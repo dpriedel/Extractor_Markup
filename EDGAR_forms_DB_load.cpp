@@ -511,15 +511,16 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
 
         auto index_cmd = std::format(
             "INSERT INTO {9}_forms_index.sec_form_index"
-            " (cik, company_name, file_name, symbol, sic, form_type, date_filed, "
+            " (cik, accession_number, company_name, file_name, symbol, sic, form_type, date_filed, "
             "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
-            " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
+            " VALUES ({0}, {13}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
             "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING "
             "RETURNING filing_id;",
             trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
             trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
             trxn.quote(SEC_fields.at("sic")), trxn.quote(form_type), trxn.quote(date_filed),
-            trxn.quote(SEC_fields.at("quarter_ending")), "NULL", schema_name, has_html, has_xbrl, has_xls);
+            trxn.quote(SEC_fields.at("quarter_ending")), "NULL", schema_name, has_html, has_xbrl, has_xls,
+            trxn.quote(SEC_fields.at("accession_number")));
 
         spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
         auto filing_ID = trxn.query01<std::string>(index_cmd);

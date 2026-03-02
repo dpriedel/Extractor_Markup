@@ -12,7 +12,7 @@ CREATE TABLE test_forms_index.sec_form_index
 (
     filing_id BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
     cik TEXT NOT NULL,
-    alternate_id1 TEXT DEFAULT NULL,
+    accession_number TEXT DEFAULT NULL,
     alternate_id2 TEXT DEFAULT NULL,
     company_name TEXT NOT NULL,
     file_name TEXT DEFAULT NULL,
@@ -30,6 +30,9 @@ CREATE TABLE test_forms_index.sec_form_index
 );
 
 ALTER TABLE test_forms_index.sec_form_index OWNER TO extractor_pg;
+
+DROP INDEX IF EXISTS idx_accession_nbr;
+CREATE INDEX idx_accession_nbr ON test_forms_index.sec_form_index (accession_number);
 
 DROP INDEX IF EXISTS idx_period_ending;
 CREATE INDEX idx_period_ending ON test_forms_index.sec_form_index (period_ending);

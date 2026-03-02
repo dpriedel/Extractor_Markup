@@ -62,6 +62,7 @@ void SEC_Header::UseData(EM::FileContent file_content)
 
 void SEC_Header::ExtractHeaderFields()
 {
+    ExtractAccessionNunber();
     ExtractCIK();
     ExtractSIC();
     ExtractFormType();
@@ -70,6 +71,18 @@ void SEC_Header::ExtractHeaderFields()
     ExtractFileName();
     ExtractCompanyName();
 } // -----  end of method SEC_Header::ExtractHeaderFields  -----
+
+void SEC_Header::ExtractAccessionNunber()
+{
+    const boost::regex ex{R"***(^ACCESSION NUMBER:\s+([0-9-]+?)$)***"};
+
+    boost::cmatch results;
+    bool found_it = boost::regex_search(header_data_.cbegin(), header_data_.cend(), results, ex);
+
+    BOOST_ASSERT_MSG(found_it, "Can't find 'acceession number' in SEC Header");
+
+    parsed_header_data_["accession_number"] = results.str(1);
+} // -----  end of method SEC_Header::ExtractFileName  -----
 
 void SEC_Header::ExtractCIK()
 {
