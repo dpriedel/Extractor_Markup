@@ -515,6 +515,10 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
             "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
             " VALUES ({0}, {13}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
             "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING "
+            // "{12}) ON CONFLICT (cik, form_type, period_ending) DO UPDATE "
+            // "SET accession_number = EXCLUDED.accession_number "
+            // "WHERE {9}_forms_index.sec_form_index.accession_number IS NULL AND EXCLUDED.accession_number IS NOT NULL
+            // "
             "RETURNING filing_id;",
             trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
             trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
