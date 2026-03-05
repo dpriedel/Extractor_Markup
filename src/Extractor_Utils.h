@@ -38,10 +38,12 @@
 #include <chrono>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <ranges>
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "Extractor.h"
@@ -379,4 +381,98 @@ struct ConvertInputHierarchyToOutputHierarchy
     fs::path source_prefix_;
     fs::path destination_prefix_;
 };
+
+// I think this is from Qwen but may be Gemini
+
+class view_file_by_line : public std::ranges::view_base
+{
+    class iterator
+    {
+        std::unique_ptr<std::ifstream> file_;
+        std::string line_;
+        bool end_;
+
+    public:
+        using value_type = std::string;
+        using reference = const std::string &;
+        using pointer = const std::string *;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::input_iterator_tag;
+
+        iterator() : end_(true)
+        {
+        }
+
+        explicit iterator(std::string filename)
+            : file_(std::make_unique<std::ifstream>(std::move(filename))), end_(false)
+        {
+            if (!file_->is_open() || !file_->good())
+            {
+                file_.reset();
+                end_ = true;
+                return;
+            }
+            ++*this; // Read first line
+        }
+
+        iterator &operator++()
+        {
+            if (!file_ || !std::getline(*file_, line_))
+            {
+                file_.reset();
+                end_ = true;
+            }
+            return *this;
+        }
+
+        // iterator operator++(int)
+        // {
+        //     auto tmp = *this;
+        //     ++*this;
+        //     return tmp;
+        // }
+
+        reference operator*() const
+        {
+            return line_;
+        }
+
+        pointer operator->() const
+        {
+            return &line_;
+        }
+
+        bool operator==(const iterator &other) const
+        {
+            if (end_ && other.end_)
+                return true;
+            if (end_ != other.end_)
+                return false;
+            return file_ == other.file_;
+        }
+
+        bool operator!=(const iterator &other) const
+        {
+            return !(*this == other);
+        }
+    };
+
+    std::string filename_;
+
+public:
+    view_file_by_line() = default;
+    explicit view_file_by_line(std::string filename) : filename_(std::move(filename))
+    {
+    }
+
+    iterator begin() const
+    {
+        return iterator(filename_);
+    }
+    iterator end() const
+    {
+        return iterator();
+    }
+};
+
 #endif /* ----- #ifndef _EXTRACTOR_UTILS_INC_  ----- */
