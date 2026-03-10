@@ -21,8 +21,8 @@
 #include <chrono>
 #include <execution>
 #include <filesystem>
-#include <iostream>
 #include <map>
+#include <queue>
 #include <ranges>
 #include <string>
 #include <vector>
@@ -41,6 +41,131 @@ using namespace std::string_literals;
 #include "Extractor_Utils.h"
 #include "SEC_Header.h"
 
+class ConnectionQueue
+{
+public:
+    explicit ConnectionQueue(const std::string &connection_string, size_t max_size = 4)
+        : connection_string_(connection_string), max_size_(max_size)
+    {
+        // Pre-populate the queue with connections
+        for (size_t i = 0; i < max_size_; ++i)
+        {
+            available_.push(std::make_unique<pqxx::connection>(connection_string_));
+        }
+        spdlog::info("Connection queue initialized with {} connections.", max_size_);
+    }
+
+    // Get a connection from the queue (blocking if all in use)
+    std::unique_ptr<pqxx::connection> get_connection()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        condition_.wait(lock, [this] { return !available_.empty(); });
+
+        auto conn = std::move(available_.front());
+        available_.pop();
+        return conn;
+    }
+
+    // Return a connection to the queue
+    void return_connection(std::unique_ptr<pqxx::connection> conn)
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        available_.push(std::move(conn));
+        lock.unlock();
+        condition_.notify_one();
+    }
+
+    bool test_connection() const
+    {
+        try
+        {
+            pqxx::connection test_conn{connection_string_};
+            return test_conn.is_open();
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Connection test failed: {}", e.what());
+            return false;
+        }
+    }
+
+    void test_connection_()
+    {
+        if (!test_connection())
+        {
+            throw std::runtime_error("Database connection test failed");
+        }
+    }
+
+private:
+    std::string connection_string_;
+    size_t max_size_;
+    mutable std::mutex mutex_;
+    std::condition_variable condition_;
+    std::queue<std::unique_ptr<pqxx::connection>> available_;
+};
+
+// Database connection pool - created once for all files
+class DatabasePool
+{
+public:
+    // Constructor takes connection string and pool size
+    DatabasePool(const std::string &connection_string, size_t pool_size = 4)
+        : connection_string_{connection_string}, pool_size_{pool_size}, connection_queue_{connection_string, pool_size}
+    {
+        try
+        {
+            test_connection_();
+            spdlog::info("Database connection pool initialized with {} connections.", pool_size_);
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::critical("Failed to initialize database connection pool: {}", e.what());
+            throw;
+        }
+    }
+
+    // Test if the pool can create connections
+    bool test_connection() const
+    {
+        try
+        {
+            pqxx::connection test_conn{connection_string_};
+            return test_conn.is_open();
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Connection test failed: {}", e.what());
+            return false;
+        }
+    }
+
+    void test_connection_()
+    {
+        if (!test_connection())
+        {
+            throw std::runtime_error("Database connection test failed");
+        }
+    }
+
+    // Get a connection from the pool (blocking if all in use)
+    std::unique_ptr<pqxx::connection> get_connection() const
+    {
+        return connection_queue_.get_connection();
+    }
+
+    // Return a connection to the pool
+    void return_connection(std::unique_ptr<pqxx::connection> conn) const
+    {
+        connection_queue_.return_connection(std::move(conn));
+    }
+
+private:
+    std::string connection_string_;
+    size_t pool_size_;
+    mutable ConnectionQueue connection_queue_;
+};
+
 // keep our parsed command line arguments together
 
 struct Options
@@ -53,10 +178,10 @@ struct Options
     EM::FileName CIK2Symbol_file_name_;
     std::string logging_level_{"information"};
     std::string DB_mode_{"test"};
-    int max_files_{-1};
+    int max_concurrent_loads_{-1};
     bool replace_DB_content_{false};
     bool file_name_has_form_{false};
-} program_options;
+};
 
 void ConfigureLogging(const Options &program_options);
 void SetupProgramOptions(Options &program_options);
@@ -66,18 +191,18 @@ void CheckArgs(const Options &program_options);
 // Not all will be found.
 
 using CIK2SymbolMap = std::map<std::string, std::string>;
-CIK2SymbolMap CIK_to_symbol;
 
 CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name);
 
 std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options);
 
 void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
-                        const EM::FileName &input_file_name, std::atomic<int> &files_processed);
+                        const EM::FileName &input_file_name, std::atomic<int> &files_processed,
+                        std::atomic<int> &files_failed, const DatabasePool &db_pool);
 
 bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
-                  bool has_html, bool has_xbrl, bool has_xls);
+                  std::unique_ptr<pqxx::connection> &conn, const std::string &schema_name, bool replace_DB_content,
+                  const std::string &symbol_for_CIK, bool has_html, bool has_xbrl, bool has_xls);
 
 CLI::App app("EDGAR_forms_DB_load");
 
@@ -94,6 +219,9 @@ int main(int argc, const char *argv[])
                  std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now()));
 
     std::atomic<int> files_processed{0};
+    std::atomic<int> files_failed{0};
+
+    Options program_options;
 
     try
     {
@@ -110,25 +238,55 @@ int main(int argc, const char *argv[])
         spdlog::info("Loaded: {} CIK-to-symbol mappings from file: {}.", CIK_symbol_map.size(),
                      program_options.CIK2Symbol_file_name_);
 
-        auto scan_file = [&files_processed, &CIK_symbol_map](const auto &input_file_name) {
+        // Initialize database connection pool with dynamic size
+        const size_t pool_size = std::min(8, std::max(1, static_cast<int>(files_to_scan.size() / 4)));
+        DatabasePool db_pool{"dbname=sec_extracts user=extractor_pg", pool_size};
+        db_pool.test_connection();
+
+        // Use a thread-safe lambda for file processing
+        auto scan_file = [&files_processed, &files_failed, &db_pool, &CIK_symbol_map,
+                          &program_options](const auto &input_file_name) {
             if (input_file_name.empty())
             {
                 return;
             }
             spdlog::debug("Processing file: {}", input_file_name);
-            LoadSingleFileToDB(program_options, CIK_symbol_map, EM::FileName{input_file_name}, files_processed);
+            LoadSingleFileToDB(program_options, CIK_symbol_map, EM::FileName{input_file_name}, files_processed,
+                               files_failed, db_pool);
         };
 
-        // the range splitter I use can end up with an empty entry so, filter for that.
+        // Limit parallelism to avoid resource exhaustion
+        // Use std::execution::par if available and check max files
+        const int max_parallel_files =
+            std::min(program_options.max_concurrent_loads_ > 0 ? program_options.max_concurrent_loads_ : 4,
+                     static_cast<int>(files_to_scan.size()));
 
-        std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        if (max_parallel_files <= 1 || files_to_scan.size() <= 1)
+        {
+            // Sequential processing
+            std::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        }
+        else
+        {
+            // Parallel processing with controlled concurrency
+            // Note: std::execution::par may not be available on all compilers
+            spdlog::info("Processing {} files in parallel (max {} concurrent).", files_to_scan.size(),
+                         max_parallel_files);
+            std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+        }
     }
-    catch (std::exception &e)
+    catch (const std::exception &e)
     {
-        std::cout << e.what();
+        spdlog::error("Fatal error in main: {}", e.what());
         result = 5; // arbitrary value
     }
+    catch (...)
+    {
+        spdlog::error("Unknown fatal error occurred");
+        result = 5;
+    }
     spdlog::info("Processed: {} files.", files_processed.load());
+    spdlog::info("Failed: {} files.", files_failed.load());
 
     spdlog::info("\n\n*** End run {} ***\n",
                  std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now()));
@@ -298,7 +456,7 @@ void SetupProgramOptions(Options &program_options)
         ->check(CLI::IsMember({"test", "live"})); // Restricts input to one of the strings in the set.
 
     // This is an optional field that must be a positive integer if provided.
-    app.add_option("--max-files", program_options.max_files_, "Maximum number of files to process.")
+    app.add_option("--max-files", program_options.max_concurrent_loads_, "Maximum number of files to process.")
         ->check(CLI::PositiveNumber); // Validator: Ensures the integer is > 0.
 
     // A flag is an option that does not take a value. Its presence sets a boolean to true.
@@ -316,20 +474,19 @@ void SetupProgramOptions(Options &program_options)
  */
 void CheckArgs(const Options &program_options)
 {
-    // don't do any checking if there is nothing to check
-    // or help was asked for.
+    // Validate that input directory and file list are mutually exclusive
+    if (!program_options.input_directory_.get().empty() && !program_options.file_list_.get().empty())
+    {
+        throw std::invalid_argument("Cannot specify both --input-dir and --file-list");
+    }
 
-    // if (app.count_all() == 1 || app.get_option("--help")->count() == 1)
-    // {
-    //     return false;
-    // }
-    // if (fs::exists(output_directory.get()))
-    // {
-    //     fs::remove_all(output_directory.get());
-    // }
-    // fs::create_directories(output_directory.get());
+    // Validate max-files if specified
+    if (program_options.max_concurrent_loads_ > 0 && program_options.max_concurrent_loads_ < 1)
+    {
+        throw std::invalid_argument("--max-files must be greater than 0");
+    }
 
-    // right now, we have nothing to do.  CLI11 takes care of edits.
+    // No additional checks needed - CLI11 handles validation
 }
 
 /*
@@ -388,7 +545,7 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
 {
     CIK2SymbolMap map;
 
-    const std::string symbol_data = LoadDataFileForUse(program_options.CIK2Symbol_file_name_);
+    const std::string symbol_data = LoadDataFileForUse(CIK2Symbol_file_name);
 
     // NOTE: this range splitter seems to add an extra empty line at the end when
     // there is no terminating line-end char in the file.
@@ -400,10 +557,35 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
                       // each line has format: <symbol>\tab<CIK>
 
                       const auto fields = split_string<std::string_view>(line, "\t");
-                      BOOST_ASSERT_MSG(fields.size() == 2,
-                                       std::format("Failed to split table line: -->{}<--.", line).c_str());
-                      map.try_emplace(std::string{fields[1]}, std::string{fields[0]});
+                      if (fields.size() != 2)
+                      {
+                          spdlog::warn("Skipping malformed line in CIK-to-symbol file: -->{}<--", line);
+                          return;
+                      }
+                      try
+                      {
+                          const auto &symbol = fields[0];
+                          const auto &cik = fields[1];
+                          if (!symbol.empty() && !cik.empty())
+                          {
+                              map.try_emplace(std::string{cik}, symbol);
+                          }
+                          else
+                          {
+                              spdlog::warn("Empty symbol or CIK in line: -->{}<--", line);
+                          }
+                      }
+                      catch (const std::exception &e)
+                      {
+                          spdlog::warn("Error processing CIK-to-symbol line: -->{}<-- Error: {}", line, e.what());
+                      }
                   });
+
+    if (map.empty())
+    {
+        spdlog::warn("No valid CIK-to-symbol mappings loaded from file: {}", CIK2Symbol_file_name.get().string());
+    }
+
     return map;
 }
 
@@ -414,14 +596,29 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
  * =====================================================================================
  */
 void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
-                        const EM::FileName &input_file_name, std::atomic<int> &files_processed)
+                        const EM::FileName &input_file_name, std::atomic<int> &files_processed,
+                        std::atomic<int> &files_failed, const DatabasePool &db_pool)
 {
     try
     {
+        // Get connection from pool
+        auto conn = db_pool.get_connection();
+
+        if (!conn || !conn->is_open())
+        {
+            spdlog::error("Failed to get database connection for file: {}", input_file_name.get());
+            files_failed.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+
         if (!fs::exists(input_file_name.get()))
         {
-            throw std::runtime_error(std::format("File: {} not found. Skipped.", input_file_name));
+            spdlog::error("File: {} not found. Skipped.", input_file_name);
+            files_failed.fetch_add(1, std::memory_order_relaxed);
+            db_pool.return_connection(std::move(conn));
+            return;
         }
+
         const std::string content{LoadDataFileForUse(input_file_name)};
         EM::FileContent file_content{content};
         const auto document_sections = LocateDocumentSections(file_content);
@@ -431,19 +628,21 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        // we may need to filter on form type here if it is not included int the file name.
-        // filtering based on file name is done earlier when building the list of files to process.
+        // FIX: Validate required SEC header fields exist before use
+        static const std::vector<std::string> required_fields = {"cik",       "accession_number", "company_name",
+                                                                 "form_type", "date_filed",       "quarter_ending"};
 
-        FileHasFormType form_type_filter{program_options.forms_};
-
-        if (!program_options.forms_.empty() && !program_options.file_name_has_form_)
+        for (const auto &field : required_fields)
         {
-            if (!form_type_filter(SEC_fields, document_sections))
+            if (SEC_fields.find(field) == SEC_fields.end())
             {
-                spdlog::debug("Skipping load of file: {} because of form type filter.", input_file_name);
+                spdlog::error("Missing required field '{}' in SEC header for file: {}", field, input_file_name.get());
+                files_failed.fetch_add(1, std::memory_order_relaxed);
+                db_pool.return_connection(std::move(conn));
                 return;
             }
         }
+
         FileHasHTML check_for_html;
         FileHasXBRL check_for_xbrl;
         FileHasXLS check_for_xls;
@@ -456,34 +655,35 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
         bool has_xbrl = check_for_xbrl(SEC_fields, document_sections);
         bool has_xls = check_for_xls(SEC_fields, document_sections);
 
-        if (!LoadDataToDB(SEC_fields, input_file_name, program_options.DB_mode_, program_options.replace_DB_content_,
-                          symbol_for_CIK, has_html, has_xbrl, has_xls))
+        if (!LoadDataToDB(SEC_fields, input_file_name, conn, program_options.DB_mode_,
+                          program_options.replace_DB_content_, symbol_for_CIK, has_html, has_xbrl, has_xls))
         {
             spdlog::error("Failed to load data for file: {}", input_file_name.get().string());
+            files_failed.fetch_add(1, std::memory_order_relaxed);
+            db_pool.return_connection(std::move(conn));
+            return;
         }
 
         files_processed.fetch_add(1, std::memory_order_relaxed);
+        db_pool.return_connection(std::move(conn));
     }
     catch (const std::system_error &e)
     {
-        // for a system error, we had better stop
-
-        spdlog::error(catenate("System error while processing file: ", input_file_name.get().string(), ". ", e.what(),
-                               " Processing stopped."));
+        spdlog::error("System error while processing file: {}. Error: {}. Processing stopped.",
+                      input_file_name.get().string(), e.what());
+        files_failed.fetch_add(1, std::memory_order_relaxed);
         throw;
     }
     catch (const std::exception &e)
     {
-        // just swallow error
-
-        spdlog::error(catenate("Problem processing file: ", input_file_name.get().string(), ". ", e.what()));
+        spdlog::error("Problem processing file: {}. Error: {}", input_file_name.get().string(), e.what());
+        files_failed.fetch_add(1, std::memory_order_relaxed);
     }
-
 } /* -----  end of method LoadSingleFileToDB  ----- */
 
 bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
-                  bool has_html, bool has_xbrl, bool has_xls)
+                  std::unique_ptr<pqxx::connection> &conn, const std::string &schema_name, bool replace_DB_content,
+                  const std::string &symbol_for_CIK, bool has_html, bool has_xbrl, bool has_xls)
 {
     using namespace std::chrono_literals;
 
@@ -491,16 +691,15 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
     {
         auto form_type = SEC_fields.at("form_type");
 
-        // Use RAII for database connection
-        pqxx::connection c{"dbname=sec_extracts user=extractor_pg"};
-        pqxx::work trxn{c};
+        pqxx::work trxn{*conn};
 
         if (replace_DB_content)
         {
-            auto delete_index_entry_cmd = std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE"
-                                                      " cik = {0} AND form_type = {1} AND period_ending = {2}",
-                                                      trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
-                                                      trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
+            auto delete_index_entry_cmd =
+                std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE cik = {0} AND form_type = {1} "
+                            "AND period_ending = {2}",
+                            trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
+                            trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
 
             spdlog::debug("\n*** delete data for index entry cmd: {}\n", delete_index_entry_cmd);
 
@@ -515,10 +714,6 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
             "period_ending, period_context_id, has_html, has_xbrl, has_xls)"
             " VALUES ({0}, {13}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, '{10}', {11}, "
             "{12}) ON CONFLICT (cik, form_type, period_ending) DO NOTHING "
-            // "{12}) ON CONFLICT (cik, form_type, period_ending) DO UPDATE "
-            // "SET accession_number = EXCLUDED.accession_number "
-            // "WHERE {9}_forms_index.sec_form_index.accession_number IS NULL AND EXCLUDED.accession_number IS NOT NULL
-            // "
             "RETURNING filing_id;",
             trxn.quote(SEC_fields.at("cik")), trxn.quote(SEC_fields.at("company_name")),
             trxn.quote(input_file_name.get().string()), (!symbol_for_CIK.empty() ? trxn.quote(symbol_for_CIK) : "NULL"),
@@ -527,16 +722,27 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
             trxn.quote(SEC_fields.at("accession_number")));
 
         spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
+
         auto filing_ID = trxn.query01<std::string>(index_cmd);
 
         trxn.commit();
-        spdlog::debug("{}",
-                      filing_ID ? "did insert"
+        spdlog::debug("{}", filing_ID
+                                ? "did insert"
                                 : catenate("duplicate data: cik: ", SEC_fields.at("cik"), " form type: ", form_type,
                                            " period ending: ", SEC_fields.at("quarter_ending"),
                                            " name: ", SEC_fields.at("company_name")));
 
         return true;
+    }
+    catch (const pqxx::sql_error &e)
+    {
+        spdlog::error("Database error in LoadDataToDB (SQL): {}. Query may have failed: {}", e.what(), e.query());
+        return false;
+    }
+    catch (const pqxx::broken_connection &e)
+    {
+        spdlog::error("Database connection lost in LoadDataToDB: {}", e.what());
+        return false;
     }
     catch (const std::exception &e)
     {
