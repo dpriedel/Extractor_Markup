@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <chrono>
-#include <execution>
+#include <csignal>
 #include <filesystem>
 #include <future>
 #include <map>
@@ -186,10 +186,15 @@ public:
         futures.reserve(items.size());
 
         semaphore sem(max_threads_);
+        std::atomic<bool> shutdown_requested{false};
 
         for (const auto &item : items)
         {
-            futures.emplace_back(std::async(std::launch::async, [this, &item, &func, &sem]() {
+            futures.emplace_back(std::async(std::launch::async, [this, &item, &func, &sem, &shutdown_requested]() {
+                if (shutdown_requested.load())
+                {
+                    return;
+                }
                 sem.acquire();
                 try
                 {
@@ -203,10 +208,21 @@ public:
             }));
         }
 
+        // Wait for all tasks to complete
         for (auto &f : futures)
         {
             f.get();
         }
+    }
+
+    void request_shutdown()
+    {
+        shutdown_requested_.store(true);
+    }
+
+    bool is_shutdown_requested() const
+    {
+        return shutdown_requested_.load();
     }
 
     size_t max_threads() const
@@ -245,8 +261,20 @@ private:
     };
 
     size_t max_threads_;
+    std::atomic<bool> shutdown_requested_{false};
 };
 
+// Global shutdown flag for signal handling
+static std::atomic<bool> g_shutdown_requested{false};
+
+void signal_handler(int signal)
+{
+    if (signal == SIGINT || signal == SIGTERM)
+    {
+        spdlog::warn("Shutdown signal received. Completing pending work...");
+        g_shutdown_requested.store(true);
+    }
+}
 // keep our parsed command line arguments together
 
 struct Options
@@ -289,7 +317,6 @@ CLI::App app("EDGAR_forms_DB_load");
 
 int main(int argc, const char *argv[])
 {
-
     spdlog::set_level(spdlog::level::info); // Set default first
 
     auto result{0};
@@ -322,10 +349,14 @@ int main(int argc, const char *argv[])
         DatabasePool db_pool{"dbname=sec_extracts user=extractor_pg", pool_size};
         db_pool.test_connection();
 
+        // Set up signal handler
+        std::signal(SIGINT, signal_handler);
+        std::signal(SIGTERM, signal_handler);
+
         // Use a thread-safe lambda for file processing
-        auto scan_file = [&files_processed, &files_failed, &db_pool, &CIK_symbol_map,
-                          &program_options](const auto &input_file_name) {
-            if (input_file_name.empty())
+        auto scan_file = [&files_processed, &files_failed, &db_pool, &CIK_symbol_map, &program_options,
+                          &g_shutdown_requested](const auto &input_file_name) {
+            if (g_shutdown_requested.load() || input_file_name.empty())
             {
                 return;
             }
@@ -346,6 +377,11 @@ int main(int argc, const char *argv[])
             // Sequential processing for single file
             for (const auto &file : files_to_scan)
             {
+                if (g_shutdown_requested.load())
+                {
+                    spdlog::warn("Shutdown requested during sequential processing.");
+                    break;
+                }
                 scan_file(file);
             }
         }
@@ -366,6 +402,8 @@ int main(int argc, const char *argv[])
         spdlog::error("Unknown fatal error occurred");
         result = 5;
     }
+
+    // Ensure all pending work is logged before shutdown
     spdlog::info("Processed: {} files.", files_processed.load());
     spdlog::info("Failed: {} files.", files_failed.load());
 
