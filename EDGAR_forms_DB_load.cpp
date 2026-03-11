@@ -64,6 +64,35 @@ public:
 
         auto conn = std::move(available_.front());
         available_.pop();
+        lock.unlock();
+
+        // Verify connection is still valid
+        if (!conn || !conn->is_open())
+        {
+            spdlog::warn("Connection was closed, creating new one");
+            conn = std::make_unique<pqxx::connection>(connection_string_);
+        }
+        else
+        {
+            // Test connection health with a quick query
+            try
+            {
+                pqxx::nontransaction test_trxn{*conn};
+                test_trxn.exec("SELECT 1");
+                spdlog::trace("Connection health check passed");
+            }
+            catch (const pqxx::sql_error &e)
+            {
+                spdlog::warn("Connection health check failed: {}, creating new connection", e.what());
+                conn = std::make_unique<pqxx::connection>(connection_string_);
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::warn("Connection health check failed: {}, creating new connection", e.what());
+                conn = std::make_unique<pqxx::connection>(connection_string_);
+            }
+        }
+
         return conn;
     }
 
@@ -74,6 +103,13 @@ public:
         available_.push(std::move(conn));
         lock.unlock();
         condition_.notify_one();
+    }
+
+    // Get count of available connections
+    size_t available_count() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return available_.size();
     }
 
     bool test_connection() const
@@ -159,6 +195,17 @@ public:
     void return_connection(std::unique_ptr<pqxx::connection> conn) const
     {
         connection_queue_.return_connection(std::move(conn));
+    }
+
+    // Get pool statistics
+    size_t pool_size() const
+    {
+        return pool_size_;
+    }
+
+    size_t available_count() const
+    {
+        return connection_queue_.available_count();
     }
 
 private:
@@ -390,6 +437,10 @@ int main(int argc, const char *argv[])
             // Parallel processing with controlled concurrency
             spdlog::info("Processing {} files in parallel (max {} concurrent).", files_to_scan.size(), max_concurrent);
             worker_pool.submit_all(files_to_scan, scan_file);
+
+            // Log pool statistics after processing
+            spdlog::info("Database pool statistics: {} connections in pool, {} available", pool_size,
+                         db_pool.available_count());
         }
     }
     catch (const std::exception &e)
