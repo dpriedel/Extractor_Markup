@@ -21,6 +21,7 @@
 #include <chrono>
 #include <execution>
 #include <filesystem>
+#include <future>
 #include <map>
 #include <queue>
 #include <ranges>
@@ -166,6 +167,86 @@ private:
     mutable ConnectionQueue connection_queue_;
 };
 
+class ThreadWorkerPool
+{
+public:
+    explicit ThreadWorkerPool(size_t max_threads) : max_threads_(max_threads)
+    {
+        if (max_threads_ == 0)
+        {
+            max_threads_ = std::thread::hardware_concurrency();
+        }
+        spdlog::info("Thread pool initialized with {} workers.", max_threads_);
+    }
+
+    template <typename Function>
+    void submit_all(const std::vector<std::string> &items, Function func)
+    {
+        std::vector<std::future<void>> futures;
+        futures.reserve(items.size());
+
+        semaphore sem(max_threads_);
+
+        for (const auto &item : items)
+        {
+            futures.emplace_back(std::async(std::launch::async, [this, &item, &func, &sem]() {
+                sem.acquire();
+                try
+                {
+                    func(item);
+                }
+                catch (const std::exception &e)
+                {
+                    spdlog::error("Worker thread exception: {}", e.what());
+                }
+                sem.release();
+            }));
+        }
+
+        for (auto &f : futures)
+        {
+            f.get();
+        }
+    }
+
+    size_t max_threads() const
+    {
+        return max_threads_;
+    }
+
+private:
+    class semaphore
+    {
+    public:
+        explicit semaphore(size_t count) : count_(count)
+        {
+        }
+
+        void acquire()
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this] { return count_ > 0; });
+            --count_;
+        }
+
+        void release()
+        {
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                ++count_;
+            }
+            cv_.notify_one();
+        }
+
+    private:
+        std::mutex mutex_;
+        std::condition_variable cv_;
+        size_t count_;
+    };
+
+    size_t max_threads_;
+};
+
 // keep our parsed command line arguments together
 
 struct Options
@@ -208,10 +289,8 @@ CLI::App app("EDGAR_forms_DB_load");
 
 int main(int argc, const char *argv[])
 {
-    // start logging here.  will possibly change once we have parsed
-    // command line.
 
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::info); // Set default first
 
     auto result{0};
 
@@ -239,7 +318,7 @@ int main(int argc, const char *argv[])
                      program_options.CIK2Symbol_file_name_);
 
         // Initialize database connection pool with dynamic size
-        const size_t pool_size = std::min(8, std::max(1, static_cast<int>(files_to_scan.size() / 4)));
+        const size_t pool_size = std::clamp(files_to_scan.size() / 4, static_cast<size_t>(1), static_cast<size_t>(8));
         DatabasePool db_pool{"dbname=sec_extracts user=extractor_pg", pool_size};
         db_pool.test_connection();
 
@@ -255,30 +334,32 @@ int main(int argc, const char *argv[])
                                files_failed, db_pool);
         };
 
-        // Limit parallelism to avoid resource exhaustion
-        // Use std::execution::par if available and check max files
-        const int max_parallel_files =
-            std::min(program_options.max_concurrent_loads_ > 0 ? program_options.max_concurrent_loads_ : 4,
-                     static_cast<int>(files_to_scan.size()));
+        // Create thread pool with controlled concurrency
+        const size_t max_concurrent = program_options.max_concurrent_loads_ > 0
+                                          ? static_cast<size_t>(program_options.max_concurrent_loads_)
+                                          : std::min(static_cast<size_t>(4), files_to_scan.size());
 
-        if (max_parallel_files <= 1 || files_to_scan.size() <= 1)
+        ThreadWorkerPool worker_pool(max_concurrent);
+
+        if (files_to_scan.size() <= 1)
         {
-            // Sequential processing
-            std::for_each(std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+            // Sequential processing for single file
+            for (const auto &file : files_to_scan)
+            {
+                scan_file(file);
+            }
         }
         else
         {
             // Parallel processing with controlled concurrency
-            // Note: std::execution::par may not be available on all compilers
-            spdlog::info("Processing {} files in parallel (max {} concurrent).", files_to_scan.size(),
-                         max_parallel_files);
-            std::for_each(std::execution::par, std::begin(files_to_scan), std::end(files_to_scan), scan_file);
+            spdlog::info("Processing {} files in parallel (max {} concurrent).", files_to_scan.size(), max_concurrent);
+            worker_pool.submit_all(files_to_scan, scan_file);
         }
     }
     catch (const std::exception &e)
     {
         spdlog::error("Fatal error in main: {}", e.what());
-        result = 5; // arbitrary value
+        result = 5;
     }
     catch (...)
     {
@@ -290,8 +371,8 @@ int main(int argc, const char *argv[])
 
     spdlog::info("\n\n*** End run {} ***\n",
                  std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now()));
-    spdlog::shutdown(); // Ensure all messages are flushed
-    //
+    spdlog::shutdown();
+
     return result;
 }
 /*
@@ -456,7 +537,8 @@ void SetupProgramOptions(Options &program_options)
         ->check(CLI::IsMember({"test", "live"})); // Restricts input to one of the strings in the set.
 
     // This is an optional field that must be a positive integer if provided.
-    app.add_option("--max-files", program_options.max_concurrent_loads_, "Maximum number of files to process.")
+    app.add_option("--max-concurrent-loads", program_options.max_concurrent_loads_,
+                   "Maximum number of files to process.")
         ->check(CLI::PositiveNumber); // Validator: Ensures the integer is > 0.
 
     // A flag is an option that does not take a value. Its presence sets a boolean to true.
