@@ -86,11 +86,11 @@ std::vector<std::string> MakeListOfFilesToProcess(const Options &program_options
 
 void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
                         const EM::FileName &input_file_name, std::atomic<int> &files_processed,
-                        std::atomic<int> &files_failed, const DatabasePool &db_pool);
+                        std::atomic<int> &files_failed, DatabasePool &db_pool);
 
-bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  std::unique_ptr<pqxx::connection> &conn, const std::string &schema_name, bool replace_DB_content,
-                  const std::string &symbol_for_CIK, bool has_html, bool has_xbrl, bool has_xls);
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name, PooledConnection &conn,
+                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
+                  bool has_html, bool has_xbrl, bool has_xls);
 
 CLI::App app("EDGAR_forms_DB_load");
 
@@ -500,14 +500,15 @@ CIK2SymbolMap LoadCIKToSymbolTable(const EM::FileName &CIK2Symbol_file_name)
  */
 void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK_symbol_map,
                         const EM::FileName &input_file_name, std::atomic<int> &files_processed,
-                        std::atomic<int> &files_failed, const DatabasePool &db_pool)
+                        std::atomic<int> &files_failed, DatabasePool &db_pool)
 {
     try
     {
-        // Get connection from pool
+        // 1. Acquire RAII connection wrapper.
+        // This replaces the std::unique_ptr<pqxx::connection> logic.
         auto conn = db_pool.get_connection();
 
-        if (!conn || !conn->is_open())
+        if (!conn) // Uses the overloaded operator bool()
         {
             spdlog::error("Failed to get database connection for file: {}", input_file_name.get());
             files_failed.fetch_add(1, std::memory_order_relaxed);
@@ -518,7 +519,7 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
         {
             spdlog::error("File: {} not found. Skipped.", input_file_name);
             files_failed.fetch_add(1, std::memory_order_relaxed);
-            db_pool.return_connection(std::move(conn));
+            // No manual return needed; 'conn' cleans up itself.
             return;
         }
 
@@ -531,7 +532,7 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
         SEC_data.ExtractHeaderFields();
         decltype(auto) SEC_fields = SEC_data.GetFields();
 
-        // FIX: Validate required SEC header fields exist before use
+        // Validate required SEC header fields
         static const std::vector<std::string> required_fields = {"cik",       "accession_number", "company_name",
                                                                  "form_type", "date_filed",       "quarter_ending"};
 
@@ -541,72 +542,67 @@ void LoadSingleFileToDB(const Options &program_options, const CIK2SymbolMap &CIK
             {
                 spdlog::error("Missing required field '{}' in SEC header for file: {}", field, input_file_name.get());
                 files_failed.fetch_add(1, std::memory_order_relaxed);
-                db_pool.return_connection(std::move(conn));
                 return;
             }
         }
-
-        FileHasHTML check_for_html;
-        FileHasXBRL check_for_xbrl;
-        FileHasXLS check_for_xls;
 
         const std::string &cik = SEC_fields.at("cik");
         const auto cik_symbol = CIK_symbol_map.find(cik);
         const std::string symbol_for_CIK = cik_symbol != CIK_symbol_map.end() ? cik_symbol->second : "";
 
+        FileHasHTML check_for_html;
+        FileHasXBRL check_for_xbrl;
+        FileHasXLS check_for_xls;
+
         bool has_html = check_for_html(SEC_fields, document_sections);
         bool has_xbrl = check_for_xbrl(SEC_fields, document_sections);
         bool has_xls = check_for_xls(SEC_fields, document_sections);
 
+        // 2. Pass the PooledConnection wrapper by reference
         if (!LoadDataToDB(SEC_fields, input_file_name, conn, program_options.DB_mode_,
                           program_options.replace_DB_content_, symbol_for_CIK, has_html, has_xbrl, has_xls))
         {
             spdlog::error("Failed to load data for file: {}", input_file_name.get().string());
             files_failed.fetch_add(1, std::memory_order_relaxed);
-            db_pool.return_connection(std::move(conn));
             return;
         }
 
         files_processed.fetch_add(1, std::memory_order_relaxed);
-        db_pool.return_connection(std::move(conn));
-    }
-    catch (const std::system_error &e)
-    {
-        spdlog::error("System error while processing file: {}. Error: {}. Processing stopped.",
-                      input_file_name.get().string(), e.what());
-        files_failed.fetch_add(1, std::memory_order_relaxed);
-        throw;
     }
     catch (const std::exception &e)
     {
         spdlog::error("Problem processing file: {}. Error: {}", input_file_name.get().string(), e.what());
         files_failed.fetch_add(1, std::memory_order_relaxed);
     }
+    // 'conn' is destroyed here as it leaves scope, triggering PooledConnection::~PooledConnection()
 } /* -----  end of method LoadSingleFileToDB  ----- */
 
-bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name,
-                  std::unique_ptr<pqxx::connection> &conn, const std::string &schema_name, bool replace_DB_content,
-                  const std::string &symbol_for_CIK, bool has_html, bool has_xbrl, bool has_xls)
+/*
+ * ===  FUNCTION  ======================================================================
+ * Name:  LoadDataToDB
+ * Description:  Executes SQL commands using the provided RAII connection.
+ * =====================================================================================
+ */
+bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &input_file_name, PooledConnection &conn,
+                  const std::string &schema_name, bool replace_DB_content, const std::string &symbol_for_CIK,
+                  bool has_html, bool has_xbrl, bool has_xls)
 {
-    using namespace std::chrono_literals;
-
     try
     {
         auto form_type = SEC_fields.at("form_type");
 
+        // Use operator* to create the transaction
         pqxx::work trxn{*conn};
 
         if (replace_DB_content)
         {
-            auto delete_index_entry_cmd =
+            auto delete_cmd =
                 std::format("DELETE FROM {3}_forms_index.sec_form_index WHERE cik = {0} AND form_type = {1} "
                             "AND period_ending = {2}",
                             trxn.quote(SEC_fields.at("cik")), trxn.quote(form_type),
                             trxn.quote(SEC_fields.at("quarter_ending")), schema_name);
 
-            spdlog::debug("\n*** delete data for index entry cmd: {}\n", delete_index_entry_cmd);
-
-            trxn.exec(delete_index_entry_cmd);
+            trxn.exec(delete_cmd);
         }
 
         auto date_filed = StringToDateYMD("%F", SEC_fields.at("date_filed"));
@@ -624,28 +620,16 @@ bool LoadDataToDB(const EM::SEC_Header_fields &SEC_fields, const EM::FileName &i
             trxn.quote(SEC_fields.at("quarter_ending")), "NULL", schema_name, has_html, has_xbrl, has_xls,
             trxn.quote(SEC_fields.at("accession_number")));
 
-        spdlog::debug("\n*** insert data for index entry cmd: {}\n", index_cmd);
-
         auto filing_ID = trxn.query01<std::string>(index_cmd);
 
         trxn.commit();
-        spdlog::debug("{}", filing_ID
-                                ? "did insert"
+        spdlog::debug("{}",
+                      filing_ID ? "did insert"
                                 : catenate("duplicate data: cik: ", SEC_fields.at("cik"), " form type: ", form_type,
                                            " period ending: ", SEC_fields.at("quarter_ending"),
                                            " name: ", SEC_fields.at("company_name")));
 
         return true;
-    }
-    catch (const pqxx::sql_error &e)
-    {
-        spdlog::error("Database error in LoadDataToDB (SQL): {}. Query may have failed: {}", e.what(), e.query());
-        return false;
-    }
-    catch (const pqxx::broken_connection &e)
-    {
-        spdlog::error("Database connection lost in LoadDataToDB: {}", e.what());
-        return false;
     }
     catch (const std::exception &e)
     {
