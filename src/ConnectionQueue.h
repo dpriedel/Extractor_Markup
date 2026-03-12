@@ -32,7 +32,24 @@ struct ConnectionEntry
     std::chrono::steady_clock::time_point last_used;
 };
 
-class ConnectionQueue;
+class PooledConnection;
+
+class ConnectionQueue
+{
+public:
+    explicit ConnectionQueue(const std::string &connection_string, size_t max_size = 4);
+    PooledConnection get_connection();
+    void return_connection(std::unique_ptr<pqxx::connection> conn);
+    size_t available_count() const;
+    bool test_connection() const;
+
+private:
+    std::string connection_string_;
+    size_t max_size_;
+    mutable std::mutex mutex_;
+    std::condition_variable condition_;
+    std::queue<ConnectionEntry> available_;
+};
 
 class PooledConnection
 {
@@ -40,8 +57,28 @@ public:
     PooledConnection(std::unique_ptr<pqxx::connection> conn, ConnectionQueue &pool);
     PooledConnection(const PooledConnection &) = delete;
     PooledConnection &operator=(const PooledConnection &) = delete;
-    PooledConnection(PooledConnection &&) noexcept = default;
-    PooledConnection &operator=(PooledConnection &&) noexcept = default;
+
+    // Custom Move Constructor
+    PooledConnection(PooledConnection &&other) noexcept : conn_(std::move(other.conn_)), pool_(other.pool_)
+    {
+        other.pool_ = nullptr; // Clear to prevent double-return
+    }
+
+    // Custom Move Assignment
+    PooledConnection &operator=(PooledConnection &&other) noexcept
+    {
+        if (this != &other)
+        {
+            // Return existing connection before taking ownership of the new one
+            if (pool_)
+                pool_->return_connection(std::move(conn_));
+            conn_ = std::move(other.conn_);
+            pool_ = other.pool_;
+            other.pool_ = nullptr;
+        }
+        return *this;
+    }
+
     ~PooledConnection();
 
     pqxx::connection *operator->()
@@ -60,23 +97,6 @@ public:
 private:
     std::unique_ptr<pqxx::connection> conn_;
     ConnectionQueue *pool_;
-};
-
-class ConnectionQueue
-{
-public:
-    explicit ConnectionQueue(const std::string &connection_string, size_t max_size = 4);
-    PooledConnection get_connection();
-    void return_connection(std::unique_ptr<pqxx::connection> conn);
-    size_t available_count() const;
-    bool test_connection() const;
-
-private:
-    std::string connection_string_;
-    size_t max_size_;
-    mutable std::mutex mutex_;
-    std::condition_variable condition_;
-    std::queue<ConnectionEntry> available_;
 };
 
 #endif /* CONNECTIONQUEUE_H_ */

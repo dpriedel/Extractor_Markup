@@ -46,14 +46,15 @@ using namespace std::string_literals;
 // Global shutdown flag for signal handling
 static std::atomic<bool> g_shutdown_requested{false};
 
+// STRICTLY async-signal-safe. Do not add logging, memory allocation, or mutexes here.
 void signal_handler(int signal)
 {
     if (signal == SIGINT || signal == SIGTERM)
     {
-        spdlog::warn("Shutdown signal received. Completing pending work...");
-        g_shutdown_requested.store(true);
+        g_shutdown_requested.store(true, std::memory_order_relaxed);
     }
 }
+
 // keep our parsed command line arguments together
 
 struct Options
@@ -116,15 +117,22 @@ int main(int argc, const char *argv[])
         CheckArgs(program_options);
 
         auto files_to_scan = MakeListOfFilesToProcess(program_options);
-
         spdlog::info("Found: {} files to process.", files_to_scan.size());
 
         const CIK2SymbolMap CIK_symbol_map = LoadCIKToSymbolTable(program_options.CIK2Symbol_file_name_);
         spdlog::info("Loaded: {} CIK-to-symbol mappings from file: {}.", CIK_symbol_map.size(),
                      program_options.CIK2Symbol_file_name_);
 
-        // Initialize database connection pool with dynamic size
-        const size_t pool_size = std::clamp(files_to_scan.size() / 4, static_cast<size_t>(1), static_cast<size_t>(8));
+        // 1. Determine concurrency FIRST
+        const size_t max_concurrent = program_options.max_concurrent_loads_ > 0
+                                          ? static_cast<size_t>(program_options.max_concurrent_loads_)
+                                          : std::min(static_cast<size_t>(4), files_to_scan.size());
+
+        // Ensure DB pool size is AT LEAST equal to max_concurrent to avoid thread starvation
+        const size_t base_pool_size =
+            std::clamp(files_to_scan.size() / 4, static_cast<size_t>(1), static_cast<size_t>(8));
+        const size_t pool_size = std::max(max_concurrent, base_pool_size);
+
         DatabasePool db_pool{"dbname=sec_extracts user=extractor_pg", pool_size};
         db_pool.test_connection();
 
@@ -132,10 +140,28 @@ int main(int argc, const char *argv[])
         std::signal(SIGINT, signal_handler);
         std::signal(SIGTERM, signal_handler);
 
+        ThreadWorkerPool worker_pool(max_concurrent);
+
+        // Create a dedicated Watcher Thread.
+        // This safely bridges the async POSIX signal to the C++ condition_variable notification.
+        std::thread signal_watcher([&worker_pool]() {
+            while (!g_shutdown_requested.load(std::memory_order_relaxed) && !worker_pool.is_shutdown_requested())
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+
+            if (g_shutdown_requested.load(std::memory_order_relaxed) && !worker_pool.is_shutdown_requested())
+            {
+                spdlog::warn("Shutdown signal detected by watcher. Signaling thread pool to abort...");
+                worker_pool.request_shutdown();
+            }
+        });
+
         // Use a thread-safe lambda for file processing
         auto scan_file = [&files_processed, &files_failed, &db_pool, &CIK_symbol_map, &program_options,
                           &g_shutdown_requested](const auto &input_file_name) {
-            if (g_shutdown_requested.load() || input_file_name.empty())
+            // Check the atomic flag directly to avoid even starting DB logic if we're shutting down
+            if (g_shutdown_requested.load(std::memory_order_relaxed) || input_file_name.empty())
             {
                 return;
             }
@@ -144,19 +170,12 @@ int main(int argc, const char *argv[])
                                files_failed, db_pool);
         };
 
-        // Create thread pool with controlled concurrency
-        const size_t max_concurrent = program_options.max_concurrent_loads_ > 0
-                                          ? static_cast<size_t>(program_options.max_concurrent_loads_)
-                                          : std::min(static_cast<size_t>(4), files_to_scan.size());
-
-        ThreadWorkerPool worker_pool(max_concurrent);
-
         if (files_to_scan.size() <= 1)
         {
             // Sequential processing for single file
             for (const auto &file : files_to_scan)
             {
-                if (g_shutdown_requested.load())
+                if (g_shutdown_requested.load(std::memory_order_relaxed))
                 {
                     spdlog::warn("Shutdown requested during sequential processing.");
                     break;
@@ -173,6 +192,13 @@ int main(int argc, const char *argv[])
             // Log pool statistics after processing
             spdlog::info("Database pool statistics: {} connections in pool, {} available", pool_size,
                          db_pool.available_count());
+        }
+
+        // Cleanly join the watcher thread before exiting
+        g_shutdown_requested.store(true, std::memory_order_relaxed); // Ensure the watcher loop exits
+        if (signal_watcher.joinable())
+        {
+            signal_watcher.join();
         }
     }
     catch (const std::exception &e)

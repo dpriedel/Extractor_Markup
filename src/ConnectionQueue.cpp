@@ -25,7 +25,9 @@ PooledConnection::PooledConnection(std::unique_ptr<pqxx::connection> conn, Conne
 
 PooledConnection::~PooledConnection()
 {
-    if (conn_ && pool_)
+    // Always return the slot back to the pool, even if conn_ is null.
+    // This preserves the pool capacity if a connection is dropped.
+    if (pool_)
     {
         pool_->return_connection(std::move(conn_));
     }
@@ -43,11 +45,14 @@ ConnectionQueue::ConnectionQueue(const std::string &connection_string, size_t ma
 
 PooledConnection ConnectionQueue::get_connection()
 {
-    std::unique_lock<std::mutex> lock(mutex_);
-    condition_.wait(lock, [this] { return !available_.empty(); });
+    ConnectionEntry entry;
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        condition_.wait(lock, [this] { return !available_.empty(); });
 
-    auto entry = std::move(available_.front());
-    available_.pop();
+        entry = std::move(available_.front());
+        available_.pop();
+    }
 
     auto now = std::chrono::steady_clock::now();
     bool needs_health_check = (now - entry.last_used) > std::chrono::seconds(30);
@@ -56,7 +61,13 @@ PooledConnection ConnectionQueue::get_connection()
     {
         try
         {
-            if (needs_health_check && entry.conn && entry.conn->is_open())
+            // Explicitly throw if connection is dead so the catch block handles the renewal
+            if (!entry.conn || !entry.conn->is_open())
+            {
+                throw std::runtime_error("Connection is null or closed natively.");
+            }
+
+            if (needs_health_check)
             {
                 pqxx::nontransaction test_trxn{*entry.conn};
                 test_trxn.exec("SELECT 1");
@@ -66,7 +77,15 @@ PooledConnection ConnectionQueue::get_connection()
         catch (const std::exception &e)
         {
             spdlog::warn("Connection stale or broken: {}. Renewing.", e.what());
-            entry.conn = std::make_unique<pqxx::connection>(connection_string_);
+            try
+            {
+                entry.conn = std::make_unique<pqxx::connection>(connection_string_);
+            }
+            catch (...)
+            {
+                return_connection(std::move(entry.conn));
+                throw;
+            }
         }
     }
 
@@ -75,8 +94,8 @@ PooledConnection ConnectionQueue::get_connection()
 
 void ConnectionQueue::return_connection(std::unique_ptr<pqxx::connection> conn)
 {
-    if (!conn)
-        return;
+    // Removed the `if (!conn) return;` check.
+    // We MUST allow null connections back into the queue to maintain the pool's max size.
     std::lock_guard<std::mutex> lock(mutex_);
     available_.push({std::move(conn), std::chrono::steady_clock::now()});
     condition_.notify_one();

@@ -21,6 +21,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <spdlog/spdlog.h>
@@ -34,24 +35,36 @@ public:
     explicit ThreadWorkerPool(size_t max_threads);
     ~ThreadWorkerPool();
 
-    // Deleted copy/move to prevent accidental double-shutdowns
     ThreadWorkerPool(const ThreadWorkerPool &) = delete;
     ThreadWorkerPool &operator=(const ThreadWorkerPool &) = delete;
 
-    /**
-     * Submits a batch of items to the pool and waits for them to complete.
-     */
     template <typename Function>
     void submit_all(const std::vector<std::string> &items, Function func)
     {
-        std::atomic<size_t> remaining{items.size()};
-        std::mutex wait_mutex;
-        std::condition_variable wait_cv;
+        if (items.empty())
+            return;
+
+        struct BatchState
+        {
+            std::atomic<size_t> remaining;
+            std::mutex wait_mutex;
+            std::condition_variable wait_cv;
+            BatchState(size_t count) : remaining(count)
+            {
+            }
+        };
+
+        auto state = std::make_shared<BatchState>(items.size());
+
+        // Register this batch's CV so the shutdown handler can notify it directly
+        {
+            std::lock_guard<std::mutex> lock(batch_cv_mutex_);
+            active_batch_cv_ = &state->wait_cv;
+        }
 
         for (const auto &item : items)
         {
-            // Capture item by value to ensure thread safety
-            enqueue_task([this, item, &func, &remaining, &wait_cv]() {
+            enqueue_task([this, item, func, state]() {
                 if (!is_shutdown_requested())
                 {
                     try
@@ -60,21 +73,26 @@ public:
                     }
                     catch (const std::exception &e)
                     {
-                        spdlog::error("Worker thread exception: {}", e.what());
+                        spdlog::error("Worker exception: {}", e.what());
                     }
                 }
 
-                // Signal completion of this specific task
-                if (--remaining == 0)
+                if (--state->remaining == 0)
                 {
-                    wait_cv.notify_all();
+                    state->wait_cv.notify_all();
                 }
             });
         }
 
-        // Block until this specific batch is done
-        std::unique_lock<std::mutex> lock(wait_mutex);
-        wait_cv.wait(lock, [&] { return remaining == 0 || is_shutdown_requested(); });
+        // Wait normally with NO timer overhead
+        std::unique_lock<std::mutex> lock(state->wait_mutex);
+        state->wait_cv.wait(lock, [&] { return state->remaining == 0 || is_shutdown_requested(); });
+
+        // Deregister the CV once done
+        {
+            std::lock_guard<std::mutex> lock(batch_cv_mutex_);
+            active_batch_cv_ = nullptr;
+        }
     }
 
     void request_shutdown();
@@ -92,6 +110,10 @@ private:
     mutable std::mutex queue_mutex_;
     std::condition_variable condition_;
     std::atomic<bool> shutdown_requested_{false};
+
+    // Safely links the main thread to the shutdown request
+    std::condition_variable *active_batch_cv_{nullptr};
+    mutable std::mutex batch_cv_mutex_;
 };
 
 #endif /* THREADWORKERPOOL_H_ */
