@@ -20,75 +20,77 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <future>
+#include <functional>
 #include <mutex>
+#include <queue>
 #include <spdlog/spdlog.h>
+#include <string>
+#include <thread>
 #include <vector>
 
 class ThreadWorkerPool
 {
 public:
     explicit ThreadWorkerPool(size_t max_threads);
+    ~ThreadWorkerPool();
 
+    // Deleted copy/move to prevent accidental double-shutdowns
+    ThreadWorkerPool(const ThreadWorkerPool &) = delete;
+    ThreadWorkerPool &operator=(const ThreadWorkerPool &) = delete;
+
+    /**
+     * Submits a batch of items to the pool and waits for them to complete.
+     */
     template <typename Function>
     void submit_all(const std::vector<std::string> &items, Function func)
     {
-        std::vector<std::future<void>> futures;
-        futures.reserve(items.size());
-
-        semaphore sem(max_threads_);
-        std::atomic<bool> shutdown_requested{false};
+        std::atomic<size_t> remaining{items.size()};
+        std::mutex wait_mutex;
+        std::condition_variable wait_cv;
 
         for (const auto &item : items)
         {
-            futures.emplace_back(std::async(std::launch::async, [this, &item, &func, &sem, &shutdown_requested]() {
-                if (shutdown_requested.load())
+            // Capture item by value to ensure thread safety
+            enqueue_task([this, item, &func, &remaining, &wait_cv]() {
+                if (!is_shutdown_requested())
                 {
-                    return;
+                    try
+                    {
+                        func(item);
+                    }
+                    catch (const std::exception &e)
+                    {
+                        spdlog::error("Worker thread exception: {}", e.what());
+                    }
                 }
-                sem.acquire();
-                try
+
+                // Signal completion of this specific task
+                if (--remaining == 0)
                 {
-                    func(item);
+                    wait_cv.notify_all();
                 }
-                catch (const std::exception &e)
-                {
-                    spdlog::error("Worker thread exception: {}", e.what());
-                }
-                sem.release();
-            }));
+            });
         }
 
-        // Wait for all tasks to complete
-        for (auto &f : futures)
-        {
-            f.get();
-        }
+        // Block until this specific batch is done
+        std::unique_lock<std::mutex> lock(wait_mutex);
+        wait_cv.wait(lock, [&] { return remaining == 0 || is_shutdown_requested(); });
     }
 
     void request_shutdown();
-
     bool is_shutdown_requested() const;
-
     size_t max_threads() const;
 
 private:
-    class semaphore
-    {
-    public:
-        explicit semaphore(size_t count);
-
-        void acquire();
-
-        void release();
-
-    private:
-        std::mutex mutex_;
-        std::condition_variable cv_;
-        size_t count_;
-    };
+    void worker_loop();
+    void enqueue_task(std::function<void()> task);
 
     size_t max_threads_;
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+
+    mutable std::mutex queue_mutex_;
+    std::condition_variable condition_;
     std::atomic<bool> shutdown_requested_{false};
 };
 

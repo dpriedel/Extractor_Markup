@@ -19,36 +19,27 @@
 #define DATABASEPOOL_H_
 
 #include "ConnectionQueue.h"
-#include <memory>
-#include <pqxx/pqxx>
 #include <string>
 
 class DatabasePool
 {
 public:
-    // Constructor takes connection string and pool size
     DatabasePool(const std::string &connection_string, size_t pool_size = 4);
 
-    // Test if the pool can create connections
+    // Get a connection wrapper (blocking if all in use)
+    PooledConnection get_connection();
+
     bool test_connection() const;
-
-    void test_connection_();
-
-    // Get a connection from the pool (blocking if all in use)
-    std::unique_ptr<pqxx::connection> get_connection() const;
-
-    // Return a connection to the pool
-    void return_connection(std::unique_ptr<pqxx::connection> conn) const;
-
-    // Get pool statistics
-    size_t pool_size() const;
-
+    size_t pool_size() const
+    {
+        return pool_size_;
+    }
     size_t available_count() const;
 
 private:
     std::string connection_string_;
     size_t pool_size_;
-    mutable ConnectionQueue connection_queue_;
+    ConnectionQueue connection_queue_;
 };
 
 #endif /* DATABASEPOOL_H_ */

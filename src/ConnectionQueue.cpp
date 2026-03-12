@@ -16,65 +16,69 @@
  */
 
 #include "ConnectionQueue.h"
-
-#include "ConnectionQueue.h"
 #include <spdlog/spdlog.h>
+
+PooledConnection::PooledConnection(std::unique_ptr<pqxx::connection> conn, ConnectionQueue &pool)
+    : conn_(std::move(conn)), pool_(&pool)
+{
+}
+
+PooledConnection::~PooledConnection()
+{
+    if (conn_ && pool_)
+    {
+        pool_->return_connection(std::move(conn_));
+    }
+}
 
 ConnectionQueue::ConnectionQueue(const std::string &connection_string, size_t max_size)
     : connection_string_(connection_string), max_size_(max_size)
 {
-    // Pre-populate the queue with connections
     for (size_t i = 0; i < max_size_; ++i)
     {
-        available_.push(std::make_unique<pqxx::connection>(connection_string_));
+        available_.push({std::make_unique<pqxx::connection>(connection_string_), std::chrono::steady_clock::now()});
     }
     spdlog::info("Connection queue initialized with {} connections.", max_size_);
 }
 
-std::unique_ptr<pqxx::connection> ConnectionQueue::get_connection()
+PooledConnection ConnectionQueue::get_connection()
 {
     std::unique_lock<std::mutex> lock(mutex_);
     condition_.wait(lock, [this] { return !available_.empty(); });
 
-    auto conn = std::move(available_.front());
+    auto entry = std::move(available_.front());
     available_.pop();
-    lock.unlock();
 
-    // Verify connection is still valid
-    if (!conn || !conn->is_open())
+    auto now = std::chrono::steady_clock::now();
+    bool needs_health_check = (now - entry.last_used) > std::chrono::seconds(30);
+
+    if (!entry.conn || !entry.conn->is_open() || needs_health_check)
     {
-        spdlog::warn("Connection was closed, creating new one");
-        conn = std::make_unique<pqxx::connection>(connection_string_);
-    }
-    else
-    {
-        // Test connection health with a quick query
         try
         {
-            pqxx::nontransaction test_trxn{*conn};
-            test_trxn.exec("SELECT 1");
-            spdlog::trace("Connection health check passed");
-        }
-        catch (const pqxx::sql_error &e)
-        {
-            spdlog::warn("Connection health check failed: {}, creating new connection", e.what());
-            conn = std::make_unique<pqxx::connection>(connection_string_);
+            if (needs_health_check && entry.conn && entry.conn->is_open())
+            {
+                pqxx::nontransaction test_trxn{*entry.conn};
+                test_trxn.exec("SELECT 1");
+                spdlog::trace("Connection health check passed");
+            }
         }
         catch (const std::exception &e)
         {
-            spdlog::warn("Connection health check failed: {}, creating new connection", e.what());
-            conn = std::make_unique<pqxx::connection>(connection_string_);
+            spdlog::warn("Connection stale or broken: {}. Renewing.", e.what());
+            entry.conn = std::make_unique<pqxx::connection>(connection_string_);
         }
     }
 
-    return conn;
+    return PooledConnection(std::move(entry.conn), *this);
 }
 
 void ConnectionQueue::return_connection(std::unique_ptr<pqxx::connection> conn)
 {
-    std::unique_lock<std::mutex> lock(mutex_);
-    available_.push(std::move(conn));
-    lock.unlock();
+    if (!conn)
+        return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    available_.push({std::move(conn), std::chrono::steady_clock::now()});
     condition_.notify_one();
 }
 
@@ -95,13 +99,5 @@ bool ConnectionQueue::test_connection() const
     {
         spdlog::error("Connection test failed: {}", e.what());
         return false;
-    }
-}
-
-void ConnectionQueue::test_connection_()
-{
-    if (!test_connection())
-    {
-        throw std::runtime_error("Database connection test failed");
     }
 }

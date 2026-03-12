@@ -23,12 +23,70 @@ ThreadWorkerPool::ThreadWorkerPool(size_t max_threads) : max_threads_(max_thread
     {
         max_threads_ = std::thread::hardware_concurrency();
     }
+
+    // Pre-spawn worker threads
+    for (size_t i = 0; i < max_threads_; ++i)
+    {
+        workers_.emplace_back(&ThreadWorkerPool::worker_loop, this);
+    }
+
     spdlog::info("Thread pool initialized with {} workers.", max_threads_);
+}
+
+ThreadWorkerPool::~ThreadWorkerPool()
+{
+    request_shutdown();
+
+    // Wake up all threads so they can exit their loops
+    condition_.notify_all();
+
+    for (std::thread &worker : workers_)
+    {
+        if (worker.joinable())
+        {
+            worker.join();
+        }
+    }
+}
+
+void ThreadWorkerPool::enqueue_task(std::function<void()> task)
+{
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+        tasks_.push(std::move(task));
+    }
+    condition_.notify_one();
+}
+
+void ThreadWorkerPool::worker_loop()
+{
+    while (true)
+    {
+        std::function<void()> task;
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            // Wait until there is a task OR shutdown is requested
+            condition_.wait(lock, [this] { return shutdown_requested_.load() || !tasks_.empty(); });
+
+            // Exit thread if shutdown is requested and no tasks remain
+            if (shutdown_requested_.load() && tasks_.empty())
+            {
+                return;
+            }
+
+            task = std::move(tasks_.front());
+            tasks_.pop();
+        }
+
+        // Execute the task outside the lock
+        task();
+    }
 }
 
 void ThreadWorkerPool::request_shutdown()
 {
     shutdown_requested_.store(true);
+    condition_.notify_all();
 }
 
 bool ThreadWorkerPool::is_shutdown_requested() const
@@ -39,27 +97,4 @@ bool ThreadWorkerPool::is_shutdown_requested() const
 size_t ThreadWorkerPool::max_threads() const
 {
     return max_threads_;
-}
-
-// Explicit template instantiation
-template void ThreadWorkerPool::submit_all(const std::vector<std::string> &, void (*)(const std::string &));
-
-ThreadWorkerPool::semaphore::semaphore(size_t count) : count_(count)
-{
-}
-
-void ThreadWorkerPool::semaphore::acquire()
-{
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [this] { return count_ > 0; });
-    --count_;
-}
-
-void ThreadWorkerPool::semaphore::release()
-{
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        ++count_;
-    }
-    cv_.notify_one();
 }
